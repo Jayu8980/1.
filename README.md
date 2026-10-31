@@ -66,3 +66,11 @@ See [docs/ACE_STUDIO_FEATURE_ANALYSIS.md](docs/ACE_STUDIO_FEATURE_ANALYSIS.md) f
 | `js/midi.js`, `js/wav.js`, `js/io.js` | File formats, save/load, autosave |
 | `js/state.js` | Project model, undo/redo, parameter curves |
 | `js/app.js` | Menus, commands, shortcuts, transport, layout |
+
+---
+
+## Also in this repo: AutoTube Agents (Android)
+
+[`youtube-agents/`](youtube-agents/README.md) is an Android app in which a team of AI agents
+runs a YouTube channel on its own: research, scripting, review, on-device video production,
+upload and comment replies. GitHub Actions builds the APK (see `.github/workflows/build-apk.yml`).
