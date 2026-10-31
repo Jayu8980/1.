@@ -47,6 +47,10 @@ python3 -m http.server 8080
 
 Then open http://localhost:8080. It can also be hosted as-is on GitHub Pages or any static host.
 
+## Planning
+
+See [docs/ACE_STUDIO_FEATURE_ANALYSIS.md](docs/ACE_STUDIO_FEATURE_ANALYSIS.md) for the ACE Studio feature comparison, gap analysis and roadmap.
+
 ## Project layout
 
 | File | Purpose |
