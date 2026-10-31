@@ -1,0 +1,10 @@
+{
+  "name": "VoxForge Studio",
+  "short_name": "VoxForge",
+  "description": "Singing voice synthesis studio in your browser",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#101016",
+  "theme_color": "#14141c",
+  "icons": [{ "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

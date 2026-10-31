@@ -1,0 +1,9 @@
+{
+  "name": "voxforge-studio",
+  "version": "1.0.0",
+  "description": "Browser-based singing voice synthesis studio",
+  "private": true,
+  "scripts": {
+    "start": "npx http-server -c-1 -p 8080 ."
+  }
+}
