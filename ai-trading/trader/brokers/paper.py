@@ -53,7 +53,7 @@ class PaperBroker(Broker):
             "stop": plan["stop"], "initial_stop": plan["stop"], "target": plan["target"],
             "max_hold": plan["max_hold"], "setup": plan.get("setup"), "signal_date": plan["signal_date"],
             "checked_through": plan["signal_date"], "bars_held": 0, "last_price": plan["entry_ref"],
-            "opened": None,
+            "entry_ref": plan["entry_ref"], "opened": None,
         }
         self._save()
         return {"id": f"paper-{symbol}-{int(time.time())}", "status": "pending",
@@ -80,7 +80,12 @@ class PaperBroker(Broker):
                                      "reason": "opened beyond the stop or target", "closed": day})
                         break
                     self.state["cash"] -= d * fill * p["qty"] + fill * p["qty"] * self.fee
-                    p.update(status="open", entry=fill, opened=day)
+                    # keep the planned stop distance and reward:risk around the real fill, as the
+                    # backtests do (a gap beyond the planned levels was rejected just above)
+                    shift = fill - p.get("entry_ref", fill)
+                    p.update(status="open", entry=fill, opened=day, stop=p["stop"] + shift,
+                             target=p["target"] + shift)
+                    p["initial_stop"] = p["stop"]
                     first = True
                 p["bars_held"] += 1
                 p["last_price"] = c

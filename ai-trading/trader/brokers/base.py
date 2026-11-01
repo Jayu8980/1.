@@ -30,6 +30,15 @@ class Broker(ABC):
         """Apply exits the broker does not handle itself. Returns closed trades."""
         return []
 
+    def held_symbols(self) -> set[str]:
+        """Symbols already held in the account, including ones this desk did not buy."""
+        return {p["symbol"] for p in self.positions()}
+
+    def login(self) -> str:
+        """Check (or, for brokers that need it, run) the login. Returns a one-line summary."""
+        acct = self.account()
+        return f"connected: equity {acct['equity']:,.2f}, cash {acct['cash']:,.2f}"
+
 
 class PositionBook:
     """Remembers stop, target, max hold and open date per symbol for live brokers."""

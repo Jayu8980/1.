@@ -39,7 +39,7 @@ class TradingDesk:
         ctx.update(started=datetime.now().isoformat(timespec="minutes"), benchmark=bench,
                    vol_index=frames.get(vol_symbol) if vol_symbol else None,
                    account=self.broker.account(), positions=self.broker.positions(),
-                   ai_enabled=self.llm is not None)
+                   held_symbols=self.broker.held_symbols(), ai_enabled=self.llm is not None)
         bench_close = bench["Close"] if bench is not None else None
         for symbol in u.symbols:
             self.board.candidates[symbol] = Candidate(symbol, frames.get(symbol), bench_close=bench_close)
@@ -91,7 +91,7 @@ class TradingDesk:
         elif msg.topic == "order.submitted":
             log.info("    [execution -> broker] %s %s %g: %s %s", p["symbol"], p["side"], p["qty"],
                      p["status"], p.get("reason") or "")
-        elif msg.topic == "position.closed":
+        elif msg.topic in ("position.closed", "position.update"):
             log.info("    [monitor] %s %s: %s", p["symbol"], p.get("status", "closed"), p.get("reason", ""))
         elif msg.topic == "risk.alert":
             log.warning("    [monitor] %s", p["message"])

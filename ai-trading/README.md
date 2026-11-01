@@ -27,7 +27,7 @@ flowchart TD
     L9 --> L10["L10 Risk manager: plan & position size"]
     L10 --> L11["L11 Decision: conviction x expected value, correlation"]
     L11 --> L12["L12 AI chief analyst (Claude) approves or vetoes"]
-    L12 --> EX["Execution: paper / Alpaca / CCXT, with safety rails"]
+    L12 --> EX["Execution: paper, Zerodha, Angel One, Dhan, Groww, Alpaca or CCXT, with safety rails"]
     EX --> MON["Monitor: fills, stops, targets, trailing, kill switch"]
     L2 -. "market.regime broadcast" .-> L3
     L2 -. "risk multiplier" .-> L10
@@ -176,9 +176,92 @@ Safety rails that are always on:
   `state/KILL_SWITCH`. No new orders go out until you delete that file.
 * Synthetic data can never be traded live.
 
-Other brokers (Interactive Brokers, Zerodha Kite, Upstox, Angel One, ...) can be added by
-implementing the small `Broker` interface in `trader/brokers/base.py`: `account`, `positions`,
-`submit` and `manage`.
+For **Zerodha, Angel One, Dhan or Groww**, see the next section.
+
+Other brokers (Interactive Brokers, Upstox, Fyers, ...) can be added by implementing the small
+`Broker` interface in `trader/brokers/base.py`: `account`, `positions`, `submit` and `manage`. An
+Indian broker only needs the primitives in `trader/brokers/india.py`.
+
+## Indian brokers: Zerodha, Angel One, Dhan and Groww
+
+All four trade NSE and BSE shares as **delivery (CNC), long only**. Use them with the `nifty50`
+preset or with your own `.NS` / `.BO` symbols.
+
+| Broker | Install | Credentials (environment variables) | Daily login | Stop-loss and target |
+|---|---|---|---|---|
+| Zerodha | `pip install kiteconnect` | `KITE_API_KEY`, `KITE_API_SECRET` | `python -m trader login --broker zerodha` once a day (Kite sessions end at 06:00 IST) | one GTT OCO: the leg that fires cancels the other |
+| Angel One | `pip install smartapi-python` | `ANGEL_API_KEY`, `ANGEL_CLIENT_CODE`, `ANGEL_PIN`, `ANGEL_TOTP_SECRET` | automatic, using TOTP | two GTT rules |
+| Dhan | `pip install dhanhq` | `DHAN_CLIENT_ID` plus `DHAN_ACCESS_TOKEN`, or `DHAN_PIN` and `DHAN_TOTP_SECRET` | automatic with PIN and TOTP | two Forever Orders |
+| Groww | `pip install growwapi` | `GROWW_API_KEY` plus `GROWW_TOTP_SECRET` (or `GROWW_API_SECRET`, which you approve in the app daily) | automatic with TOTP | two GTT smart orders |
+
+`*_TOTP_SECRET` is the key shown when you enable an authenticator app for the API, not a 6-digit
+code. The desk generates the codes itself.
+
+**How a trade runs**
+
+1. Run `trade` after the close (around 16:10 IST). It sends a limit buy 1% above the close as an
+   after-market order. Groww's API takes no after-market orders, so there the entry is queued and
+   the monitor sends it at the open. If the stock gaps up more than 1%, the order doesn't fill.
+   That is deliberate: the desk does not chase.
+2. The monitor runs every 10 to 15 minutes in market hours. When it sees the fill, it places the
+   stop-loss and target on the broker's servers, so they keep working when your computer is off.
+   Both move with the fill price, so the risk and reward match what the backtest validated. The
+   stop's sell limit is 3% under its trigger so it still fills in a fast fall.
+3. When one exit fires, the monitor cancels the other where they are separate orders and records
+   the result. It also moves the stop to break-even after +1R and exits when the holding period
+   ends. It re-places protection that expired, and sells at the next session if a stop fired but
+   didn't fill.
+
+**Before going live**
+
+* **Static IP:** SEBI's retail algo-trading rules require API orders to come from a static IP
+  registered with your broker in its developer console (Dhan's API can also set it). Run the desk
+  on that machine, or on a VPS with that IP.
+* **DDPI:** activate DDPI (Demat Debit and Pledge Instruction) so your broker can sell delivery
+  shares when a stop fires. Without it every sale needs a TPIN/eDIS authorisation, and automatic
+  stops will fail.
+* **Order size:** `max_order_value` is in your account's currency. Set it for rupees in
+  `config.toml`, for example `100000`.
+* The desk never trades a share you already hold outside it. Its positions and limits count only
+  what it opened itself.
+
+**Dry run first.** These brokers have no paper environment. Without `--live`, the desk logs in,
+reads your real funds and holdings, and prints the exact orders it would send. Nothing is placed.
+
+```bash
+python -m trader login --broker zerodha                 # Zerodha only, once a day
+python -m trader trade --preset nifty50 --broker dhan   # dry run: shows the orders, sends none
+python -m trader trade -c config.toml --live            # real orders
+python -m trader monitor -c config.toml --live          # every 10-15 minutes, 09:15-15:30 IST
+python -m trader status -c config.toml                  # funds, desk positions, your other holdings
+```
+
+`config.toml` for India:
+
+```toml
+[universe]
+preset = "nifty50"
+
+[execution]
+broker = "zerodha"          # or angelone, dhan, groww
+max_order_value = 100000    # rupees
+```
+
+Cron, with the machine's clock on IST:
+
+```cron
+10 16 * * 1-5      cd /path/to/ai-trading && python -m trader trade -c config.toml --live --yes >> state/cron.log 2>&1
+*/10 9-15 * * 1-5  cd /path/to/ai-trading && python -m trader monitor -c config.toml --live >> state/cron.log 2>&1
+```
+
+**Status:** the adapters are written against the official Python SDKs (kiteconnect 5.2,
+smartapi-python 1.5, dhanhq 2.3, growwapi 1.5). Every SDK call was checked against those SDKs'
+method signatures, and tests cover the whole order lifecycle against simulated brokers. They have
+not yet run against a real account. Start small (for example `risk_per_trade = 0.002`) and watch
+the first trades in your broker's app.
+
+Live prices (LTP) need a market-data plan with some brokers. Without one, the desk falls back to
+Yahoo prices.
 
 ## Configuration
 
@@ -202,7 +285,7 @@ A day with **no trade is a normal, healthy outcome**. The filters are strict on 
 ai-trading/
   trader/
     agents/            one file per agent (L1-L12, execution, monitor)
-    brokers/           paper simulator, Alpaca, CCXT
+    brokers/           paper simulator, Alpaca, CCXT, Zerodha, Angel One, Dhan, Groww
     bus.py             message bus, blackboard, candidate dossiers
     desk.py            wires the agents together and runs the funnel
     strategies.py      setup templates, trade simulator, parameter search

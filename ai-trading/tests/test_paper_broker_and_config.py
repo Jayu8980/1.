@@ -26,11 +26,12 @@ def broker(tmp_path):
 def test_pending_order_fills_at_next_open_then_hits_target(tmp_path):
     b = broker(tmp_path)
     assert b.submit(plan())["status"] == "pending"
+    # fills at 101, one above the plan's 100, so stop and target move up by one (96 / 111)
     closed = b.manage({"ABC": frame([(100, 100, 100, 100), (101, 102, 100, 101), (103, 111, 102, 110)])})
     assert len(closed) == 1 and closed[0]["reason"] == "target"
-    assert closed[0]["entry"] == 101 and closed[0]["exit"] == 110
-    assert abs(closed[0]["pnl"] - 90) < 1e-9
-    assert abs(b.account()["equity"] - 10_090) < 1e-9
+    assert closed[0]["entry"] == 101 and closed[0]["exit"] == 111
+    assert abs(closed[0]["pnl"] - 100) < 1e-9 and abs(closed[0]["r_multiple"] - 2.0) < 1e-9
+    assert abs(b.account()["equity"] - 10_100) < 1e-9
     assert b.positions() == []
 
 

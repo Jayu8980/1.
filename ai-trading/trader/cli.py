@@ -8,6 +8,7 @@ from pathlib import Path
 
 from . import __version__
 from .agents import ALL_AGENTS
+from .brokers import BROKERS, BrokerError
 from .config import PRESETS, Config
 
 log = logging.getLogger("trader")
@@ -18,7 +19,7 @@ def build_parser() -> argparse.ArgumentParser:
     common.add_argument("-c", "--config", help="TOML config file (start from config.example.toml)")
     common.add_argument("--preset", choices=sorted(PRESETS), help="ready-made universe")
     common.add_argument("--symbols", help="comma-separated symbols, e.g. AAPL,MSFT,BTC-USD")
-    common.add_argument("--broker", choices=["paper", "alpaca", "ccxt"], help="override execution.broker")
+    common.add_argument("--broker", choices=BROKERS, help="override execution.broker")
     common.add_argument("--synthetic", action="store_true", help="offline demo on generated data")
     common.add_argument("--no-ai", action="store_true", help="don't call Claude")
     common.add_argument("-v", "--verbose", action="store_true", help="show every rejection as it happens")
@@ -33,6 +34,8 @@ def build_parser() -> argparse.ArgumentParser:
     trade.add_argument("--yes", action="store_true", help="skip the confirmation prompt (for schedulers)")
     monitor = sub.add_parser("monitor", parents=[common], help="manage open positions and pending orders")
     monitor.add_argument("--live", action="store_true", help="manage the real-money account")
+    login = sub.add_parser("login", parents=[common], help="log in to the broker (Zerodha: once a day)")
+    login.add_argument("--live", action="store_true", help="check the real-money account (Alpaca, CCXT)")
     sub.add_parser("status", parents=[common], help="account, positions and closed trades")
     return parser
 
@@ -113,20 +116,31 @@ def cmd_monitor(cfg) -> int:
     return cmd_status(cfg, broker=desk.broker)
 
 
+def cmd_login(cfg) -> int:
+    from .brokers import make_broker
+
+    print(make_broker(cfg).login())
+    return 0
+
+
 def cmd_status(cfg, broker=None) -> int:
     from .brokers import make_broker
 
     broker = broker or make_broker(cfg)
     acct = broker.account()
-    print(f"\nAccount ({broker.name}{', LIVE' if broker.live else ''}): equity {acct['equity']:,.2f}  "
-          f"cash {acct['cash']:,.2f}")
+    mode = "LIVE" if broker.live else ("dry run" if broker.name not in ("paper", "alpaca", "ccxt") else "paper")
+    print(f"\nAccount ({broker.name}, {mode}): equity {acct['equity']:,.2f}  cash {acct['cash']:,.2f}")
     positions = broker.positions()
-    print(f"\nPositions and pending orders ({len(positions)}):")
+    print(f"\nPositions and orders managed by the desk ({len(positions)}):")
     for p in positions:
         entry = p.get("entry")
         print(f"  {p['symbol']:<12} {p.get('status', 'open'):<8} {p.get('side', ''):<5} qty {p.get('qty', 0):g}  "
               f"entry {entry if entry is not None else '-'}  stop {p.get('stop')}  target {p.get('target')}  "
               f"last {p.get('last_price', '-')}")
+    outside = sorted(s for s in broker.held_symbols() - {p["symbol"] for p in positions}
+                     if not s.endswith(".BO"))
+    if outside:
+        print(f"\nAlready in your account, so the desk will not trade them: {', '.join(outside)}")
     closed = broker.closed_trades() if hasattr(broker, "closed_trades") else []
     if closed:
         wins = [t for t in closed if t["pnl"] > 0]
@@ -154,17 +168,23 @@ def main(argv: list[str] | None = None) -> int:
     except (ValueError, OSError) as exc:
         print(f"Configuration error: {exc}", file=sys.stderr)
         return 2
-    if args.command == "agents":
-        return cmd_agents(cfg)
-    if args.command == "scan":
-        return cmd_scan(cfg, execute=False)
-    if args.command == "trade":
-        if not confirm_live(cfg, args.yes):
-            print("Cancelled.")
-            return 1
-        return cmd_scan(cfg, execute=True)
-    if args.command == "monitor":
-        return cmd_monitor(cfg)
-    if args.command == "status":
-        return cmd_status(cfg)
+    try:
+        if args.command == "agents":
+            return cmd_agents(cfg)
+        if args.command == "scan":
+            return cmd_scan(cfg, execute=False)
+        if args.command == "trade":
+            if not confirm_live(cfg, args.yes):
+                print("Cancelled.")
+                return 1
+            return cmd_scan(cfg, execute=True)
+        if args.command == "monitor":
+            return cmd_monitor(cfg)
+        if args.command == "login":
+            return cmd_login(cfg)
+        if args.command == "status":
+            return cmd_status(cfg)
+    except BrokerError as exc:
+        print(f"Broker error: {exc}", file=sys.stderr)
+        return 1
     return 2

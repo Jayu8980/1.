@@ -51,7 +51,7 @@ class DecisionAgent(Agent):
         # cash not yet spent but already promised to pending buy orders
         cash_left = float(account.get("cash", equity) or 0) - sum(
             p.get("qty", 0) * (p.get("last_price") or p.get("entry") or p.get("entry_ref") or 0)
-            for p in positions if p.get("status") == "pending" and p.get("side", "long") == "long")
+            for p in positions if p.get("status") in ("pending", "queued") and p.get("side", "long") == "long")
         slots = min(dc.top_n, rc.max_open_positions - len(positions))
         held = [p["symbol"] for p in positions]
         returns = self._returns(ranked, held)

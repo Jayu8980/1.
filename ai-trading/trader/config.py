@@ -192,7 +192,7 @@ class LLMConfig:
 @dataclass
 class ExecutionConfig:
     mode: str = "paper"            # "paper" or "live"
-    broker: str = "paper"          # "paper" (built-in simulator), "alpaca" or "ccxt"
+    broker: str = "paper"          # paper (simulator), alpaca, ccxt, zerodha, angelone, dhan, groww
     paper_equity: float = 100_000.0
     slippage_pct: float = 0.0005
     state_dir: str = "state"
@@ -202,6 +202,10 @@ class ExecutionConfig:
     trail_to_breakeven: bool = True    # move the stop to entry once a trade is 1R in profit
     ccxt_exchange: str = "binance"
     ccxt_quote: str = "USDT"
+    # Indian brokers (zerodha, angelone, dhan, groww)
+    entry_buffer_pct: float = 0.01       # limit orders sit this far past the last price, so they fill
+    stop_limit_buffer_pct: float = 0.03  # stop-loss sell limit this far below its trigger
+    algo_id: str = ""                    # exchange-issued algo ID, if you have registered one
 
 
 @dataclass
@@ -246,11 +250,15 @@ class Config:
             u.volatility_index = ""
         u.symbols = list(dict.fromkeys(s.strip().upper() for s in u.symbols if s.strip()))
 
+        from .brokers import BROKERS
+
         ex = self.execution
         _check(ex.mode in ("paper", "live"), "execution.mode must be 'paper' or 'live'")
-        _check(ex.broker in ("paper", "alpaca", "ccxt"), "execution.broker must be paper, alpaca or ccxt")
+        _check(ex.broker in BROKERS, f"execution.broker must be one of {', '.join(BROKERS)}")
         _check(not (ex.mode == "live" and ex.broker == "paper"),
-               "Live mode needs a real broker: set execution.broker to 'alpaca' or 'ccxt'")
+               "Live mode needs a real broker: set execution.broker (e.g. zerodha, dhan, alpaca)")
+        _check(0 <= ex.entry_buffer_pct <= 0.05, "execution.entry_buffer_pct must be in [0, 0.05]")
+        _check(0 < ex.stop_limit_buffer_pct <= 0.1, "execution.stop_limit_buffer_pct must be in (0, 0.1]")
         _check(self.data.source in ("yahoo", "synthetic"), "data.source must be 'yahoo' or 'synthetic'")
         _check(not (ex.mode == "live" and self.data.source == "synthetic"),
                "Refusing live trading on synthetic data")

@@ -41,6 +41,7 @@ class RiskAgent(Agent):
         self.cash = float(account.get("cash", self.equity) or 0)
         self.positions = self.board.context.get("positions") or []
         self.held = {p["symbol"] for p in self.positions}
+        self.outside = set(self.board.context.get("held_symbols") or ()) - self.held
         self.open_risk = sum(position_risk(p, self.equity, rc) for p in self.positions)
         self.board.context["open_risk"] = self.open_risk
 
@@ -50,6 +51,8 @@ class RiskAgent(Agent):
             return self.fail("account equity is unknown or zero")
         if cand.symbol in self.held:
             return self.fail("a position or order is already open")
+        if cand.symbol in self.outside:
+            return self.fail("you already hold this share outside the desk; not mixing the two")
         if len(self.positions) >= rc.max_open_positions:
             return self.fail(f"{len(self.positions)} positions open (max {rc.max_open_positions})")
         setup = cand.cache["setup"]

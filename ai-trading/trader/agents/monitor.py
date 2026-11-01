@@ -18,10 +18,12 @@ class MonitorAgent(Agent):
         frames = self.services["data"].get(symbols, refresh=True) if symbols else {}
         closed = broker.manage(frames, trail=self.cfg.execution.trail_to_breakeven)
         for trade in closed:
-            journal(self.cfg, "exit", symbol=trade["symbol"], side=trade.get("side"), qty=trade.get("qty"),
-                    price=trade.get("exit"), pnl=trade.get("pnl"), r_multiple=trade.get("r_multiple"),
-                    reason=trade.get("reason"), status=trade.get("status", "closed"))
-            self.bus.publish("position.closed", self.name, **trade)
+            status = trade.get("status", "closed")  # closed, cancelled, filled or error
+            journal(self.cfg, status, symbol=trade["symbol"], side=trade.get("side"), qty=trade.get("qty"),
+                    price=trade.get("exit", trade.get("entry")), pnl=trade.get("pnl"),
+                    r_multiple=trade.get("r_multiple"), reason=trade.get("reason"), status=status)
+            self.bus.publish("position.closed" if status in ("closed", "cancelled") else "position.update",
+                             self.name, **trade)
         equity = float(broker.account().get("equity") or 0)
         alert = check_daily_loss(self.cfg, equity)
         if alert:

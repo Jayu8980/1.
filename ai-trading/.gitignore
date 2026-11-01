@@ -4,5 +4,6 @@ __pycache__/
 .cache/
 state/
 reports/
+logs/
 config.toml
 .env
