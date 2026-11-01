@@ -8,7 +8,10 @@ from __future__ import annotations
 import re
 import tomllib
 from dataclasses import dataclass, field, fields, is_dataclass
+from datetime import time as dtime
 from pathlib import Path
+
+from .markets import india_presets
 
 # Ready-made universes. `min_turnover` is the minimum 20-day average of close * volume, in the
 # market's own currency.
@@ -32,18 +35,6 @@ PRESETS: dict[str, dict] = {
         "volatility_index": "^VIX",
         "min_turnover": 20e6,
     },
-    "nifty50": {
-        "symbols": [
-            "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "BHARTIARTL.NS",
-            "ITC.NS", "SBIN.NS", "LT.NS", "HINDUNILVR.NS", "BAJFINANCE.NS", "KOTAKBANK.NS",
-            "AXISBANK.NS", "MARUTI.NS", "SUNPHARMA.NS", "TITAN.NS", "ULTRACEMCO.NS",
-            "ASIANPAINT.NS", "NTPC.NS", "M&M.NS", "POWERGRID.NS", "HCLTECH.NS", "WIPRO.NS",
-            "ONGC.NS", "TATASTEEL.NS",
-        ],
-        "benchmark": "^NSEI",
-        "volatility_index": "^INDIAVIX",
-        "min_turnover": 500e6,  # INR
-    },
     "crypto": {
         "symbols": [
             "BTC-USD", "ETH-USD", "SOL-USD", "BNB-USD", "XRP-USD", "ADA-USD", "DOGE-USD",
@@ -54,6 +45,10 @@ PRESETS: dict[str, dict] = {
         "min_turnover": 50e6,
     },
 }
+
+PRESETS.update(india_presets())  # NIFTY 50/100/200/500, midcaps, smallcaps, sectors, F&O, ETFs, indices
+
+SEGMENTS = ("delivery", "intraday", "futures", "options")
 
 _CRYPTO = re.compile(r"-(USD|USDT|USDC|EUR|GBP|INR|JPY|BTC|ETH)$")
 
@@ -75,6 +70,8 @@ class UniverseConfig:
     benchmark: str = ""                          # "" -> the preset's benchmark
     volatility_index: str = ""                   # "" -> the preset's; "none" disables it
     history_years: int = 6
+    live_lists: bool = True                      # refresh Indian index lists from NSE when possible
+    from_preset: bool = field(default=False, repr=False)  # set by finalize()
 
 
 @dataclass
@@ -209,6 +206,18 @@ class ExecutionConfig:
 
 
 @dataclass
+class IndiaConfig:
+    """How signals are traded through an Indian broker."""
+    segment: str = "delivery"           # delivery | intraday | futures | options
+    option_strike: str = "atm"          # atm | otm1 | itm1 (one strike out of / into the money)
+    min_days_to_expiry: int = 7         # futures/options: first contract expiring at least this far out
+    exit_days_before_expiry: int = 1    # close derivative positions this many days before expiry
+    option_stop_pct: float = 0.5        # options: protective sell if the premium loses this share
+    intraday_entry_until: str = "10:30"  # intraday entries not filled by then are dropped (IST)
+    intraday_square_off: str = "15:10"   # intraday positions are closed at this time (IST)
+
+
+@dataclass
 class Config:
     universe: UniverseConfig = field(default_factory=UniverseConfig)
     data: DataConfig = field(default_factory=DataConfig)
@@ -225,6 +234,7 @@ class Config:
     decision: DecisionConfig = field(default_factory=DecisionConfig)
     llm: LLMConfig = field(default_factory=LLMConfig)
     execution: ExecutionConfig = field(default_factory=ExecutionConfig)
+    india: IndiaConfig = field(default_factory=IndiaConfig)
 
     @classmethod
     def load(cls, path: str | Path | None = None) -> "Config":
@@ -241,6 +251,7 @@ class Config:
         if preset is None and not u.symbols:
             raise ValueError(f"Unknown preset '{u.preset}'. Choose one of {sorted(PRESETS)} or list symbols.")
         if preset:
+            u.from_preset = not u.symbols
             u.symbols = list(u.symbols) or list(preset["symbols"])
             u.benchmark = u.benchmark or preset["benchmark"]
             u.volatility_index = u.volatility_index or preset["volatility_index"]
@@ -259,6 +270,27 @@ class Config:
                "Live mode needs a real broker: set execution.broker (e.g. zerodha, dhan, alpaca)")
         _check(0 <= ex.entry_buffer_pct <= 0.05, "execution.entry_buffer_pct must be in [0, 0.05]")
         _check(0 < ex.stop_limit_buffer_pct <= 0.1, "execution.stop_limit_buffer_pct must be in (0, 0.1]")
+
+        from .brokers import INDIAN_BROKERS
+
+        ic = self.india
+        _check(ic.segment in SEGMENTS, f"india.segment must be one of {', '.join(SEGMENTS)}")
+        _check(ic.option_strike in ("atm", "otm1", "itm1"), "india.option_strike must be atm, otm1 or itm1")
+        _check(0 < ic.option_stop_pct < 1, "india.option_stop_pct must be between 0 and 1")
+        for name in ("intraday_entry_until", "intraday_square_off"):
+            try:
+                dtime.fromisoformat(getattr(ic, name))
+            except ValueError:
+                raise ValueError(f"india.{name} must look like 15:10") from None
+        if ic.segment in ("futures", "options"):
+            _check(ex.broker in INDIAN_BROKERS,
+                   "futures and options trade through an Indian broker: zerodha, angelone, dhan or groww")
+        if ic.segment != "delivery":
+            self.regime.allow_short = True  # MIS shorts, short futures, or puts for downside signals
+        if ic.segment == "intraday":
+            self.optimizer.max_hold = [1]  # every backtested trade closes the day it opens
+        elif ic.segment == "options":  # time decay: keep option holding periods short
+            self.optimizer.max_hold = [h for h in self.optimizer.max_hold if h <= 10] or [5]
         _check(self.data.source in ("yahoo", "synthetic"), "data.source must be 'yahoo' or 'synthetic'")
         _check(not (ex.mode == "live" and self.data.source == "synthetic"),
                "Refusing live trading on synthetic data")

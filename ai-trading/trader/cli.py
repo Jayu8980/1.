@@ -8,7 +8,7 @@ from pathlib import Path
 
 from . import __version__
 from .agents import ALL_AGENTS
-from .brokers import BROKERS, BrokerError
+from .brokers import BROKERS, INDIAN_BROKERS, BrokerError
 from .config import PRESETS, Config
 
 log = logging.getLogger("trader")
@@ -20,6 +20,8 @@ def build_parser() -> argparse.ArgumentParser:
     common.add_argument("--preset", choices=sorted(PRESETS), help="ready-made universe")
     common.add_argument("--symbols", help="comma-separated symbols, e.g. AAPL,MSFT,BTC-USD")
     common.add_argument("--broker", choices=BROKERS, help="override execution.broker")
+    common.add_argument("--segment", choices=["delivery", "intraday", "futures", "options"],
+                        help="how trades go through an Indian broker (override india.segment)")
     common.add_argument("--synthetic", action="store_true", help="offline demo on generated data")
     common.add_argument("--no-ai", action="store_true", help="don't call Claude")
     common.add_argument("-v", "--verbose", action="store_true", help="show every rejection as it happens")
@@ -50,6 +52,8 @@ def load_config(args) -> Config:
         cfg.universe.symbols = args.symbols.split(",")
     if args.broker:
         cfg.execution.broker = args.broker
+    if args.segment:
+        cfg.india.segment = args.segment
     if args.synthetic:
         cfg.data.source = "synthetic"
     if args.no_ai:
@@ -73,6 +77,14 @@ def confirm_live(cfg, assume_yes: bool) -> bool:
     print(f"LIVE TRADING: orders go to your real {ex.broker} account.")
     print(f"Risk per trade {rc.risk_per_trade:.2%} of equity, max {rc.max_open_positions} positions, "
           f"max order value {ex.max_order_value:,.0f}, daily loss limit {ex.max_daily_loss_pct:.0%}.")
+    if ex.broker in INDIAN_BROKERS:
+        print(f"Segment: {cfg.india.segment}.", {
+            "delivery": "Delivery (CNC) buys only.",
+            "intraday": "Intraday (MIS) longs and shorts, squared off by "
+                        f"{cfg.india.intraday_square_off} IST.",
+            "futures": "LEVERAGED futures: a gap can lose more than the planned risk.",
+            "options": "Option buying: each trade can lose the whole premium.",
+        }[cfg.india.segment])
     print("!" * 78)
     if assume_yes:
         return True

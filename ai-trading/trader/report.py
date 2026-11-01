@@ -37,8 +37,10 @@ def trade_card(cand) -> list[str]:
         f"#{c['rank']}  {cand.symbol}  {cand.side.upper()}   setup: {p['setup']}",
         f"    entry ~{p['entry_ref']:g}   stop {p['stop']:g}   target {p['target']:g}   "
         f"({p['reward_risk']}R, exit after {p['max_hold']} bars at the latest)",
-        f"    size {p['qty']:g}   value {p['notional']:,.0f}   risk {p['risk_amount']:,.0f} "
-        f"({p['risk_pct']:.2%} of equity)",
+        (f"    traded as {p['segment']}: contract and lots are chosen at the broker; risk budget "
+         f"{p['risk_amount']:,.0f} ({p['risk_pct']:.2%} of equity)" if p.get("sized_by_broker") else
+         f"    size {p['qty']:g}   value {p['notional']:,.0f}   risk {p['risk_amount']:,.0f} "
+         f"({p['risk_pct']:.2%} of equity)" + (f"   [{p['segment']}]" if p.get("segment") == "intraday" else "")),
         f"    conviction {c['conviction']:.2f}   expected value {c['expected_r']:+.2f}R   "
         f"ML P(profit) {ml['prob']:.0%} (walk-forward AUC {ml['auc']:.2f})",
         f"    backtest  in-sample {ins['trades']} trades PF {ins['profit_factor']:.2f} {ins['expectancy']:+.2f}R | "

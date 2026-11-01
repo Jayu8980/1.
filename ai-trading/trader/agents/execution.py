@@ -23,7 +23,7 @@ class ExecutionAgent(Agent):
             plan = cand.plan
             if blocked:
                 result = {"status": "blocked", "reason": blocked}
-            elif plan["notional"] > ex.max_order_value * 1.0001:
+            elif not plan.get("sized_by_broker") and plan["notional"] > ex.max_order_value * 1.0001:
                 result = {"status": "blocked", "reason": "order value above execution.max_order_value"}
             else:
                 try:

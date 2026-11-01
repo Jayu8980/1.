@@ -3,20 +3,23 @@
 Create an app at https://developers.kite.trade and set KITE_API_KEY and KITE_API_SECRET.
 Kite sessions end every morning at 06:00 IST, so log in once a day with
 ``python -m trader login --broker zerodha`` (or set KITE_ACCESS_TOKEN yourself).
-Each position is protected by one GTT OCO: a stop-loss leg and a target leg on Zerodha's servers.
+Delivery positions are protected by one GTT OCO (stop-loss leg + target leg) on Zerodha's servers;
+intraday, futures and options positions by a stop-loss order placed each session.
 """
 from __future__ import annotations
 
 import json
 import logging
 import os
-from datetime import date
+from datetime import date, datetime
 from urllib.parse import parse_qs, urlparse
 
 from .base import BrokerError
-from .india import CANCELLED, DONE, OPEN, REJECTED, IndianBroker, Instrument, add_holding, now_ist, split_symbol, to_tick
+from .india import CANCELLED, DONE, OPEN, REJECTED, IndianBroker, Instrument, add_holding, split_symbol, to_tick
 
 log = logging.getLogger("trader.brokers.zerodha")
+INDEX_KEYS = {"NIFTY": "NSE:NIFTY 50", "BANKNIFTY": "NSE:NIFTY BANK", "FINNIFTY": "NSE:NIFTY FIN SERVICE",
+              "MIDCPNIFTY": "NSE:NIFTY MID SELECT", "NIFTYNXT50": "NSE:NIFTY NEXT 50", "SENSEX": "BSE:SENSEX"}
 
 
 class ZerodhaBroker(IndianBroker):
@@ -94,29 +97,58 @@ class ZerodhaBroker(IndianBroker):
                             p.get("last_price"))
         return out
 
-    def ltp(self, inst):
-        key = f"{inst.exchange}:{inst.tradingsymbol}"
+    def net_positions(self):
+        return [{"exchange": p.get("exchange"), "tradingsymbol": p.get("tradingsymbol"),
+                 "token": str(p.get("instrument_token") or ""), "product": p.get("product"),
+                 "qty": int(p.get("quantity") or 0)}
+                for p in (self._call(self.api.positions) or {}).get("net", [])]
+
+    def _price(self, key: str) -> float:
         data = self._call(self.api.ltp, key)
         try:
             return float(data[key]["last_price"])
         except (KeyError, TypeError, ValueError) as exc:
             raise BrokerError(f"no price for {key}") from exc
 
-    def _order(self, inst, side, qty, price, amo=False):
+    def ltp(self, inst):
+        return self._price(f"{inst.exchange}:{inst.tradingsymbol}")
+
+    def index_ltp(self, name):
+        if name not in INDEX_KEYS:
+            raise BrokerError(f"no Kite index key for {name}")
+        return self._price(INDEX_KEYS[name])
+
+    def contracts(self, name, exchange):
+        out = []
+        for r in self._call(self.api.instruments, exchange) or []:
+            if r.get("name") != name or r.get("instrument_type") not in ("FUT", "CE", "PE"):
+                continue
+            expiry = r.get("expiry")
+            if isinstance(expiry, str):
+                expiry = datetime.strptime(expiry, "%Y-%m-%d").date()
+            if not expiry:
+                continue
+            out.append({"kind": r["instrument_type"], "expiry": expiry, "strike": float(r.get("strike") or 0),
+                        "lot": int(r.get("lot_size") or 1), "tick": float(r.get("tick_size") or 0),
+                        "tradingsymbol": r["tradingsymbol"], "token": str(r.get("instrument_token") or ""),
+                        "exchange": exchange})
+        return out
+
+    def place_order(self, inst, side, qty, price, product, trigger=None, amo=False):
         params = {"variety": "amo" if amo else "regular", "exchange": inst.exchange,
                   "tradingsymbol": inst.tradingsymbol, "transaction_type": side, "quantity": int(qty),
-                  "product": "CNC", "order_type": "LIMIT", "price": price, "validity": "DAY", "tag": "aidesk"}
+                  "product": product, "order_type": "SL" if trigger else "LIMIT", "price": price,
+                  "validity": "DAY", "tag": "aidesk"}
+        if trigger:
+            params["trigger_price"] = trigger
         if self.ex.algo_id:
             params["algo_id"] = self.ex.algo_id
         return str(self._call(self.api.place_order, **params))
 
-    def place_buy(self, inst, qty, price, amo):
-        return self._order(inst, "BUY", qty, price, amo)
+    def cancel_order(self, order_id, inst=None):
+        self._call(self.api.cancel_order, "regular", order_id)
 
-    def place_sell(self, inst, qty, price):
-        return self._order(inst, "SELL", qty, price)
-
-    def order_state(self, order_id):
+    def order_state(self, order_id, inst=None):
         try:
             history = self.api.order_history(order_id)
         except Exception as exc:

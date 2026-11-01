@@ -2,19 +2,28 @@
 
 Create an app at https://smartapi.angelone.in and set ANGEL_API_KEY, ANGEL_CLIENT_CODE,
 ANGEL_PIN (your login MPIN) and ANGEL_TOTP_SECRET (the key shown when you enable TOTP). The desk
-logs in by itself each run. Angel One's GTT rules are single-leg, so each position gets two: a
-stop-loss rule and a target rule; the monitor cancels the leftover rule once one has fired.
+logs in by itself each run. Delivery positions get two single-leg GTT rules (stop-loss and
+target; the monitor cancels the leftover one); intraday, futures and options positions get a
+stop-loss order each session. Futures and options come from Angel One's published scrip master.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
+from datetime import date, datetime
 
 from .base import BrokerError
 from .india import CANCELLED, DONE, OPEN, REJECTED, IndianBroker, Instrument, add_holding, split_symbol, to_tick, totp
 
 log = logging.getLogger("trader.brokers.angelone")
 _ENV = ("ANGEL_API_KEY", "ANGEL_CLIENT_CODE", "ANGEL_PIN", "ANGEL_TOTP_SECRET")
+PRODUCTS = {"CNC": "DELIVERY", "MIS": "INTRADAY", "NRML": "CARRYFORWARD"}
+FROM_PRODUCT = {v: k for k, v in PRODUCTS.items()}
+INDEX_TOKENS = {"NIFTY": ("NSE", "Nifty 50", "99926000"), "BANKNIFTY": ("NSE", "Nifty Bank", "99926009"),
+                "FINNIFTY": ("NSE", "Nifty Fin Service", "99926037"),
+                "MIDCPNIFTY": ("NSE", "NIFTY MID SELECT", "99926074"), "SENSEX": ("BSE", "SENSEX", "99919000")}
+SCRIP_MASTER = "https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json"
 
 
 def _base(tradingsymbol: str) -> str:
@@ -83,32 +92,85 @@ class AngelOneBroker(IndianBroker):
                             p.get("avgnetprice"), p.get("ltp"))
         return out
 
-    def ltp(self, inst):
-        data = self._data(self._call(self.api.ltpData, inst.exchange, inst.tradingsymbol, inst.token)) or {}
+    def net_positions(self):
+        return [{"exchange": p.get("exchange"), "tradingsymbol": p.get("tradingsymbol"),
+                 "token": str(p.get("symboltoken") or ""),
+                 "product": FROM_PRODUCT.get(str(p.get("producttype", "")).upper(), p.get("producttype")),
+                 "qty": int(float(p.get("netqty") or 0))}
+                for p in self._data(self._call(self.api.position)) or []]
+
+    def _ltp(self, exchange, tradingsymbol, token) -> float:
+        data = self._data(self._call(self.api.ltpData, exchange, tradingsymbol, token)) or {}
         if data.get("ltp") is None:
-            raise BrokerError(f"no price for {inst.tradingsymbol}")
+            raise BrokerError(f"no price for {tradingsymbol}")
         return float(data["ltp"])
 
-    def _order(self, inst, side, qty, price, amo=False):
-        params = {"variety": "AMO" if amo else "NORMAL", "tradingsymbol": inst.tradingsymbol,
-                  "symboltoken": inst.token, "transactiontype": side, "exchange": inst.exchange,
-                  "ordertype": "LIMIT", "producttype": "DELIVERY", "duration": "DAY", "price": f"{price:.2f}",
+    def ltp(self, inst):
+        return self._ltp(inst.exchange, inst.tradingsymbol, inst.token)
+
+    def index_ltp(self, name):
+        if name not in INDEX_TOKENS:
+            raise BrokerError(f"no Angel One index token for {name}")
+        return self._ltp(*INDEX_TOKENS[name])
+
+    def _master(self) -> list[dict]:
+        if getattr(self, "_master_rows", None) is None:
+            path = self.state_dir / "angelone_scrip_master.json"
+            if not (path.exists() and date.fromtimestamp(path.stat().st_mtime) == date.today()):
+                import requests
+
+                try:
+                    r = requests.get(SCRIP_MASTER, timeout=120)
+                    r.raise_for_status()
+                except Exception as exc:
+                    if not path.exists():
+                        raise BrokerError(f"could not download Angel One's scrip master: {exc}") from exc
+                else:
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(r.content)
+            self._master_rows = json.loads(path.read_text())
+        return self._master_rows
+
+    def contracts(self, name, exchange):
+        out = []
+        for r in self._master():
+            if r.get("exch_seg") != exchange or r.get("name") != name:
+                continue
+            itype, symbol = str(r.get("instrumenttype", "")), str(r.get("symbol", ""))
+            kind = "FUT" if itype.startswith("FUT") else symbol[-2:] if itype.startswith("OPT") else ""
+            if kind not in ("FUT", "CE", "PE"):
+                continue
+            try:
+                expiry = datetime.strptime(r["expiry"], "%d%b%Y").date()
+            except (KeyError, ValueError):
+                continue
+            strike = float(r.get("strike") or 0) / 100 if kind != "FUT" else 0.0  # listed in paise
+            out.append({"kind": kind, "expiry": expiry, "strike": strike,
+                        "lot": int(float(r.get("lotsize") or 1)), "tick": float(r.get("tick_size") or 0) / 100,
+                        "tradingsymbol": symbol, "token": str(r.get("token")), "exchange": exchange})
+        return out
+
+    def place_order(self, inst, side, qty, price, product, trigger=None, amo=False):
+        params = {"variety": "STOPLOSS" if trigger else "AMO" if amo else "NORMAL",
+                  "tradingsymbol": inst.tradingsymbol, "symboltoken": inst.token, "transactiontype": side,
+                  "exchange": inst.exchange, "ordertype": "STOPLOSS_LIMIT" if trigger else "LIMIT",
+                  "producttype": PRODUCTS[product], "duration": "DAY", "price": f"{price:.2f}",
                   "squareoff": "0", "stoploss": "0", "quantity": str(int(qty)), "ordertag": "aidesk"}
+        if trigger:
+            params["triggerprice"] = f"{trigger:.2f}"
         data = self._data(self._call(self.api.placeOrderFullResponse, params)) or {}
         if not data.get("orderid"):
             raise BrokerError("Angel One returned no order id")
         return str(data["orderid"])
 
-    def place_buy(self, inst, qty, price, amo):
-        return self._order(inst, "BUY", qty, price, amo)
-
-    def place_sell(self, inst, qty, price):
-        return self._order(inst, "SELL", qty, price)
-
     def _orders(self) -> list[dict]:
         return self._data(self._call(self.api.orderBook)) or []
 
-    def order_state(self, order_id):
+    def cancel_order(self, order_id, inst=None):
+        variety = next((o.get("variety") for o in self._orders() if str(o.get("orderid")) == str(order_id)), "NORMAL")
+        self._data(self._call(self.api.cancelOrder, order_id, variety))
+
+    def order_state(self, order_id, inst=None):
         for o in self._orders():
             if str(o.get("orderid")) == str(order_id):
                 status = str(o.get("status") or o.get("orderstatus") or "").lower()

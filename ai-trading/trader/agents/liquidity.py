@@ -5,6 +5,7 @@ import math
 
 import pandas as pd
 
+from ..markets import is_index
 from .base import Agent, clip
 
 
@@ -37,9 +38,9 @@ class LiquidityAgent(Agent):
         if price < lc.min_price:
             return self.fail(f"price {price:.2f} below the {lc.min_price} minimum")
 
-        fx = cand.symbol.endswith("=X")  # Yahoo has no volume for currencies
+        no_volume = cand.symbol.endswith("=X") or is_index(cand.symbol)  # currencies and indices
         turnover = float((df["Close"] * df["Volume"]).tail(20).mean())
-        if not fx:
+        if not no_volume:
             if (df["Volume"].tail(60) <= 0).mean() > 0.2:
                 return self.fail("volume missing on more than 20% of recent bars")
             if lc.min_turnover and turnover < lc.min_turnover:
@@ -50,7 +51,7 @@ class LiquidityAgent(Agent):
                              "(bad data or a corporate action)")
 
         depth = 0.5
-        if lc.min_turnover and not fx:
+        if lc.min_turnover and not no_volume:
             depth = clip(math.log10(max(turnover, 1.0) / lc.min_turnover) / 2)
         return self.ok(0.5 + 0.5 * depth,
                        [f"{len(df)} bars, price {price:.2f}, avg turnover {money(turnover)}"],

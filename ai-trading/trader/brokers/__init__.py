@@ -26,19 +26,19 @@ def make_broker(cfg) -> Broker:
     if ex.broker == "zerodha":
         from .zerodha import ZerodhaBroker
 
-        return ZerodhaBroker(ex, live)
+        return ZerodhaBroker(ex, live, cfg.india)
     if ex.broker == "angelone":
         from .angelone import AngelOneBroker
 
-        return AngelOneBroker(ex, live)
+        return AngelOneBroker(ex, live, cfg.india)
     if ex.broker == "dhan":
         from .dhan import DhanBroker
 
-        return DhanBroker(ex, live)
+        return DhanBroker(ex, live, cfg.india)
     if ex.broker == "groww":
         from .groww import GrowwBroker
 
-        return GrowwBroker(ex, live)
+        return GrowwBroker(ex, live, cfg.india)
     raise BrokerError(f"unknown broker '{ex.broker}'")
 
 

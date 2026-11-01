@@ -2,11 +2,16 @@
 # Every key is optional; anything left out keeps the default shown here.
 
 [universe]
-preset = "us_large_cap"     # us_large_cap | us_etfs | nifty50 | crypto
+preset = "us_large_cap"     # us_large_cap | us_etfs | crypto | Indian presets below
+# India: nifty50 nifty_next50 nifty100 nifty200 nifty500 nifty_midcap150 nifty_smallcap250
+#        nifty_total_market nse_all nse_fo india_etfs india_indices
+#        nifty_bank nifty_it nifty_pharma nifty_auto nifty_fmcg nifty_metal nifty_energy
+#        nifty_realty nifty_psu_bank nifty_fin_service
 symbols = []                # e.g. ["AAPL", "MSFT", "RELIANCE.NS", "BTC-USD"]; replaces the preset list
 benchmark = ""              # "" = the preset's (SPY, ^NSEI, BTC-USD)
 volatility_index = ""       # "" = the preset's (^VIX, ^INDIAVIX); "none" = use realized volatility
 history_years = 6
+live_lists = true           # Indian presets: use NSE's current constituents when reachable
 
 [data]
 source = "yahoo"            # "synthetic" = offline demo data (never traded live)
@@ -118,3 +123,12 @@ ccxt_quote = "USDT"
 entry_buffer_pct = 0.01       # buy limit 1% above the last price (sell limits 1% below)
 stop_limit_buffer_pct = 0.03  # stop-loss sell limit 3% below its trigger
 algo_id = ""                  # exchange algo ID, if you registered one (sent with Zerodha orders)
+
+[india]                       # how signals are traded through an Indian broker
+segment = "delivery"          # delivery (CNC) | intraday (MIS) | futures | options
+option_strike = "atm"         # options: atm | otm1 | itm1
+min_days_to_expiry = 7        # futures/options: first contract expiring at least this far out
+exit_days_before_expiry = 1   # close derivative positions this many days before expiry
+option_stop_pct = 0.5         # options: stop-loss order if the premium loses half its value
+intraday_entry_until = "10:30"  # IST; later intraday entries are dropped
+intraday_square_off = "15:10"   # IST; intraday positions are closed by then

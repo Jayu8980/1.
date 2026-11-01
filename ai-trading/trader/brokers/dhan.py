@@ -1,16 +1,16 @@
 """Dhan via DhanHQ v2 (pip install dhanhq).
 
 Set DHAN_CLIENT_ID plus either DHAN_ACCESS_TOKEN (generated on web.dhan.co) or DHAN_PIN and
-DHAN_TOTP_SECRET, which let the desk create a fresh token by itself every day. Each position is
-protected by two Forever Orders (a stop-loss and a target, each a single trigger); the monitor
-cancels the leftover one once the other has fired.
+DHAN_TOTP_SECRET, which let the desk create a fresh token by itself every day. Delivery positions
+get two Forever Orders (a stop-loss and a target, each a single trigger; the monitor cancels the
+leftover one); intraday, futures and options positions get a stop-loss order each session.
+Shares and F&O contracts come from Dhan's published scrip master.
 """
 from __future__ import annotations
 
-import io
 import logging
 import os
-from datetime import date
+from datetime import date, datetime
 
 import pandas as pd
 
@@ -18,9 +18,19 @@ from .base import BrokerError
 from .india import CANCELLED, DONE, OPEN, REJECTED, IndianBroker, Instrument, add_holding, split_symbol, to_tick, totp
 
 log = logging.getLogger("trader.brokers.dhan")
-SEGMENT = {"NSE": "NSE_EQ", "BSE": "BSE_EQ"}
+SEGMENT = {"NSE": "NSE_EQ", "BSE": "BSE_EQ", "NFO": "NSE_FNO", "BFO": "BSE_FNO"}
+FROM_SEGMENT = {v: k for k, v in SEGMENT.items()}
+PRODUCTS = {"CNC": "CNC", "MIS": "INTRADAY", "NRML": "MARGIN"}
+FROM_PRODUCT = {v: k for k, v in PRODUCTS.items()}
+INDEX_IDS = {"NIFTY": 13, "BANKNIFTY": 25, "FINNIFTY": 27, "MIDCPNIFTY": 442, "SENSEX": 51}
 SCRIP_MASTER = "https://images.dhan.co/api-data/api-scrip-master.csv"
 _EMPTY_HINTS = ("no holding", "no position", "no data", "no record", "dh-1111")
+_FNO = ("FUTIDX", "FUTSTK", "OPTIDX", "OPTSTK")
+
+
+def _paise(value) -> float:
+    tick = pd.to_numeric(value, errors="coerce")
+    return 0.0 if pd.isna(tick) else float(tick) / 100 if tick >= 1 else float(tick)
 
 
 class DhanBroker(IndianBroker):
@@ -92,9 +102,31 @@ class DhanBroker(IndianBroker):
         if rows.empty:
             raise BrokerError(f"{base} not found on {exchange} in Dhan's instrument list")
         row = rows.iloc[0]
-        tick = pd.to_numeric(row.get("SEM_TICK_SIZE"), errors="coerce")
-        tick = 0.0 if pd.isna(tick) else float(tick) / 100 if tick >= 1 else float(tick)  # listed in paise
-        return Instrument(symbol, exchange, base, str(row["SEM_SMST_SECURITY_ID"]), tick)
+        return Instrument(symbol, exchange, base, str(row["SEM_SMST_SECURITY_ID"]), _paise(row.get("SEM_TICK_SIZE")))
+
+    def contracts(self, name, exchange):
+        df = self._scrips()
+        cash_exchange = "NSE" if exchange == "NFO" else "BSE"
+        rows = df[(df["SEM_EXM_EXCH_ID"] == cash_exchange) & df["SEM_INSTRUMENT_NAME"].isin(_FNO)]
+        out = []
+        for _, r in rows.iterrows():
+            parts = str(r["SEM_TRADING_SYMBOL"]).split("-")  # NIFTY-Nov2025-FUT / NIFTY-Nov2025-24000-CE
+            option = str(r["SEM_INSTRUMENT_NAME"]).startswith("OPT")
+            if "-".join(parts[:-3] if option else parts[:-2]) != name:
+                continue
+            kind = str(r.get("SEM_OPTION_TYPE") or "") if option else "FUT"
+            if kind not in ("FUT", "CE", "PE"):
+                continue
+            try:
+                expiry = datetime.strptime(str(r["SEM_EXPIRY_DATE"])[:10], "%Y-%m-%d").date()
+            except ValueError:
+                continue
+            out.append({"kind": kind, "expiry": expiry,
+                        "strike": float(pd.to_numeric(r.get("SEM_STRIKE_PRICE"), errors="coerce") or 0) if option else 0.0,
+                        "lot": int(float(r.get("SEM_LOT_UNITS") or 1)), "tick": _paise(r.get("SEM_TICK_SIZE")),
+                        "tradingsymbol": r["SEM_TRADING_SYMBOL"], "token": str(r["SEM_SMST_SECURITY_ID"]),
+                        "exchange": exchange})
+        return out
 
     def funds(self):
         data = self._res(self._call(self.api.get_fund_limits)) or {}
@@ -109,28 +141,40 @@ class DhanBroker(IndianBroker):
                 add_holding(out, p["tradingSymbol"], int(p.get("netQty") or 0), p.get("buyAvg"))
         return out
 
-    def ltp(self, inst):
-        segment = SEGMENT[inst.exchange]
-        data = self._res(self._call(self.api.ticker_data, {segment: [int(inst.token)]})) or {}
+    def net_positions(self):
+        return [{"exchange": FROM_SEGMENT.get(p.get("exchangeSegment"), p.get("exchangeSegment")),
+                 "tradingsymbol": p.get("tradingSymbol"), "token": str(p.get("securityId") or ""),
+                 "product": FROM_PRODUCT.get(str(p.get("productType", "")).upper(), p.get("productType")),
+                 "qty": int(p.get("netQty") or 0)}
+                for p in self._res(self._call(self.api.get_positions), empty_ok=True) or []]
+
+    def _feed_price(self, segment: str, security_id) -> float:
+        data = self._res(self._call(self.api.ticker_data, {segment: [int(security_id)]})) or {}
         node = (data.get("data") if isinstance(data.get("data"), dict) else data).get(segment, {})
         try:
-            return float(node[str(inst.token)]["last_price"])
+            return float(node[str(security_id)]["last_price"])
         except (KeyError, TypeError, ValueError) as exc:
-            raise BrokerError(f"no price for {inst.tradingsymbol} (market-data access may be needed)") from exc
+            raise BrokerError(f"no price for {segment}:{security_id} (market-data access may be needed)") from exc
 
-    def _order(self, inst, side, qty, price, amo=False):
+    def ltp(self, inst):
+        return self._feed_price(SEGMENT[inst.exchange], inst.token)
+
+    def index_ltp(self, name):
+        if name not in INDEX_IDS:
+            raise BrokerError(f"no Dhan index id for {name}")
+        return self._feed_price("IDX_I", INDEX_IDS[name])
+
+    def place_order(self, inst, side, qty, price, product, trigger=None, amo=False):
         res = self._call(self.api.place_order, security_id=str(inst.token), exchange_segment=SEGMENT[inst.exchange],
-                         transaction_type=side, quantity=int(qty), order_type="LIMIT", product_type="CNC",
-                         price=float(price), after_market_order=amo, validity="DAY", amo_time="OPEN", tag="aidesk")
+                         transaction_type=side, quantity=int(qty), order_type="STOP_LOSS" if trigger else "LIMIT",
+                         product_type=PRODUCTS[product], price=float(price), trigger_price=float(trigger or 0),
+                         after_market_order=amo, validity="DAY", amo_time="OPEN", tag="aidesk")
         return str(self._res(res)["orderId"])
 
-    def place_buy(self, inst, qty, price, amo):
-        return self._order(inst, "BUY", qty, price, amo)
+    def cancel_order(self, order_id, inst=None):
+        self._res(self._call(self.api.cancel_order, order_id))
 
-    def place_sell(self, inst, qty, price):
-        return self._order(inst, "SELL", qty, price)
-
-    def order_state(self, order_id):
+    def order_state(self, order_id, inst=None):
         res = self._call(self.api.get_order_by_id, order_id)
         if not (isinstance(res, dict) and res.get("status") == "success"):
             return None

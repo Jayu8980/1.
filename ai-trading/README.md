@@ -89,6 +89,7 @@ python -m trader agents                       # meet the team
 python -m trader scan --synthetic --no-ai -v  # offline demo on generated data, shows every rejection
 python -m trader scan                         # real data: 30 US large caps vs SPY and VIX
 python -m trader scan --preset nifty50        # NSE large caps vs NIFTY 50 and India VIX
+python -m trader scan --preset nifty500       # any Indian list: midcaps, smallcaps, sectors, F&O, ETFs
 python -m trader scan --preset crypto         # 12 major coins vs BTC
 python -m trader scan --preset us_etfs --symbols SPY,QQQ,GLD,TLT   # your own list
 ```
@@ -176,92 +177,152 @@ Safety rails that are always on:
   `state/KILL_SWITCH`. No new orders go out until you delete that file.
 * Synthetic data can never be traded live.
 
-For **Zerodha, Angel One, Dhan or Groww**, see the next section.
+For **Zerodha, Angel One, Dhan or Groww** (shares, intraday, futures and options), see the next section.
 
 Other brokers (Interactive Brokers, Upstox, Fyers, ...) can be added by implementing the small
 `Broker` interface in `trader/brokers/base.py`: `account`, `positions`, `submit` and `manage`. An
 Indian broker only needs the primitives in `trader/brokers/india.py`.
 
-## Indian brokers: Zerodha, Angel One, Dhan and Groww
+## Indian market: every share, index, ETF, future and option
 
-All four trade NSE and BSE shares as **delivery (CNC), long only**. Use them with the `nifty50`
-preset or with your own `.NS` / `.BO` symbols.
+### What can be scanned
 
-| Broker | Install | Credentials (environment variables) | Daily login | Stop-loss and target |
+| Preset | What it covers |
+|---|---|
+| `nifty50`, `nifty_next50`, `nifty100`, `nifty200`, `nifty500` | NIFTY large-cap and broad-market indices |
+| `nifty_midcap150`, `nifty_smallcap250`, `nifty_total_market` | mid caps, small caps, and about 750 shares across all sizes |
+| `nse_all` | every share listed on NSE (EQ series; around 2,000 shares, so a scan takes a while) |
+| `nse_fo` | every underlying with futures and options, indices included |
+| `nifty_bank`, `nifty_it`, `nifty_pharma`, `nifty_auto`, `nifty_fmcg`, `nifty_metal`, `nifty_energy`, `nifty_realty`, `nifty_psu_bank`, `nifty_fin_service` | sectors |
+| `india_etfs` | NIFTYBEES, BANKBEES, GOLDBEES, SILVERBEES and other liquid ETFs |
+| `india_indices` | NIFTY 50, Bank Nifty, Fin Nifty, Midcap Select, Next 50 and SENSEX, for futures and options |
+
+Index lists change twice a year. The desk downloads NSE's current list, caches it for a week, and
+falls back to a built-in list when NSE can't be reached. BSE shares work with `.BO` symbols.
+Every preset is measured against NIFTY 50 and India VIX.
+
+### Four ways to trade: `[india] segment`
+
+| Segment | Product | Direction | Size | Protection and exits |
+|---|---|---|---|---|
+| `delivery` (default) | CNC | long only | shares | stop-loss and target wait at the broker (GTT); stop to break-even after +1R; exit after the holding period |
+| `intraday` | MIS | long and short | shares | stop-loss order at the exchange; the monitor watches the target and squares everything off at 15:10 IST |
+| `futures` | NRML | long and short | lots, from the risk budget (points to the stop × lot size) | stop-loss order every session; the monitor handles target, holding-period and expiry exits |
+| `options` | NRML | buys a call for a long signal, a put for a short one | lots, from the premium (the whole premium counts as risk) | exits when the underlying reaches its stop or target; a stop-loss order on the premium (-50%) as a backstop; out before expiry |
+
+The analysis adapts to the segment:
+* intraday backtests only test trades that close the same day;
+* short signals are enabled outside delivery;
+* options keep holding periods to 10 days or less, because of time decay.
+
+Futures use the nearest expiry at least `min_days_to_expiry` (7) days out. Options use the same
+rule and the at-the-money strike, or one strike out of or into the money with
+`option_strike = "otm1"` or `"itm1"`. Lot sizes, strikes and expiries come from your broker's
+instrument list, so they are always current. The desk only buys options: it never sells (writes)
+them.
+
+### Brokers: Zerodha, Angel One, Dhan and Groww
+
+| Broker | Install | Credentials (environment variables) | Daily login | Delivery exits |
 |---|---|---|---|---|
 | Zerodha | `pip install kiteconnect` | `KITE_API_KEY`, `KITE_API_SECRET` | `python -m trader login --broker zerodha` once a day (Kite sessions end at 06:00 IST) | one GTT OCO: the leg that fires cancels the other |
 | Angel One | `pip install smartapi-python` | `ANGEL_API_KEY`, `ANGEL_CLIENT_CODE`, `ANGEL_PIN`, `ANGEL_TOTP_SECRET` | automatic, using TOTP | two GTT rules |
 | Dhan | `pip install dhanhq` | `DHAN_CLIENT_ID` plus `DHAN_ACCESS_TOKEN`, or `DHAN_PIN` and `DHAN_TOTP_SECRET` | automatic with PIN and TOTP | two Forever Orders |
 | Groww | `pip install growwapi` | `GROWW_API_KEY` plus `GROWW_TOTP_SECRET` (or `GROWW_API_SECRET`, which you approve in the app daily) | automatic with TOTP | two GTT smart orders |
 
-`*_TOTP_SECRET` is the key shown when you enable an authenticator app for the API, not a 6-digit
-code. The desk generates the codes itself.
+All four support every segment. `*_TOTP_SECRET` is the key shown when you enable an
+authenticator app for the API, not a 6-digit code. The desk generates the codes itself.
 
-**How a trade runs**
+### How a trade runs
 
-1. Run `trade` after the close (around 16:10 IST). It sends a limit buy 1% above the close as an
-   after-market order. Groww's API takes no after-market orders, so there the entry is queued and
-   the monitor sends it at the open. If the stock gaps up more than 1%, the order doesn't fill.
-   That is deliberate: the desk does not chase.
-2. The monitor runs every 10 to 15 minutes in market hours. When it sees the fill, it places the
-   stop-loss and target on the broker's servers, so they keep working when your computer is off.
-   Both move with the fill price, so the risk and reward match what the backtest validated. The
-   stop's sell limit is 3% under its trigger so it still fills in a fast fall.
-3. When one exit fires, the monitor cancels the other where they are separate orders and records
-   the result. It also moves the stop to break-even after +1R and exits when the holding period
-   ends. It re-places protection that expired, and sells at the next session if a stop fired but
-   didn't fill.
+* **Delivery:** run `trade` after the close (around 16:10 IST). It sends a limit buy 1% above the
+  close as an after-market order. Groww's API takes no after-market orders, so there the entry
+  waits for the open. A gap up of more than 1% means no fill, on purpose: the desk does not
+  chase. Once the order fills, the stop-loss and target go to the broker's servers and keep
+  working when your computer is off. Both move with the fill price, so the risk and reward match
+  what the backtest validated.
+* **Intraday, futures and options:** `trade` after the close queues the signals. The first
+  monitor run of the next session sends the entries at live prices, which futures and option
+  sizing need. Intraday entries that haven't started by 10:30 are dropped.
+* After a fill, a stop-loss order protects the position (re-placed every session, since such
+  orders last one day). The monitor exits on the target, at 15:10 for intraday, after the holding
+  period, or a day before expiry.
+* Before any exit, the monitor confirms the stop-loss order is cancelled and the position still
+  exists. That way a stop that fills at the same moment can never turn into a second, opposite
+  position.
 
-**Before going live**
+### Before going live
 
 * **Static IP:** SEBI's retail algo-trading rules require API orders to come from a static IP
-  registered with your broker in its developer console (Dhan's API can also set it). Run the desk
-  on that machine, or on a VPS with that IP.
+  registered with your broker in its developer console (Dhan's API can also set it). Run the
+  desk on that machine, or on a VPS with that IP.
 * **DDPI:** activate DDPI (Demat Debit and Pledge Instruction) so your broker can sell delivery
   shares when a stop fires. Without it every sale needs a TPIN/eDIS authorisation, and automatic
   stops will fail.
-* **Order size:** `max_order_value` is in your account's currency. Set it for rupees in
-  `config.toml`, for example `100000`.
+* **F&O:** your account needs the F&O segment activated and enough margin.
+  * Futures are leveraged: a gap past the stop can lose more than the planned risk.
+  * An option premium can fall to zero.
+* **Order size:** `max_order_value` is in rupees for these brokers. It caps one delivery or
+  intraday order, the notional value of one futures order (`2500000` lets one NIFTY lot through),
+  and the premium of one options order.
 * The desk never trades a share you already hold outside it. Its positions and limits count only
   what it opened itself.
 
 **Dry run first.** These brokers have no paper environment. Without `--live`, the desk logs in,
-reads your real funds and holdings, and prints the exact orders it would send. Nothing is placed.
+reads your real funds and holdings, and prints the exact orders it would send, including the
+futures or option contract and the number of lots. Nothing is placed.
 
 ```bash
-python -m trader login --broker zerodha                 # Zerodha only, once a day
-python -m trader trade --preset nifty50 --broker dhan   # dry run: shows the orders, sends none
-python -m trader trade -c config.toml --live            # real orders
-python -m trader monitor -c config.toml --live          # every 10-15 minutes, 09:15-15:30 IST
-python -m trader status -c config.toml                  # funds, desk positions, your other holdings
+python -m trader login --broker zerodha                                        # Zerodha only, once a day
+python -m trader scan  --preset nifty500                                       # analysis only
+python -m trader trade --preset nifty50 --broker dhan                          # delivery, dry run
+python -m trader trade --preset nifty100 --broker angelone --segment intraday  # intraday, dry run
+python -m trader trade --preset nse_fo --broker zerodha --segment futures      # futures, dry run
+python -m trader trade --preset india_indices --broker groww --segment options # index options, dry run
+python -m trader trade -c config.toml --live                                   # real orders
+python -m trader monitor -c config.toml --live                                 # every 5-10 minutes, 09:15-15:30 IST
+python -m trader status -c config.toml                                         # funds, desk positions, other holdings
 ```
 
-`config.toml` for India:
+`config.toml` for futures on Zerodha:
 
 ```toml
 [universe]
-preset = "nifty50"
+preset = "nse_fo"
 
 [execution]
-broker = "zerodha"          # or angelone, dhan, groww
-max_order_value = 100000    # rupees
+broker = "zerodha"
+max_order_value = 2500000   # rupees
+
+[risk]
+risk_per_trade = 0.01
+
+[india]
+segment = "futures"         # delivery | intraday | futures | options
+min_days_to_expiry = 7
+option_strike = "atm"       # options only: atm | otm1 | itm1
 ```
 
 Cron, with the machine's clock on IST:
 
 ```cron
-10 16 * * 1-5      cd /path/to/ai-trading && python -m trader trade -c config.toml --live --yes >> state/cron.log 2>&1
-*/10 9-15 * * 1-5  cd /path/to/ai-trading && python -m trader monitor -c config.toml --live >> state/cron.log 2>&1
+10 16 * * 1-5     cd /path/to/ai-trading && python -m trader trade -c config.toml --live --yes >> state/cron.log 2>&1
+*/5 9-15 * * 1-5  cd /path/to/ai-trading && python -m trader monitor -c config.toml --live >> state/cron.log 2>&1
 ```
 
 **Status:** the adapters are written against the official Python SDKs (kiteconnect 5.2,
 smartapi-python 1.5, dhanhq 2.3, growwapi 1.5). Every SDK call was checked against those SDKs'
-method signatures, and tests cover the whole order lifecycle against simulated brokers. They have
-not yet run against a real account. Start small (for example `risk_per_trade = 0.002`) and watch
-the first trades in your broker's app.
+method signatures, and tests cover the whole order lifecycle for all four segments against
+simulated brokers. Contracts come from each broker's instrument list. Zerodha's comes through
+its SDK. Angel One, Dhan and Groww publish theirs as files, which are read by column name, and
+the desk stops with a clear error if a format changes. None of this has run against a real
+account yet. Start small (for example `risk_per_trade = 0.002`, one lot) and watch the first
+trades in your broker's app.
 
-Live prices (LTP) need a market-data plan with some brokers. Without one, the desk falls back to
-Yahoo prices.
+Live prices (LTP) need a market-data plan with some brokers. Without one, share prices fall back
+to Yahoo. Futures and options need live prices and are refused without them. An index value
+from the broker that is more than 15% away from Yahoo's is ignored, so a wrong mapping can't
+drive exits.
 
 ## Configuration
 
@@ -286,11 +347,13 @@ ai-trading/
   trader/
     agents/            one file per agent (L1-L12, execution, monitor)
     brokers/           paper simulator, Alpaca, CCXT, Zerodha, Angel One, Dhan, Groww
+                       (india.py: the shared lifecycle for delivery, intraday, futures and options)
     bus.py             message bus, blackboard, candidate dossiers
     desk.py            wires the agents together and runs the funnel
     strategies.py      setup templates, trade simulator, parameter search
     indicators.py      technical indicators
     data.py            Yahoo Finance download and cache, synthetic data
+    markets.py         Indian universes: NSE index lists, F&O stocks, sectors, ETFs, indices
     llm.py             Claude client (structured outputs, refusal fallback)
     safety.py          kill switch, daily loss limit, trade journal
     report.py, cli.py  console and file reports, command line

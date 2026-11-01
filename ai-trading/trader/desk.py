@@ -9,6 +9,11 @@ from .brokers import make_broker
 from .bus import Blackboard, Candidate, Message, MessageBus
 from .data import MarketData
 from .llm import ClaudeClient, llm_available
+from .markets import LIVE_LISTS, live_list
+
+
+def live_list_source(preset: str) -> str | None:
+    return LIVE_LISTS.get(preset)
 
 log = logging.getLogger("trader.desk")
 
@@ -31,6 +36,13 @@ class TradingDesk:
     def scan(self) -> Blackboard:
         """Run every layer of the funnel and return the blackboard with all dossiers."""
         u = self.cfg.universe
+        if u.from_preset and u.live_lists and self.cfg.data.source == "yahoo" and live_list_source(u.preset):
+            fresh = live_list(u.preset, self.cfg.data.cache_dir)
+            if fresh:
+                u.symbols = fresh
+                log.info("Universe %s: %d symbols from NSE's current list", u.preset, len(fresh))
+            else:
+                log.info("Universe %s: NSE list unavailable, using the built-in %d symbols", u.preset, len(u.symbols))
         # A generated volatility index means nothing; synthetic runs use realized volatility.
         vol_symbol = u.volatility_index if self.cfg.data.source != "synthetic" else ""
         frames = self.data.get(u.symbols + [u.benchmark] + ([vol_symbol] if vol_symbol else []))

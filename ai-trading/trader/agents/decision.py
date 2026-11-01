@@ -72,11 +72,12 @@ class DecisionAgent(Agent):
             if heat + cand.plan["risk_amount"] > heat_limit + 1e-9:
                 self.reject(cand, "would push total open risk over the portfolio heat limit")
                 continue
-            if cand.side == "long" and cand.plan["notional"] > cash_left + 1e-9:
+            pays_cash = cand.side == "long" and not cand.plan.get("sized_by_broker")  # F&O uses margin
+            if pays_cash and cand.plan["notional"] > cash_left + 1e-9:
                 self.reject(cand, "not enough free cash left after the higher-ranked picks")
                 continue
             heat += cand.plan["risk_amount"]
-            if cand.side == "long":
+            if pays_cash:
                 cash_left -= cand.plan["notional"]
             chosen.append(cand)
         for rank, cand in enumerate(chosen, 1):

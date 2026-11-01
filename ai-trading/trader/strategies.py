@@ -47,7 +47,8 @@ def setup_signal(name: str, p: dict, ind: pd.DataFrame, score: pd.Series, d: int
     elif name == "breakout":
         n = p["lookback"]
         crossed = c > ind[f"dc_high{n}"] if d > 0 else c < ind[f"dc_low{n}"]
-        sig = crossed & (ind["vol_ratio"] >= p["vol_mult"])
+        no_volume = ind["vol_ratio"].isna()  # indices report no volume: judge them on price alone
+        sig = crossed & ((ind["vol_ratio"] >= p["vol_mult"]) | no_volume)
     elif name == "momentum":
         s = score * d
         sig = (s >= p["threshold"]) & (s.shift(1) < p["threshold"])

@@ -4,8 +4,9 @@ Set GROWW_API_KEY plus GROWW_TOTP_SECRET (TOTP key, fully automatic login), or G
 (key-and-secret flow, which Groww asks you to approve in the app each day), or set
 GROWW_ACCESS_TOKEN directly. The API takes no after-market orders, so after-hours entries are
 queued and the monitor sends them once the session opens. Groww's OCO smart orders are intraday-
-only in the cash segment, so each delivery position gets two GTT smart orders instead: a stop-loss
-(trigger down) and a target (trigger up); the monitor cancels the leftover one.
+only in the cash segment, so each delivery position gets two GTT smart orders instead (stop-loss
+trigger down, target trigger up; the monitor cancels the leftover one). Intraday, futures and
+options positions get a stop-loss order each session; contracts come from Groww's instrument file.
 """
 from __future__ import annotations
 
@@ -13,17 +14,31 @@ import logging
 import os
 import random
 import time
+from datetime import date, datetime
+
+import pandas as pd
 
 from .base import BrokerError
 from .india import CANCELLED, DONE, OPEN, REJECTED, IndianBroker, Instrument, add_holding, split_symbol, to_tick, totp
 
 log = logging.getLogger("trader.brokers.groww")
 FILLED = ("EXECUTED", "COMPLETED", "DELIVERY_AWAITED")
+INSTRUMENTS_CSV = "https://growwapi-assets.groww.in/instruments/instrument.csv"
+_NEEDED = ("exchange", "trading_symbol", "instrument_type", "segment", "underlying_symbol", "expiry_date",
+           "strike_price", "lot_size")
 
 
 def _reference() -> str:
     """Groww wants an 8-20 character alphanumeric reference per order."""
     return f"desk{int(time.time())}{random.randint(10, 99)}"
+
+
+def _segment(inst) -> str:
+    return "FNO" if inst is not None and inst.exchange in ("NFO", "BFO") else "CASH"
+
+
+def _exchange(inst) -> str:
+    return {"NFO": "NSE", "BFO": "BSE"}.get(inst.exchange, inst.exchange)
 
 
 class GrowwBroker(IndianBroker):
@@ -76,34 +91,90 @@ class GrowwBroker(IndianBroker):
                 add_holding(out, p["trading_symbol"], int(float(p.get("quantity") or 0)), p.get("net_price"))
         return out
 
-    def ltp(self, inst):
-        key = f"{inst.exchange}_{inst.tradingsymbol}"
-        data = self._call(self.api.get_ltp, exchange_trading_symbols=(key,), segment="CASH") or {}
+    def net_positions(self):
+        out = []
+        for segment in ("CASH", "FNO"):
+            for p in (self._call(self.api.get_positions_for_user, segment=segment) or {}).get("positions") or []:
+                exchange = str(p.get("exchange", "NSE")).upper()
+                if segment == "FNO":
+                    exchange = {"NSE": "NFO", "BSE": "BFO"}.get(exchange, exchange)
+                out.append({"exchange": exchange, "tradingsymbol": p.get("trading_symbol"), "token": "",
+                            "product": str(p.get("product", "")).upper(), "qty": int(float(p.get("quantity") or 0))})
+        return out
+
+    def _price(self, key: str, segment: str) -> float:
+        data = self._call(self.api.get_ltp, exchange_trading_symbols=(key,), segment=segment) or {}
         try:
             return float(data[key])
         except (KeyError, TypeError, ValueError) as exc:
             raise BrokerError(f"no price for {key} (live-data access may be needed)") from exc
 
-    def _order(self, inst, side, qty, price):
-        res = self._call(self.api.place_order, validity="DAY", exchange=inst.exchange, order_type="LIMIT",
-                         product="CNC", quantity=int(qty), segment="CASH", trading_symbol=inst.tradingsymbol,
-                         transaction_type=side, price=float(price), order_reference_id=_reference())
+    def ltp(self, inst):
+        return self._price(f"{_exchange(inst)}_{inst.tradingsymbol}", _segment(inst))
+
+    def index_ltp(self, name):
+        return self._price(f"{'BSE' if name in ('SENSEX', 'BANKEX') else 'NSE'}_{name}", "CASH")
+
+    def _instruments(self) -> pd.DataFrame:
+        if getattr(self, "_instrument_df", None) is None:
+            path = self.state_dir / "groww_instruments.csv"
+            if not (path.exists() and date.fromtimestamp(path.stat().st_mtime) == date.today()):
+                import requests
+
+                try:
+                    r = requests.get(INSTRUMENTS_CSV, timeout=120)
+                    r.raise_for_status()
+                except Exception as exc:
+                    if not path.exists():
+                        raise BrokerError(f"could not download Groww's instrument list: {exc}") from exc
+                else:
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(r.content)
+            df = pd.read_csv(path, dtype=str, low_memory=False)
+            missing = [c for c in _NEEDED if c not in df.columns]
+            if missing:
+                raise BrokerError(f"Groww's instrument list has no {', '.join(missing)} column(s)")
+            self._instrument_df = df
+        return self._instrument_df
+
+    def contracts(self, name, exchange):
+        df = self._instruments()
+        rows = df[(df["underlying_symbol"] == name) & (df["segment"] == "FNO")
+                  & (df["exchange"] == {"NFO": "NSE", "BFO": "BSE"}[exchange])
+                  & df["instrument_type"].isin(["FUT", "CE", "PE"])]
+        out = []
+        for _, r in rows.iterrows():
+            try:
+                expiry = datetime.strptime(str(r["expiry_date"])[:10], "%Y-%m-%d").date()
+            except ValueError:
+                continue
+            out.append({"kind": r["instrument_type"], "expiry": expiry,
+                        "strike": float(pd.to_numeric(r["strike_price"], errors="coerce") or 0),
+                        "lot": int(float(r["lot_size"] or 1)),
+                        "tick": float(pd.to_numeric(r.get("tick_size"), errors="coerce") or 0),
+                        "tradingsymbol": r["trading_symbol"], "token": str(r.get("exchange_token") or ""),
+                        "exchange": exchange})
+        return out
+
+    def place_order(self, inst, side, qty, price, product, trigger=None, amo=False):
+        if amo:
+            raise BrokerError("Groww's API takes no after-market orders")
+        res = self._call(self.api.place_order, validity="DAY", exchange=_exchange(inst),
+                         order_type="SL" if trigger else "LIMIT", product=product, quantity=int(qty),
+                         segment=_segment(inst), trading_symbol=inst.tradingsymbol, transaction_type=side,
+                         price=float(price), trigger_price=float(trigger) if trigger else None,
+                         order_reference_id=_reference())
         order_id = (res or {}).get("groww_order_id")
         if not order_id:
             raise BrokerError("Groww returned no order id")
         return str(order_id)
 
-    def place_buy(self, inst, qty, price, amo):
-        if amo:
-            raise BrokerError("Groww's API takes no after-market orders")
-        return self._order(inst, "BUY", qty, price)
+    def cancel_order(self, order_id, inst=None):
+        self._call(self.api.cancel_order, groww_order_id=order_id, segment=_segment(inst))
 
-    def place_sell(self, inst, qty, price):
-        return self._order(inst, "SELL", qty, price)
-
-    def order_state(self, order_id):
+    def order_state(self, order_id, inst=None):
         try:
-            d = self.api.get_order_detail(segment="CASH", groww_order_id=order_id) or {}
+            d = self.api.get_order_detail(segment=_segment(inst), groww_order_id=order_id) or {}
         except Exception as exc:
             log.debug("order %s not found: %s", order_id, exc)
             return None

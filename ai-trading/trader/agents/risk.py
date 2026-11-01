@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import math
 
+from ..brokers import INDIAN_BROKERS
 from ..config import is_crypto
 from .base import Agent, clip
 
@@ -69,14 +70,18 @@ class RiskAgent(Agent):
             return self.fail("portfolio heat limit reached")
 
         budget = min(self.equity * rc.risk_per_trade * self.risk_multiplier, heat_left)
-        caps = {"risk budget": budget / stop_dist,
-                "max position size": self.equity * rc.max_position_pct / price,
-                "max order value": self.cfg.execution.max_order_value / price}
-        if d > 0:
-            caps["available cash"] = max(self.cash, 0.0) / price
+        segment = self.cfg.india.segment if self.cfg.execution.broker in INDIAN_BROKERS else "cash"
+        sized_by_broker = segment in ("futures", "options")  # lots and margin come from the contract
+        caps = {"risk budget": budget / stop_dist}
+        if not sized_by_broker:
+            caps["max position size"] = self.equity * rc.max_position_pct / price
+            caps["max order value"] = self.cfg.execution.max_order_value / price
+            if d > 0:
+                caps["available cash"] = max(self.cash, 0.0) / price
         limiter = min(caps, key=caps.get)
         qty = caps[limiter]
-        qty = math.floor(qty * 1e6) / 1e6 if (rc.fractional or is_crypto(cand.symbol)) else float(math.floor(qty))
+        fractional = rc.fractional or is_crypto(cand.symbol) or sized_by_broker
+        qty = math.floor(qty * 1e6) / 1e6 if fractional else float(math.floor(qty))
         if qty <= 0:
             return self.fail(f"position size rounds to zero (limited by {limiter})")
 
@@ -88,6 +93,7 @@ class RiskAgent(Agent):
             "setup": setup["label"], "risk_amount": risk_amount, "risk_pct": risk_amount / self.equity,
             "notional": qty * price, "limited_by": limiter,
             "signal_date": cand.df.index[-1].date().isoformat(),
+            "segment": segment, "sized_by_broker": sized_by_broker,
         }
         atr_pct = atr / price
         score = 0.5 * clip(rr / 3) + 0.5 * clip(1 - atr_pct / 0.06)
