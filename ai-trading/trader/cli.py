@@ -10,6 +10,7 @@ from . import __version__
 from .agents import ALL_AGENTS
 from .brokers import BROKERS, INDIAN_BROKERS, BrokerError
 from .config import PRESETS, Config
+from .server import add_serve_parser, serve
 
 log = logging.getLogger("trader")
 
@@ -39,6 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
     login = sub.add_parser("login", parents=[common], help="log in to the broker (Zerodha: once a day)")
     login.add_argument("--live", action="store_true", help="check the real-money account (Alpaca, CCXT)")
     sub.add_parser("status", parents=[common], help="account, positions and closed trades")
+    add_serve_parser(sub, common)
     return parser
 
 
@@ -175,6 +177,12 @@ def setup_logging(verbose: bool) -> None:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     setup_logging(args.verbose)
+    if args.command == "serve":
+        try:
+            return serve(args)
+        except (ValueError, OSError) as exc:
+            print(f"Server error: {exc}", file=sys.stderr)
+            return 2
     try:
         cfg = load_config(args)
     except (ValueError, OSError) as exc:

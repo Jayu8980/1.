@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- lightning bolt over a rising line, inside the 66dp safe zone -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M58,30 L40,57 L52,57 L48,78 L68,49 L56,49 Z" />
+    <path android:strokeColor="#B3FFFFFF" android:strokeWidth="3" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:fillColor="#00000000" android:pathData="M30,72 L38,64 L44,68" />
+    <path android:strokeColor="#B3FFFFFF" android:strokeWidth="3" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:fillColor="#00000000" android:pathData="M64,40 L72,34 L78,36" />
+</vector>

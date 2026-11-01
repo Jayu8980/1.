@@ -102,13 +102,11 @@ def _trade_record(cand) -> dict:
                         for name, r in cand.reports.items()}}
 
 
-def save(board, cfg, orders: list[dict] | None = None) -> tuple[Path, Path]:
-    folder = Path(cfg.execution.reports_dir)
-    folder.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+def scan_payload(board, cfg, orders: list[dict] | None = None) -> dict:
+    """The scan as plain JSON (saved next to the report and served to the phone app)."""
     regime = board.context.get("regime") or {}
     layers = _layer_of(board)
-    payload = to_jsonable({
+    return to_jsonable({
         "generated": board.context.get("started"),
         "data_source": cfg.data.source,
         "universe": {"preset": cfg.universe.preset, "benchmark": cfg.universe.benchmark,
@@ -120,6 +118,14 @@ def save(board, cfg, orders: list[dict] | None = None) -> tuple[Path, Path]:
                       "reason": c.rejection} for c in board.rejected()],
         "orders": orders or [],
     })
+
+
+def save(board, cfg, orders: list[dict] | None = None) -> tuple[Path, Path]:
+    folder = Path(cfg.execution.reports_dir)
+    folder.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    regime = board.context.get("regime") or {}
+    payload = scan_payload(board, cfg, orders)
     json_path = folder / f"scan-{stamp}.json"
     json_path.write_text(json.dumps(payload, indent=2))
 

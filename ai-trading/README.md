@@ -324,6 +324,54 @@ to Yahoo. Futures and options need live prices and are refused without them. An 
 from the broker that is more than 15% away from Yahoo's is ignored, so a wrong mapping can't
 drive exits.
 
+## Android app (APK)
+
+`android/` is a phone app for Android 8.0 to 16 (arm64 and every other CPU: it has no native code).
+It looks like a modern trading app and has five screens:
+
+- **Home**: paper-account equity curve, the market regime and the latest picks.
+- **Scan**: choose any universe (Nifty 50 to all NSE shares, sectors, F&O, ETFs, indices), delivery or
+  intraday, then watch the 12-layer funnel and the agents' conversation live. Tap a layer to see who it
+  rejected and why, and tap a pick for the chart, the plan and every agent's report.
+- **Portfolio**: paper positions with a stop-to-target bar, P&L, closed trades and R multiples.
+- **Desk**: connects to this desk on your computer for live broker orders and the Claude review.
+- **Settings**: risk per trade, positions, picks, conviction, crisis halt, history, theme (dark, light or
+  system).
+
+**The engine runs on the phone.** The liquidity, regime, technical, multi-timeframe, price-action,
+optimizer (540 backtests per symbol), machine-learning, risk and decision agents are ported to
+JavaScript (`android/app/src/main/assets/www/js/engine/`). On the same prices they give the same
+indicators and optimizer results as the Python desk. Market data is Yahoo Finance end-of-day data,
+cached for 3 hours. "Demo" mode uses generated prices and its picks can't be traded.
+
+**Live trading goes through your desk server**, because SEBI requires broker API orders to come from
+the static IP you registered, which is your computer, not your phone. Run:
+
+```bash
+python -m trader serve --broker zerodha                  # paper / dry run, prints a token
+python -m trader serve --broker zerodha --live           # real orders (asks you to type LIVE)
+```
+
+In the app open **Desk**, enter `http://<computer's LAN or VPN IP>:8765` and the token. The app can then
+scan (with news, fundamentals and the Claude review), place trades and monitor positions on the
+server. On a live server the app also asks you to type LIVE before it sends any order. The server
+speaks plain HTTP, so keep it on your home network or a private VPN such as Tailscale and never expose it
+to the internet. API: `GET /api/health|info|status`, `POST /api/scan|trade|monitor`, `GET /api/jobs/<id>`
+(see `trader/server.py`).
+
+**Getting the APK.** The GitHub Actions workflow `.github/workflows/android-apk.yml` runs the tests,
+builds a signed release APK with Google's Android SDK (target SDK 36 = Android 16), uploads it as a
+build artifact and publishes it as a GitHub release. Download `AI-Trading-Desk-<version>.apk` on your
+phone, open it and allow "Install unknown apps". To build it yourself install the Android SDK and run
+`gradle -p android assembleRelease`.
+
+The APK is signed with `android/app/sideload.keystore`, a key committed to this repository so every
+build installs over the previous one. Anyone with the repository can sign with it, so for anything
+beyond personal sideloading set your own key through `SIGNING_STORE_FILE`, `SIGNING_STORE_PASSWORD`,
+`SIGNING_KEY_ALIAS` and `SIGNING_KEY_PASSWORD`.
+
+Engine tests: `node --test tests/js/engine.test.mjs`.
+
 ## Configuration
 
 Every threshold is in `config.example.toml`. The ones that matter most:
@@ -357,7 +405,10 @@ ai-trading/
     llm.py             Claude client (structured outputs, refusal fallback)
     safety.py          kill switch, daily loss limit, trade journal
     report.py, cli.py  console and file reports, command line
-  tests/               pytest suite (runs offline)
+    server.py          JSON API for the phone app (python -m trader serve)
+  android/             Android app: Java WebView shell + the UI and JavaScript engine in assets/www
+  scripts/             export_presets.py (regenerates the app's universe list)
+  tests/               pytest suite (runs offline); tests/js: the phone engine's tests
   config.example.toml
 ```
 
@@ -365,6 +416,8 @@ Run the tests with `pip install pytest && python -m pytest -q`.
 
 ## Limitations
 
+* The phone app has not been tested on every device. If a module Web Worker can't start, the scan
+  runs on the main thread instead (slower, but it works).
 * Daily bars only. Entries are planned at the next open, and gaps can make a loss bigger than 1R.
   The backtester models this.
 * The presets list today's large caps, which builds survivorship bias into long backtests.
