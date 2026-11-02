@@ -1,0 +1,14 @@
+numpy>=1.26
+pandas>=2.2
+scikit-learn>=1.4
+yfinance>=0.2.50
+requests>=2.31
+anthropic>=2.0      # optional: Claude news scoring and AI review
+
+# Optional broker SDKs: install the one you trade with.
+# kiteconnect>=5.2        # Zerodha
+# smartapi-python>=1.5    # Angel One
+# dhanhq>=2.3             # Dhan
+# growwapi>=1.5           # Groww
+# ccxt>=4.3               # crypto exchanges
+# pytest>=8               # to run the tests

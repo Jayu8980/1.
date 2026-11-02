@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.cache/
+state/
+reports/
+logs/
+config.toml
+.env
+
+# Android build outputs
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+node_modules/
+dist/

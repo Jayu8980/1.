@@ -1,0 +1,83 @@
+name: Android APK
+
+on:
+  push:
+    paths:
+      - "ai-trading/**"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-trading
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Engine tests (JavaScript, runs on the phone)
+        run: node --test tests/js/engine.test.mjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Desk tests (Python)
+        run: |
+          pip install -r requirements.txt pytest
+          python -m pytest -q tests
+
+  apk:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      APP_VERSION_CODE: ${{ github.run_number }}
+      APP_VERSION_NAME: 1.0.${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Android SDK 36 (runner's preinstalled SDK)
+        run: |
+          SDKM=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)
+          echo "using $SDKM"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+      - name: Build release APK
+        run: gradle -p ai-trading/android --no-daemon assembleRelease
+      - name: Verify signature and target
+        run: |
+          APK=ai-trading/android/app/build/outputs/apk/release/app-release.apk
+          BT="$ANDROID_HOME/build-tools/36.0.0"
+          "$BT/apksigner" verify --verbose --print-certs "$APK" | head -20
+          "$BT/aapt2" dump badging "$APK" | grep -E "package:|sdkVersion|targetSdkVersion|native-code" || true
+          mkdir -p dist
+          cp "$APK" "dist/AI-Trading-Desk-${APP_VERSION_NAME}.apk"
+          ls -la dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AI-Trading-Desk-${{ env.APP_VERSION_NAME }}
+          path: dist/*.apk
+          if-no-files-found: error
+      - name: Publish release
+        if: github.event_name == 'workflow_dispatch' || github.ref_type == 'branch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-v${{ env.APP_VERSION_NAME }}
+          name: AI Trading Desk ${{ env.APP_VERSION_NAME }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ github.ref_name != github.event.repository.default_branch }}
+          files: dist/*.apk
+          body: |
+            Android app for the multi-agent trading desk (arm64 and all other Android devices, Android 8.0 to 16).
+            Install: download the APK on your phone, open it and allow "Install unknown apps" for your browser or file manager.
+            Built from ${{ github.sha }} on ${{ github.ref_name }}.

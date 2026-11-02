@@ -1,0 +1,134 @@
+# Copy to config.toml and pass it with:  python -m trader scan -c config.toml
+# Every key is optional; anything left out keeps the default shown here.
+
+[universe]
+preset = "us_large_cap"     # us_large_cap | us_etfs | crypto | Indian presets below
+# India: nifty50 nifty_next50 nifty100 nifty200 nifty500 nifty_midcap150 nifty_smallcap250
+#        nifty_total_market nse_all nse_fo india_etfs india_indices
+#        nifty_bank nifty_it nifty_pharma nifty_auto nifty_fmcg nifty_metal nifty_energy
+#        nifty_realty nifty_psu_bank nifty_fin_service
+symbols = []                # e.g. ["AAPL", "MSFT", "RELIANCE.NS", "BTC-USD"]; replaces the preset list
+benchmark = ""              # "" = the preset's (SPY, ^NSEI, BTC-USD)
+volatility_index = ""       # "" = the preset's (^VIX, ^INDIAVIX); "none" = use realized volatility
+history_years = 6
+live_lists = true           # Indian presets: use NSE's current constituents when reachable
+
+[data]
+source = "yahoo"            # "synthetic" = offline demo data (never traded live)
+cache_dir = ".cache"
+cache_hours = 12
+
+# ---- Layer thresholds: raise them for fewer, stronger trades; lower them for more ----
+
+[liquidity]                 # L1
+min_bars = 500
+min_price = 2.0
+min_turnover = 0            # 0 = the preset's (average close x volume, market currency)
+max_stale_days = 7
+max_daily_move = 0.6
+
+[regime]                    # L2
+allow_short = false
+halt_on_crisis = true
+high_vol_index = 28.0
+crisis_vol_index = 40.0
+bear_longs_need_rs = true
+
+[technical]                 # L3
+min_score = 0.10            # the regime adds 0.05-0.20 in hostile markets
+
+[timeframe]                 # L4
+min_agreement = 0.6
+
+[price_action]              # L5
+min_room_atr = 1.0
+max_extension_atr = 3.0
+
+[optimizer]                 # L6
+in_sample_frac = 0.7
+stop_atr = [1.0, 1.5, 2.0, 2.5]
+reward_risk = [1.5, 2.0, 3.0]
+max_hold = [5, 10, 20]
+fee_pct = 0.0005            # per side
+min_trades_is = 15
+min_trades_oos = 5
+min_expectancy_oos = 0.05   # R per trade
+min_profit_factor_oos = 1.15
+max_drawdown_r = 12.0
+min_robustness = 0.5
+signal_freshness = 1        # 1 = the setup must fire on the latest bar
+
+[ml]                        # L7
+models = ["gbm", "forest", "logit"]
+n_splits = 4
+min_train = 400
+min_auc = 0.52
+min_edge = 0.02
+
+[news]                      # L8
+enabled = true
+max_headlines = 12
+max_age_days = 10
+veto_below = -0.4
+
+[fundamental]               # L9
+enabled = true
+earnings_blackout_days = 5
+min_quality = 0.25
+
+[risk]                      # L10
+account_equity = 0          # 0 = read from the broker
+risk_per_trade = 0.01       # 1% of equity lost if the stop is hit
+max_position_pct = 0.25
+max_open_positions = 5
+max_portfolio_heat = 0.06
+min_reward_risk = 1.5
+max_correlation = 0.8
+fractional = false
+
+[decision]                  # L11
+top_n = 3
+min_conviction = 0.55
+
+[decision.weights]
+regime = 0.05
+technical = 0.15
+timeframe = 0.10
+price_action = 0.10
+optimizer = 0.25
+ml = 0.20
+sentiment = 0.075
+fundamental = 0.075
+
+[llm]                       # L8 news scoring and L12 AI review
+enabled = "auto"            # auto = on when ANTHROPIC_API_KEY (or an `ant auth login` profile) exists
+model = "claude-opus-5-5"
+review_effort = "high"
+sentiment_effort = "low"
+required = false            # true = drop any trade the AI reviewer could not check
+
+[execution]
+mode = "paper"              # "live" also needs the --live flag on the command line
+broker = "paper"            # paper | alpaca | ccxt | zerodha | angelone | dhan | groww
+paper_equity = 100000
+slippage_pct = 0.0005
+state_dir = "state"
+reports_dir = "reports"
+max_order_value = 25000
+max_daily_loss_pct = 0.03
+trail_to_breakeven = true
+ccxt_exchange = "binance"
+ccxt_quote = "USDT"
+# Indian brokers (zerodha, angelone, dhan, groww)
+entry_buffer_pct = 0.01       # buy limit 1% above the last price (sell limits 1% below)
+stop_limit_buffer_pct = 0.03  # stop-loss sell limit 3% below its trigger
+algo_id = ""                  # exchange algo ID, if you registered one (sent with Zerodha orders)
+
+[india]                       # how signals are traded through an Indian broker
+segment = "delivery"          # delivery (CNC) | intraday (MIS) | futures | options
+option_strike = "atm"         # options: atm | otm1 | itm1
+min_days_to_expiry = 7        # futures/options: first contract expiring at least this far out
+exit_days_before_expiry = 1   # close derivative positions this many days before expiry
+option_stop_pct = 0.5         # options: stop-loss order if the premium loses half its value
+intraday_entry_until = "10:30"  # IST; later intraday entries are dropped
+intraday_square_off = "15:10"   # IST; intraday positions are closed by then
