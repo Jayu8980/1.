@@ -108,3 +108,14 @@ def test_live_server_requires_explicit_confirmation(api):
     api.desk.live = True
     code, body = api("POST", "/api/trade", {"synthetic": True})
     assert code == 400 and "LIVE" in body["error"]
+
+
+def test_quotes_endpoint_uses_yahoo_without_a_broker_feed(api, monkeypatch):
+    import trader.quotes as q
+
+    monkeypatch.setattr(q, "yahoo_quote", lambda s, timeout=8.0: {"price": 101.5, "prev_close": 100.0, "time": 1, "source": "yahoo"})
+    api.desk._quotes = q.QuoteService(None, yahoo=q.yahoo_quote)
+    code, body = api("GET", "/api/quotes?symbols=RELIANCE.NS,^NSEI")
+    assert code == 200 and body["quotes"]["^NSEI"]["price"] == 101.5
+    assert api("GET", "/api/quotes?symbols=bad;sym")[0] == 400
+    assert api("GET", "/api/quotes", token=None)[0] == 401

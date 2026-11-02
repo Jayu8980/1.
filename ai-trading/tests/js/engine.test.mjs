@@ -102,3 +102,35 @@ test('paper broker cancels an order that gaps through its stop', () => {
   assert.equal(done[0].status, 'cancelled');
   assert.equal(state.cash, 1000);
 });
+
+test('an unfinished session candle fills and exits but is not counted or time-exited', () => {
+  const state = newAccount(100000), pb = new PaperBroker(state, { fee: 0, slip: 0 });
+  pb.submit({ symbol: 'Z', side: 'long', qty: 10, entry_ref: 100, stop: 95, target: 110, max_hold: 1, signal_date: '2026-01-01' });
+  const today = '2026-01-02', liveDay = () => today;
+  const partial = { t: [Date.UTC(2026, 0, 1), Date.UTC(2026, 0, 2)], o: [100, 100], h: [100, 103], l: [100, 99], c: [100, 102], v: [1, 1] };
+  assert.deepEqual(pb.manage({ Z: partial }, true, liveDay), []);
+  const p = state.positions.Z;
+  assert.equal(p.status, 'open');
+  assert.equal(p.bars_held, 0, 'the live candle is not a finished bar, so max_hold=1 does not close it');
+  assert.equal(p.checked_through, '2026-01-01');
+  assert.equal(state.cash, 100000 - 1000);
+  // the same session later on: replayed without filling twice
+  partial.h[1] = 104; partial.c[1] = 103;
+  assert.deepEqual(pb.manage({ Z: partial }, true, liveDay), []);
+  assert.equal(state.cash, 100000 - 1000);
+  // live tick through the target
+  const t = pb.liveTick('Z', 111, today);
+  assert.equal(t.reason, 'target');
+  assert.equal(t.exit, 111);
+});
+
+test('a finished day after a live session counts and can time-exit', () => {
+  const state = newAccount(100000), pb = new PaperBroker(state, { fee: 0, slip: 0 });
+  pb.submit({ symbol: 'Z', side: 'short', qty: 1, entry_ref: 100, stop: 105, target: 90, max_hold: 1, signal_date: '2026-01-01' });
+  const bars = { t: [Date.UTC(2026, 0, 2)], o: [100], h: [101], l: [99], c: [99.5], v: [1] };
+  pb.manage({ Z: bars }, true, () => '2026-01-02');
+  assert.equal(state.positions.Z.status, 'open');
+  const done = pb.manage({ Z: bars }, true, () => null); // the session has closed
+  assert.equal(done[0].reason, 'time');
+  assert.equal(pb.liveTick('NOPE', 1, 'x'), null);
+});

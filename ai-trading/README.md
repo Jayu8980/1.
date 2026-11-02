@@ -344,6 +344,22 @@ JavaScript (`android/app/src/main/assets/www/js/engine/`). On the same prices th
 indicators and optimizer results as the Python desk. Market data is Yahoo Finance end-of-day data,
 cached for 3 hours. "Demo" mode uses generated prices and its picks can't be traded.
 
+**Live prices.** Home has a market watch (NIFTY 50, BANK NIFTY, SENSEX, INDIA VIX) that refreshes every
+10 seconds while NSE is open (09:15-15:30 IST, weekdays) and every minute otherwise; the interval is
+in Settings. Picks show their live price and open paper positions are marked to market. When a live
+price reaches a paper position's stop or target, the position closes at that price, as a real stop
+would. Choose the source in Settings > Live prices:
+
+- **Phone · Yahoo** (default): no login; NSE prices can be a few minutes delayed.
+- **Desk · broker**: real-time last traded prices from your broker (Zerodha, Angel One, Dhan or Groww)
+  through the desk server's `GET /api/quotes?symbols=...`. The server caches each price for 2 seconds
+  and spaces its broker calls to stay inside API rate limits. Symbols the broker can't price (for
+  example INDIA VIX) come from Yahoo. If the desk can't be reached the app falls back to Yahoo.
+
+While NSE is open today's daily candle is unfinished: scans use it as the latest price and paper
+positions can fill or exit on it, but it isn't counted as a finished bar until the session closes.
+Market data downloads are reused for 10 minutes during the session and 3 hours otherwise.
+
 **Live trading goes through your desk server**, because SEBI requires broker API orders to come from
 the static IP you registered, which is your computer, not your phone. Run:
 
@@ -356,7 +372,7 @@ In the app open **Desk**, enter `http://<computer's LAN or VPN IP>:8765` and the
 scan (with news, fundamentals and the Claude review), place trades and monitor positions on the
 server. On a live server the app also asks you to type LIVE before it sends any order. The server
 speaks plain HTTP, so keep it on your home network or a private VPN such as Tailscale and never expose it
-to the internet. API: `GET /api/health|info|status`, `POST /api/scan|trade|monitor`, `GET /api/jobs/<id>`
+to the internet. API: `GET /api/health|info|status|quotes`, `POST /api/scan|trade|monitor`, `GET /api/jobs/<id>`
 (see `trader/server.py`).
 
 **Getting the APK.** The GitHub Actions workflow `.github/workflows/android-apk.yml` runs the tests,

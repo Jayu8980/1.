@@ -4,6 +4,7 @@ import { LAYERS } from './engine/agents.js';
 import { chartUrl, parseChart, packBars, unpackBars } from './engine/data.js';
 import { PaperBroker, newAccount } from './engine/paper.js';
 import presetData from './engine/presets.js';
+import { INDICES, isIndian, nseOpen, istDay, yahooQuotes, change } from './live.js';
 import { http, store, cacheGet, cachePut, cacheClear, setNativeTheme, appVersion, insets, isNative } from './native.js';
 import { esc, $, $$, num, money, moneyFull, pct, signed, price, short, cls, ago, avatarColor, icon, sparkline, priceChart, equityCurve, toast, sheet, dialog, closeTop } from './ui.js';
 
@@ -12,6 +13,7 @@ const SETTINGS_DEFAULT = {
   theme: 'system', source: 'yahoo', preset: 'nifty50', style: 'delivery', years: 6,
   risk_per_trade: 0.01, max_open_positions: 5, top_n: 3, min_conviction: 0.55, halt_on_crisis: true, trail: true,
   paper_equity: 1000000, deskUrl: '', deskToken: '', deskSegment: 'delivery', deskAi: true,
+  liveSource: 'phone', liveSeconds: 10,
 };
 const S = {
   route: 'home',
@@ -21,6 +23,7 @@ const S = {
   scan: null, // the scan in progress (or just finished) on this phone
   desk: { info: null, error: null, job: null, result: null, status: null },
   openLayer: null,
+  live: { quotes: {}, at: 0, source: null, error: null, busy: false },
 };
 if (!S.paper) S.paper = newAccount(S.settings.paper_equity);
 const saveSettings = () => store.set('settings', S.settings);
@@ -120,7 +123,7 @@ function pickCard(t, i, source) {
   return `<div class="card tap" data-act="trade" data-src="${source}" data-i="${i}">
     <div class="pick">
       <div class="rank ${t.rank === 1 ? 'r1' : ''}">#${t.rank ?? i + 1}</div>
-      <div class="grow"><div class="row"><span class="sym">${esc(short(t.symbol))}</span><span class="tag ${esc(t.side)}">${esc((t.side || '').toUpperCase())}</span></div>
+      <div class="grow"><div class="row"><span class="sym">${esc(short(t.symbol))}</span><span class="tag ${esc(t.side)}">${esc((t.side || '').toUpperCase())}</span>${liveSpan(t.symbol)}</div>
         <div class="meta ellipsis">${esc(p.setup || t.setup?.label || '')}</div></div>
       ${t.closes?.length ? sparkline(t.closes.slice(-60)) : `<div class="ring" style="--p:${conv}"><span>${Math.round(conv * 100)}</span></div>`}
     </div>
@@ -187,11 +190,13 @@ function homeScreen() {
   <div class="hero">
     ${equityCurve(a.curve.length > 1 ? a.curve : [1, 1.02, 1.01, 1.04, 1.03, 1.07])}
     <div class="label">Paper equity</div>
-    <div class="big num">${moneyFull(a.equity, c)}</div>
-    <span class="delta num">${icon(a.pnl >= 0 ? 'up' : 'down', 'width="16" height="16"')} ${money(a.pnl, c)} · ${pct(a.pnl / a.start_equity, 2)}</span>
+    <div class="big num" id="eq">${moneyFull(a.equity, c)}</div>
+    <span class="delta num" id="eqd">${icon(a.pnl >= 0 ? 'up' : 'down', 'width="16" height="16"')} ${money(a.pnl, c)} · ${pct(a.pnl / a.start_equity, 2)}</span>
     <div class="stats"><div><b class="num">${open.length}</b>positions</div><div><b class="num">${a.winRate == null ? '-' : (a.winRate * 100).toFixed(0) + '%'}</b>win rate</div><div><b class="num">${a.avgR == null ? '-' : signed(a.avgR, 2, 'R')}</b>avg trade</div></div>
   </div>
   <div style="margin-top:14px"><button class="btn primary block" data-act="quickscan">${icon('play')} Run AI scan · ${esc(presetOf(S.settings.preset).label)}</button></div>
+  <div class="section-title"><h2>Market watch</h2><span class="small muted row" id="livestat">${liveStatus()}</span></div>
+  <div class="card watch" id="watch">${watchTiles()}</div>
   ${last ? `<div class="section-title"><h2>Market</h2><button class="link" data-nav="scan">Details</button></div>${regimeCard(last.market, last.generated)}` : ''}
   ${last ? resultBlock({ ...last, misses: [] }, 'last') : `<div class="section-title"><h2>Welcome</h2></div>
     <div class="card"><div class="stack"><div class="row">${icon('brain', 'width="22" height="22" style="color:var(--accent)"')}<b>How the desk decides</b></div>
@@ -320,7 +325,7 @@ async function startScan() {
   if (!synthetic) {
     scanPhase('Downloading market data', 0);
     const extra = [p.benchmark, p.volatility_index].filter(Boolean);
-    const { frames: f, failed } = await downloadAll([...symbols, ...extra], st.years, 3 * 3600e3,
+    const { frames: f, failed } = await downloadAll([...symbols, ...extra], st.years, nseOpen() && isIndia(key) ? 10 * 60e3 : 3 * 3600e3,
       (d, n, s) => { scanPhase(`Downloading ${d}/${n} · ${short(s)}`, 0.35 * (d / n)); }, () => !S.scan?.running);
     if (!S.scan?.running) return;
     frames = f;
@@ -475,7 +480,7 @@ function portfolioScreen() {
       <div class="row"><div class="avatar" style="background:${avatarColor(p.symbol)}">${esc(short(p.symbol).slice(0, 2))}</div>
         <div class="grow"><div class="row"><b>${esc(short(p.symbol))}</b><span class="tag ${p.status}">${p.status}</span><span class="tag ${p.side}">${p.side}</span></div>
         <div class="small muted">${num(p.qty, p.qty % 1 ? 4 : 0)} @ ${p.entry ? price(p.entry) : `~${price(p.entry_ref)}`} · ${p.bars_held}/${p.max_hold} bars</div></div>
-        <div style="text-align:right"><b class="num ${cls(pnl)}">${p.status === 'open' ? money(pnl, c) : 'next open'}</b><div class="small muted num">${price(p.last_price)}</div></div></div>
+        <div style="text-align:right"><b class="num ${cls(pnl)}" data-pnl="${esc(p.symbol)}">${p.status === 'open' ? money(pnl, c) : 'next open'}</b><div class="small muted num" data-q="${esc(p.symbol)}">${price(p.last_price)}</div></div></div>
       <div style="margin-top:12px;position:relative;height:6px;border-radius:3px;background:linear-gradient(90deg, color-mix(in srgb, var(--down) 50%, transparent), var(--line) 45%, color-mix(in srgb, var(--up) 50%, transparent))">
         <i style="position:absolute;top:-4px;left:calc(${Math.max(0, Math.min(1, at)) * 100}% - 7px);width:14px;height:14px;border-radius:50%;background:var(--text);border:3px solid var(--card)"></i></div>
       <div class="row between small muted" style="margin-top:6px"><span>stop ${price(p.stop)}</span><span>target ${price(p.target)}</span></div>
@@ -507,7 +512,8 @@ async function updatePortfolio(silent = false) {
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner" style="border-color:var(--line-2);border-top-color:var(--accent)"></span> Updating…'; }
   try {
     const { frames, failed } = await downloadAll(syms, S.settings.years, 10 * 60e3, () => {});
-    const done = broker().manage(frames, S.settings.trail);
+    // today's candle is unfinished while the exchange is open: it can trigger exits but isn't a finished bar
+    const done = broker().manage(frames, S.settings.trail, (sym) => (isIndian(sym) && nseOpen() ? istDay() : null));
     savePaper();
     if (done.length) toast(done.map((t) => `${short(t.symbol)} ${t.status === 'cancelled' ? 'cancelled' : `closed (${t.reason}) ${signed(t.r_multiple, 2, 'R')}`}`).join(' · '), { ms: 6000 });
     else if (!silent) toast(failed.length ? `Updated; no data for ${failed.map(short).join(', ')}` : 'Up to date - no exits');
@@ -662,10 +668,16 @@ function settingsScreen() {
       ${sw('halt_on_crisis', 'Halt in a crisis regime', 'no new trades when volatility spikes in a falling market')}
       ${sw('trail', 'Break-even stop after +1R', 'paper positions lock in break-even once in profit')}
     </div>
+    <div class="section-title"><h2>Live prices</h2></div>
+    <div class="card" style="padding-top:12px;padding-bottom:4px">
+      <div class="seg">${[['phone', 'Phone · Yahoo'], ['desk', 'Desk · broker']].map(([v, l]) => `<button data-set="liveSource" data-val="${v}" class="${st.liveSource === v ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <div class="small muted" style="margin:8px 2px 4px">${st.liveSource === 'desk' ? "Real-time last traded prices from your broker (Zerodha, Angel One, Dhan or Groww) through the desk server. Falls back to Yahoo if the desk can't be reached." : 'Straight from Yahoo Finance, no login needed. NSE prices can be a few minutes delayed.'}</div>
+      ${numField('liveSeconds', 'Refresh every (seconds)', 'while NSE is open; every minute when closed', st.liveSeconds, 1, 2, 120)}
+    </div>
     <div class="section-title"><h2>Data</h2></div>
     <div class="card" style="padding-top:4px;padding-bottom:4px">
       ${numField('years', 'History (years)', 'more history = better backtests, slower scans', st.years, 1, 3, 10)}
-      <div class="setting"><div class="grow"><b>Cached market data</b><small>downloads are reused for 3 hours</small></div><button class="btn small" data-act="clearcache">${icon('trash')} Clear</button></div>
+      <div class="setting"><div class="grow"><b>Cached market data</b><small>reused for 10 minutes while NSE is open, 3 hours otherwise</small></div><button class="btn small" data-act="clearcache">${icon('trash')} Clear</button></div>
     </div>
     <div class="section-title"><h2>Paper account</h2></div>
     <div class="card" style="padding-top:4px;padding-bottom:4px">
@@ -689,6 +701,7 @@ async function onClick(e) {
     S.settings[set.dataset.set] = set.dataset.val;
     saveSettings();
     if (set.dataset.set === 'theme') applyTheme();
+    if (set.dataset.set === 'liveSource') { S.live.quotes = {}; scheduleLive(300); }
     render();
     return;
   }
@@ -743,9 +756,96 @@ function onChange(e) {
   else if (name === 'min_conviction') st.min_conviction = clamp(+el.value, 0, 1);
   else if (name === 'years') st.years = clamp(Math.round(+el.value) || 6, 3, 10);
   else if (name === 'paper_equity') st.paper_equity = clamp(+el.value || 1e6, 1e4, 1e9);
+  else if (name === 'liveSeconds') { st.liveSeconds = clamp(Math.round(+el.value) || 10, 2, 120); scheduleLive(1000); }
   else return;
   saveSettings();
 }
+
+
+// ---- live prices ---------------------------------------------------------------------------------
+function watchSymbols() {
+  const syms = INDICES.map(([s]) => s);
+  for (const s of Object.keys(S.paper.positions)) syms.push(s);
+  for (const t of S.lastScan?.trades || []) syms.push(t.symbol);
+  return [...new Set(syms)].slice(0, 40);
+}
+function liveSpan(sym) {
+  const q = S.live.quotes[sym], ch = change(q);
+  return `<span class="small num live-px" data-qc="${esc(sym)}">${q ? `${price(q.price)} <b class="${cls(ch)}">${pct(ch, 2)}</b>` : ''}</span>`;
+}
+function liveStatus() {
+  const L = S.live, open = nseOpen();
+  if (!L.at) return '<span class="dot"></span> connecting…';
+  const src = L.source && L.source !== 'yahoo' ? `${L.source} (real-time)` : 'Yahoo';
+  return `<span class="dot ${open ? 'on' : ''}"></span> ${open ? 'Live' : 'Market closed'} · ${esc(src)} · ${ago(new Date(L.at).toISOString())}${L.error ? ' · <span class="down">desk unreachable</span>' : ''}`;
+}
+function watchTiles() {
+  return INDICES.map(([s, name]) => {
+    const q = S.live.quotes[s], ch = change(q);
+    return `<div class="tile"><small>${esc(name)}</small><b class="num">${q ? price(q.price) : '–'}</b><span class="num small ${s === '^INDIAVIX' ? '' : cls(ch)}">${q ? `${ch > 0 ? '▲' : ch < 0 ? '▼' : ''} ${pct(ch, 2)}` : ''}</span></div>`;
+  }).join('');
+}
+function posPnl(p) { return p.status === 'open' ? (p.side === 'long' ? 1 : -1) * (p.last_price - p.entry) * p.qty : 0; }
+function paintLive() {
+  const st = $('#livestat'), w = $('#watch');
+  if (st) st.innerHTML = liveStatus();
+  if (w) w.innerHTML = watchTiles();
+  $$('[data-qc]').forEach((el) => { el.outerHTML = liveSpan(el.dataset.qc); });
+  $$('[data-q]').forEach((el) => { const q = S.live.quotes[el.dataset.q]; if (q) el.textContent = price(q.price); });
+  $$('[data-pnl]').forEach((el) => {
+    const p = S.paper.positions[el.dataset.pnl];
+    if (p?.status === 'open') { const v = posPnl(p); el.textContent = money(v, cur()); el.className = `num ${cls(v)}`; }
+  });
+  const a = broker().account(), eq = $('#eq'), eqd = $('#eqd');
+  if (eq) eq.textContent = moneyFull(a.equity, cur());
+  if (eqd) { const d = a.equity - a.start_equity; eqd.innerHTML = `${icon(d >= 0 ? 'up' : 'down', 'width="16" height="16"')} ${money(d, cur())} · ${pct(d / a.start_equity, 2)}`; }
+}
+async function refreshLive() {
+  const L = S.live;
+  if (L.busy || document.visibilityState === 'hidden') return;
+  L.busy = true;
+  try {
+    const syms = watchSymbols();
+    let quotes = null, source = 'yahoo';
+    if (S.settings.liveSource === 'desk' && S.settings.deskUrl) {
+      try {
+        const r = await deskCall(`/api/quotes?symbols=${encodeURIComponent(syms.join(','))}`, { timeout: 15000 });
+        quotes = r.quotes; source = r.broker || 'desk'; L.error = null;
+      } catch (e) { L.error = e.message; }
+    } else L.error = null;
+    if (!quotes) quotes = await yahooQuotes(syms);
+    if (!Object.keys(quotes).length) return;
+    Object.assign(L.quotes, quotes);
+    L.at = Date.now();
+    L.source = source;
+    // mark paper positions to market, and exit at the live price when a stop or target is crossed
+    const pb = broker(), closed = [], now = Date.now() / 1000;
+    for (const p of pb.positions()) {
+      const q = quotes[p.symbol];
+      if (!q || p.status !== 'open') continue;
+      const fresh = q.source !== 'yahoo' || !q.time || now - q.time < 20 * 60;
+      const inSession = !isIndian(p.symbol) || nseOpen();
+      if (fresh && inSession) { const t = pb.liveTick(p.symbol, q.price, istDay()); if (t) closed.push(t); }
+      else S.paper.positions[p.symbol].last_price = q.price;
+    }
+    savePaper();
+    if (closed.length) {
+      toast(closed.map((t) => `${short(t.symbol)} ${t.reason} hit at ${price(t.exit)} · ${signed(t.r_multiple, 2, 'R')}`).join(' · '), { ms: 7000 });
+      if (S.route === 'portfolio' || S.route === 'home') render();
+    }
+    paintLive();
+  } catch { /* offline: keep the last prices */ } finally { L.busy = false; }
+}
+let liveTimer = null;
+function scheduleLive(delay) {
+  clearTimeout(liveTimer);
+  liveTimer = setTimeout(async () => {
+    await refreshLive();
+    scheduleLive(nseOpen() ? S.settings.liveSeconds * 1000 : 60000);
+  }, delay);
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleLive(200); });
+setInterval(() => { const st = $('#livestat'); if (st && S.live.at) st.innerHTML = liveStatus(); }, 1000);
 
 const SCREENS = { home: homeScreen, scan: scanScreen, portfolio: portfolioScreen, desk: deskScreen, settings: settingsScreen };
 const AFTER = {
@@ -758,4 +858,5 @@ applyTheme();
 shell();
 go(location.hash.replace('#/', '') || 'home');
 if (Object.keys(S.paper.positions).length) setTimeout(() => updatePortfolio(true), 800);
+scheduleLive(400);
 window.__app = { S, startScan, go };

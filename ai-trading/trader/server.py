@@ -13,6 +13,7 @@ Endpoints (JSON in and out):
     GET  /api/health                  liveness, no token needed
     GET  /api/info                    broker, mode, presets
     GET  /api/status                  account, positions and closed trades
+    GET  /api/quotes?symbols=A,B      live prices: the broker's real-time LTP, else Yahoo
     POST /api/scan     {preset, symbols, segment, synthetic, ai}  -> {job}
     POST /api/trade    same + {confirm: "LIVE"} on a live server -> {job}
     POST /api/monitor  {}                                        -> {job}
@@ -92,6 +93,7 @@ class DeskServer:
         self.lock = threading.Lock()
         self.jobs: dict[str, Job] = {}
         self.current: Job | None = None
+        self._quotes = None
 
     # -- config ----------------------------------------------------------------------------------
     def config(self, command: str, req: dict | None = None):
@@ -190,6 +192,20 @@ class DeskServer:
         finally:
             self.lock.release()
 
+    def quotes(self, symbols: list[str]) -> dict:
+        from .brokers import make_broker
+        from .quotes import QuoteService
+
+        if self._quotes is None:  # its own broker session, so quotes never wait for a scan
+            try:
+                broker = make_broker(self.config("status"))
+            except Exception as exc:
+                log.warning("live quotes: broker unavailable (%s); using Yahoo", exc)
+                broker = None
+            self._quotes = QuoteService(broker)
+        q = self._quotes
+        return {"quotes": q.quotes(symbols), "broker": q.broker.name if q.broker else None}
+
     def info(self) -> dict:
         cfg = self.config("status")
         return {"version": __version__, "broker": cfg.execution.broker, "mode": cfg.execution.mode,
@@ -257,6 +273,12 @@ def make_handler(server: DeskServer):
             try:
                 if url.path == "/api/info":
                     return self._send(200, server.info())
+                if url.path == "/api/quotes":
+                    raw = (parse_qs(url.query).get("symbols") or [""])[0]
+                    symbols = [x for x in raw.split(",") if x]
+                    if not symbols or not all(SYMBOL_RE.match(x) for x in symbols):
+                        return self._send(400, {"error": "symbols must be comma-separated ticker symbols"})
+                    return self._send(200, server.quotes(symbols))
                 if url.path == "/api/status":
                     return self._send(200, server.status())
                 m = re.fullmatch(r"/api/jobs/([0-9a-f]{12})", url.path)
