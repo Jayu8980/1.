@@ -118,6 +118,10 @@ public final class MainActivity extends Activity {
     private int tab = 0;
     private final int[] activeKeys = new int[128];
     private boolean suppressSpinner;
+    // navigation
+    private View[] pages;
+    private TextView[] navItems;
+    private int page = -1;
 
     // microphone recording
     private Button recordBtn, saveWavBtn;
@@ -197,10 +201,11 @@ public final class MainActivity extends Activity {
         playBtn = (android.widget.ImageButton) findViewById(R.id.play);
         stopBtn = (android.widget.ImageButton) findViewById(R.id.stop);
         findViewById(R.id.viz_frame).setClipToOutline(true);
-        setupSection(R.id.sec_loop_h, R.id.sec_loop_b, "sec_loop", false);
-        setupSection(R.id.sec_inst_h, R.id.sec_inst_b, "sec_inst", false);
-        setupSection(R.id.sec_music_h, R.id.sec_music_b, "sec_music", false);
-        setupSection(R.id.sec_detect_h, R.id.sec_detect_b, "sec_detect", false);
+        // sections live on their own pages now: open by default
+        setupSection(R.id.sec_loop_h, R.id.sec_loop_b, "p_sec_loop", true);
+        setupSection(R.id.sec_inst_h, R.id.sec_inst_b, "p_sec_inst", true);
+        setupSection(R.id.sec_music_h, R.id.sec_music_b, "p_sec_music", true);
+        setupSection(R.id.sec_detect_h, R.id.sec_detect_b, "p_sec_detect", true);
         findViewById(R.id.theme_btn).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -489,6 +494,7 @@ public final class MainActivity extends Activity {
         });
 
         selectTab(prefs.getInt("tab", 0));
+        setupNav();
         setResultButtonsEnabled(false);
         playBtn.setEnabled(false);
         Object retained = getLastNonConfigurationInstance();
@@ -1064,6 +1070,7 @@ public final class MainActivity extends Activity {
         updateSpeedLabel();
         if (loopBox != null) applyLoop(false);
         applyWait();
+        updateSummary();
         showPosition(pausedAt, false);
     }
 
@@ -1198,6 +1205,7 @@ public final class MainActivity extends Activity {
                                 redecode();
                                 updateStats(elapsed);
                                 statusText.setText(R.string.status_done);
+                                showPage(PAGE_PLAY, true);
                             }
                         });
                     } finally {
@@ -1305,6 +1313,7 @@ public final class MainActivity extends Activity {
         setResultButtonsEnabled(false);
         playBtn.setEnabled(false);
         falling.setLive(true);
+        showPage(PAGE_PLAY, true);
         falling.setData(notes, null, null);
         if (tab == 2) selectTab(0);
         keyboard.postOnAnimation(recordTick);
@@ -1363,6 +1372,7 @@ public final class MainActivity extends Activity {
                                 redecode();
                                 updateStats(elapsed);
                                 statusText.setText(R.string.status_done);
+                                showPage(PAGE_PLAY, true);
                             }
                         });
                     } finally {
@@ -1454,6 +1464,110 @@ public final class MainActivity extends Activity {
         } catch (IOException e) {
             Toast.makeText(this, getString(R.string.status_error, e.getMessage()), Toast.LENGTH_LONG).show();
         }
+    }
+
+    // ------------------------------------------------------------ navigation
+
+    private static final int PAGE_HOME = 0, PAGE_PLAY = 1, PAGE_PRACTICE = 2, PAGE_EXPORT = 3, PAGE_SETTINGS = 4;
+
+    private void setupNav() {
+        pages = new View[]{findViewById(R.id.page_home), findViewById(R.id.page_play), findViewById(R.id.page_practice),
+                findViewById(R.id.page_export), findViewById(R.id.page_settings)};
+        navItems = new TextView[]{(TextView) findViewById(R.id.nav_home), (TextView) findViewById(R.id.nav_play),
+                (TextView) findViewById(R.id.nav_practice), (TextView) findViewById(R.id.nav_export),
+                (TextView) findViewById(R.id.nav_settings)};
+        for (int i = 0; i < navItems.length; i++) {
+            final int idx = i;
+            navItems[i].setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showPage(idx, true);
+                }
+            });
+        }
+        int[][] links = {{R.id.home_open_player, PAGE_PLAY}, {R.id.home_open_export, PAGE_EXPORT},
+                {R.id.tile_practice, PAGE_PRACTICE}, {R.id.tile_sheet, PAGE_PLAY}, {R.id.tile_sounds, PAGE_SETTINGS}};
+        for (final int[] l : links) {
+            findViewById(l[0]).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (l[0] == R.id.tile_sheet) selectTab(2);
+                    showPage(l[1], true);
+                }
+            });
+        }
+        findViewById(R.id.theme_btn2).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showThemeDialog();
+            }
+        });
+        findViewById(R.id.about2).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                findViewById(R.id.about).performClick();
+            }
+        });
+        showPage(prefs.getInt("page", PAGE_HOME), false);
+        updateSummary();
+    }
+
+    private void showPage(int i, boolean animate) {
+        if (pages == null) return;
+        i = Math.max(0, Math.min(pages.length - 1, i));
+        if (i == page) return;
+        page = i;
+        for (int k = 0; k < pages.length; k++) {
+            boolean on = k == i;
+            pages[k].setVisibility(on ? View.VISIBLE : View.GONE);
+            navItems[k].setSelected(on);
+        }
+        if (animate) {
+            View v = pages[i];
+            v.setAlpha(0f);
+            v.setTranslationY(24 * getResources().getDisplayMetrics().density);
+            v.animate().alpha(1f).translationY(0).setDuration(180).start();
+        }
+        prefs.edit().putInt("page", i).apply();
+        // views that size themselves to their page need a fresh frame
+        showPosition(player != null && player.isPlaying() ? player.position() : pausedAt, false);
+    }
+
+    /** Home page summary and mini player title. */
+    private void updateSummary() {
+        TextView sNotes = (TextView) findViewById(R.id.stat_notes);
+        if (sNotes == null) return;
+        TextView sTempo = (TextView) findViewById(R.id.stat_tempo), sKey = (TextView) findViewById(R.id.stat_key);
+        TextView chordsText = (TextView) findViewById(R.id.home_chords);
+        TextView mini = (TextView) findViewById(R.id.mini_title);
+        if (notes.isEmpty() || tempo == null || key == null) {
+            sNotes.setText("–");
+            sTempo.setText("–");
+            sKey.setText("–");
+            chordsText.setText(R.string.home_empty);
+            mini.setText(result != null ? audioName : getString(R.string.mini_idle));
+            return;
+        }
+        int[] c = new int[3];
+        for (Note n : notes) c[n.part]++;
+        sNotes.setText(String.valueOf(notes.size()));
+        sTempo.setText(String.valueOf((int) Math.round(tempo.bpm)));
+        sKey.setText(key.pcName(key.tonic) + (key.minor ? "m" : ""));
+        StringBuilder sb = new StringBuilder();
+        String last = null;
+        int count = 0;
+        for (ChordRecognizer.Chord ch : chords) {
+            if (ch.root < 0 || ch.name.equals(last)) continue;
+            if (count++ > 0) sb.append("  ");
+            sb.append(ch.name);
+            last = ch.name;
+            if (count >= 12) {
+                sb.append("  …");
+                break;
+            }
+        }
+        chordsText.setText(getString(R.string.home_chords, audioSeconds, c[0], c[1], c[2], sb.length() > 0 ? sb : "–"));
+        mini.setText(audioName);
     }
 
     // ------------------------------------------------------------ loop / practice
@@ -1882,6 +1996,8 @@ public final class MainActivity extends Activity {
         keyboard.setActive(activeKeys);
         updateBeat(pos, playing);
         timeText.setText(clock(pos) + " / " + clock(audioSeconds));
+        ProgressBar mp = (ProgressBar) findViewById(R.id.mini_progress);
+        if (mp != null) mp.setProgress(audioSeconds > 0 ? (int) (1000 * Math.max(0, Math.min(1, pos / audioSeconds))) : 0);
         if (tab == 0) {
             falling.setPosition(pos);
         } else if (tab == 1) {

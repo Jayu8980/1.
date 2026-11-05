@@ -35,4 +35,6 @@
     <color name="part_melody_text">#FFE64A19</color>
     <color name="part_chords_text">#FF388E3C</color>
     <color name="part_bass_text">#FF1976D2</color>
+    <color name="nav_bg">#FFFFFFFF</color>
+    <color name="nav_indicator">#FFE0E3FF</color>
 </resources>
