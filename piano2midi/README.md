@@ -23,7 +23,7 @@ audio file ─► MediaCodec decode ─► mono ─► resample 16 kHz ─► lo
   - *Falling notes*: notes fall onto their keys, with bar lines and chord names.
   - *Piano roll*: coloured by part, with a chord lane and bar numbers. Tap it to jump to a position.
   - *Sheet*: piano sheet music with a playback cursor.
-- **Piano sheet:** tempo, beat phase, downbeat, key (Krumhansl) and chords are detected automatically. Notes are quantized to 16ths and engraved on a grand staff (or a single staff for one part) with key signature, accidentals, beams, ties, rests and chord symbols, using the Bravura music font. Tempo and time signature (4/4, 3/4, 2/4) can be adjusted.
+- **Piano sheet:** tempo, beat phase, downbeat, key (Krumhansl) and chords are detected automatically. Notes are quantized to 16ths and engraved on a grand staff (or a single staff for one part) with key signature, accidentals, beams, ties, rests, chord symbols and **8va / 8vb** octave brackets for very high or very low passages, using the Bravura music font. System spacing adapts to high or low notes. Tempo and time signature (4/4, 3/4, 2/4) can be adjusted.
 - **Downloads:** **MIDI** or **PDF** for all parts, the selected parts, **melody only**, **chords only** or **bass line only**. MIDI files have one track per part, with the chosen instruments and a tempo map aligned to the detected bars. You can save anywhere or share to other apps.
 - **Detection settings:** adjustable onset, offset and frame thresholds and a note-end mode. Changing them re-decodes the notes instantly, without running the model again.
 

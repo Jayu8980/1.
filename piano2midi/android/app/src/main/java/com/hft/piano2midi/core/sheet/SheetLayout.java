@@ -15,14 +15,16 @@ import java.util.TreeSet;
 public final class SheetLayout {
 
     // SMuFL code points
-    private static final char G_CLEF = '', F_CLEF = '', BRACE = '';
-    private static final char HEAD_BLACK = '', HEAD_HALF = '', HEAD_WHOLE = '';
-    private static final char FLAG8_UP = '', FLAG8_DOWN = '', FLAG16_UP = '', FLAG16_DOWN = '';
-    private static final char REST_WHOLE = '', REST_HALF = '', REST_QUARTER = '',
-            REST_8 = '', REST_16 = '';
-    private static final char SHARP = '', FLAT = '', NATURAL = '', DOT = '';
-    private static final char MET_QUARTER = '';
-    private static final char TS_0 = '';
+    private static final char G_CLEF = '\uE050', F_CLEF = '\uE062', BRACE = '\uE000';
+    private static final char HEAD_BLACK = '\uE0A4', HEAD_HALF = '\uE0A3', HEAD_WHOLE = '\uE0A2';
+    private static final char FLAG8_UP = '\uE240', FLAG8_DOWN = '\uE241', FLAG16_UP = '\uE242', FLAG16_DOWN = '\uE243';
+    private static final char REST_WHOLE = '\uE4E3', REST_HALF = '\uE4E4', REST_QUARTER = '\uE4E5',
+            REST_8 = '\uE4E6', REST_16 = '\uE4E7';
+    private static final char SHARP = '\uE262', FLAT = '\uE260', NATURAL = '\uE261', DOT = '\uE1E7';
+    private static final char MET_QUARTER = '\uE1D5';
+    private static final char TS_0 = '\uE080';
+    private static final char OTTAVA_ALTA = '\uE511', OTTAVA_BASSA = '\uE51C';
+    private static final char PAREN_L = '\uE51A', PAREN_R = '\uE51B';
 
     private static final float HEAD_W = 1.18f, WHOLE_W = 1.69f;
     private static final int[] BOTTOM_STEP = {30, 18}; // E4 (treble), G2 (bass)
@@ -116,8 +118,32 @@ public final class SheetLayout {
         return w + 0.6f * sp;
     }
 
-    private float systemHeight() {
-        return staves > 1 ? 25f * sp : 14f * sp;
+    /**
+     * Space (in staff spaces) a range of measures needs above the top staff and below the
+     * bottom staff: high/low notes with their stems, 8va/8vb brackets and chord symbols.
+     */
+    private float[] extents(int first, int last) {
+        int topLine = BOTTOM_STEP[score.clefs[0]] + 8;
+        int botLine = BOTTOM_STEP[score.clefs[staves - 1]];
+        int hi = Integer.MIN_VALUE, lo = Integer.MAX_VALUE;
+        boolean up8 = false, down8 = false, chords = false;
+        for (int m = first; m <= last; m++) {
+            for (Score.Event e : score.measures.get(m).staves.get(0)) {
+                for (Score.Head h : e.heads) hi = Math.max(hi, h.disp);
+                if (e.ottava > 0) up8 = true;
+            }
+            for (Score.Event e : score.measures.get(m).staves.get(staves - 1)) {
+                for (Score.Head h : e.heads) lo = Math.min(lo, h.disp);
+                if (e.ottava < 0) down8 = true;
+            }
+        }
+        for (Score.ChordSymbol c : score.chords) if (c.measure >= first && c.measure <= last) chords = true;
+        float top = Math.max(0, (hi - topLine) / 2f) + (hi > topLine - 4 ? 3.0f : 0);
+        if (up8) top += 2.6f;
+        if (chords) top += 2.8f;
+        float bot = Math.max(0, (botLine - lo) / 2f) + (lo < botLine + 4 ? 3.0f : 0);
+        if (down8) bot += 2.6f;
+        return new float[]{Math.max(5.5f, top + 1f), Math.max(4f, bot + 1f)};
     }
 
     private float staffTop(System s, int staff) {
@@ -143,14 +169,16 @@ public final class SheetLayout {
             boolean finalSystem = last == ml.length - 1;
             float scale = avail / w;
             if (finalSystem && w < 0.65f * avail) scale = 1f;
-            if (y + systemHeight() > pageH - margin) {
+            float[] ext = extents(m, last);
+            float height = (ext[0] + 4 + (staves > 1 ? 11 : 0) + ext[1] + 1.5f) * sp;
+            if (y + height > pageH - margin && y > topMargin + (page == 0 ? titleH : 0) + 1) {
                 page++;
                 y = topMargin;
             }
             s.page = page;
             s.first = m;
             s.last = last;
-            s.top = y + 5.5f * sp;
+            s.top = y + ext[0] * sp;
             s.contentX = margin + prefix;
             float x = s.contentX;
             for (int k = m; k <= last; k++) {
@@ -161,7 +189,7 @@ public final class SheetLayout {
                 x += ml[k].width * scale;
             }
             systems.add(s);
-            y += systemHeight();
+            y += height;
             m = last + 1;
             first = false;
         }
@@ -302,13 +330,16 @@ public final class SheetLayout {
             }
             for (int st = 0; st < staves; st++) drawMeasureStaff(g, si, s, m, st, ties);
         }
+        float ottavaTop = drawOttavas(g, si, s);
+
         // chord symbols (shifted right if they would collide with the previous one)
         float chordEnd = -1e9f;
+        float chordY = Math.min(sysTop - 3.6f * sp, ottavaTop - 1.6f * sp);
         float csize = 1.9f * sp;
         for (Score.ChordSymbol c : score.chords) {
             if (c.measure < s.first || c.measure > s.last) continue;
             float x = Math.max(unitX(ml[c.measure], c.unit), chordEnd + 0.8f * sp);
-            g.text(c.name, x, sysTop - 3.6f * sp, csize, true, Gfx.LEFT);
+            g.text(c.name, x, chordY, csize, true, Gfx.LEFT);
             chordEnd = x + c.name.length() * 0.62f * csize;
         }
         // unresolved ties run to the end of the system
@@ -333,7 +364,7 @@ public final class SheetLayout {
         Map<Integer, Integer> groupSum = new HashMap<Integer, Integer>();
         for (Score.Event e : evs) {
             if (e.beam < 0 || e.heads.isEmpty()) continue;
-            int lo = e.heads.get(0).step, hi = e.heads.get(e.heads.size() - 1).step;
+            int lo = e.heads.get(0).disp, hi = e.heads.get(e.heads.size() - 1).disp;
             int sum = groupSum.containsKey(e.beam) ? groupSum.get(e.beam) : 0;
             groupSum.put(e.beam, sum + (hi - mid) + (lo - mid));
         }
@@ -350,7 +381,7 @@ public final class SheetLayout {
                 drawRest(g, e, l, x, top);
                 continue;
             }
-            int lo = e.heads.get(0).step, hi = e.heads.get(e.heads.size() - 1).step;
+            int lo = e.heads.get(0).disp, hi = e.heads.get(e.heads.size() - 1).disp;
             up[i] = e.beam >= 0 ? groupUp.get(e.beam) : (hi - mid) + (lo - mid) < 0;
             float yLo = stepY(s, st, lo), yHi = stepY(s, st, hi);
             boolean whole = e.base == 16;
@@ -364,7 +395,7 @@ public final class SheetLayout {
                 int prev = -100;
                 boolean prevDisp = false;
                 for (int k = 0; k < e.heads.size(); k++) {
-                    int stp = e.heads.get(k).step;
+                    int stp = e.heads.get(k).disp;
                     boolean disp = !whole && stp - prev == 1 && !prevDisp;
                     hx[k] = disp ? x + hw - 0.12f * sp : x;
                     displacedAny |= disp;
@@ -375,7 +406,7 @@ public final class SheetLayout {
                 int prev = 100;
                 boolean prevDisp = false;
                 for (int k = e.heads.size() - 1; k >= 0; k--) {
-                    int stp = e.heads.get(k).step;
+                    int stp = e.heads.get(k).disp;
                     boolean disp = !whole && prev - stp == 1 && !prevDisp;
                     hx[k] = disp ? x - hw + 0.12f * sp : x;
                     displacedAny |= disp;
@@ -386,20 +417,20 @@ public final class SheetLayout {
             int accCol = 0, lastAccStep = 1000;
             for (int k = e.heads.size() - 1; k >= 0; k--) {
                 Score.Head h = e.heads.get(k);
-                float y = stepY(s, st, h.step);
-                drawLedgers(g, s, st, h.step, hx[k], hw);
+                float y = stepY(s, st, h.disp);
+                drawLedgers(g, s, st, h.disp, hx[k], hw);
                 g.glyph(head, hx[k], y, em);
                 if (h.accidental) {
-                    if (lastAccStep - h.step < 6) accCol++;
+                    if (lastAccStep - h.disp < 6) accCol++;
                     else accCol = 0;
-                    lastAccStep = h.step;
+                    lastAccStep = h.disp;
                     char a = h.alter > 0 ? SHARP : h.alter < 0 ? FLAT : NATURAL;
                     float aw = (a == SHARP ? 1.0f : a == FLAT ? 0.9f : 0.67f) * sp;
                     float minX = Math.min(x, hx[k]);
                     g.glyph(a, minX - aw - 0.25f * sp - accCol * 1.1f * sp, y, em);
                 }
                 if (e.dots > 0) {
-                    float dy = ((h.step - BOTTOM_STEP[score.clefs[st]]) % 2 == 0) ? -sp / 2 : 0;
+                    float dy = ((h.disp - BOTTOM_STEP[score.clefs[st]]) % 2 == 0) ? -sp / 2 : 0;
                     float dx = x + hw + (displacedAny && up[i] ? hw : 0) + 0.35f * sp;
                     g.glyph(DOT, dx, y + dy, em);
                 }
@@ -472,6 +503,70 @@ public final class SheetLayout {
         }
     }
 
+    /**
+     * Draws the 8va / 8vb brackets of this system: the glyph at the start (parenthesised when
+     * continued from the previous system), a dashed line, and a hook at the end.
+     * @return the highest y used above the top staff (for placing chord symbols)
+     */
+    private float drawOttavas(Gfx g, int si, System s) {
+        float minTop = Float.MAX_VALUE;
+        float em = 4 * sp;
+        for (Score.Ottava o : score.ottavas) {
+            if (o.m1 < s.first || o.m0 > s.last) continue;
+            boolean startsHere = o.m0 >= s.first;
+            boolean endsHere = o.m1 <= s.last;
+            int ma = Math.max(o.m0, s.first), mb = Math.min(o.m1, s.last);
+            // extreme notehead (display position) inside this system's part of the bracket
+            float extreme = o.dir > 0 ? Float.MAX_VALUE : -Float.MAX_VALUE;
+            float x0 = 0, x1 = 0;
+            for (int m = ma; m <= mb; m++) {
+                List<Score.Event> evs = score.measures.get(m).staves.get(o.staff);
+                int ea = m == o.m0 ? o.e0 : 0, eb = m == o.m1 ? o.e1 : evs.size() - 1;
+                for (int e = ea; e <= eb && e < evs.size(); e++) {
+                    Score.Event ev = evs.get(e);
+                    float x = slotHeadX(ml[m], ev.start);
+                    if (m == ma && e == ea) x0 = x;
+                    x1 = x + HEAD_W * sp;
+                    if (ev.rest) continue;
+                    int step = o.dir > 0 ? ev.heads.get(ev.heads.size() - 1).disp : ev.heads.get(0).disp;
+                    float y = stepY(s, o.staff, step);
+                    extreme = o.dir > 0 ? Math.min(extreme, y) : Math.max(extreme, y);
+                }
+            }
+            if (!startsHere) x0 = s.contentX - 0.5f * sp;
+            if (!endsHere) x1 = ml[s.last].x + ml[s.last].width * ml[s.last].scale - 0.3f * sp;
+            float staffTopY = staffTop(s, o.staff);
+            float y;
+            if (o.dir > 0) {
+                y = Math.min(staffTopY - 2.2f * sp, extreme - 4.4f * sp); // clear of up-stems
+                minTop = Math.min(minTop, y - 1.4f * sp);
+            } else {
+                y = Math.max(staffTopY + 6.2f * sp, extreme + 4.4f * sp);
+            }
+            float tx = x0;
+            if (!startsHere) {
+                g.glyph(PAREN_L, tx, y, em * 0.75f);
+                tx += 0.6f * sp;
+            }
+            g.glyph(o.dir > 0 ? OTTAVA_ALTA : OTTAVA_BASSA, tx, y, em * 0.75f);
+            tx += 2.4f * sp;
+            if (!startsHere) {
+                g.glyph(PAREN_R, tx - 0.2f * sp, y, em * 0.75f);
+                tx += 0.6f * sp;
+            }
+            float ly = o.dir > 0 ? y - 0.6f * sp : y - 0.6f * sp;
+            float dash = 0.7f * sp, gap = 0.5f * sp;
+            for (float x = tx + 0.3f * sp; x < x1; x += dash + gap) {
+                g.line(x, ly, Math.min(x1, x + dash), ly, 0.12f * sp);
+            }
+            if (endsHere) {
+                float hook = o.dir > 0 ? 1.1f * sp : -1.1f * sp;
+                g.line(x1, ly, x1, ly + hook, 0.12f * sp);
+            }
+        }
+        return minTop == Float.MAX_VALUE ? staffTop(s, 0) : minTop;
+    }
+
     private void beam(Gfx g, float xa, float ya, float xb, float yb, float t, boolean up) {
         float d = up ? t : -t;
         g.beginPath();
@@ -483,7 +578,7 @@ public final class SheetLayout {
     }
 
     private void drawStem(Gfx g, System s, int st, Score.Event e, float x, float end, boolean up) {
-        float yLo = stepY(s, st, e.heads.get(0).step), yHi = stepY(s, st, e.heads.get(e.heads.size() - 1).step);
+        float yLo = stepY(s, st, e.heads.get(0).disp), yHi = stepY(s, st, e.heads.get(e.heads.size() - 1).disp);
         float from = up ? yLo : yHi;
         g.line(x, from, x, end, 0.12f * sp);
     }

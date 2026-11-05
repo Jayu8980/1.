@@ -119,20 +119,30 @@ public final class Tempo {
             }
         }
         // downbeat: the bar phase whose beats carry the most bass/low onsets and accents
+        double first = Double.MAX_VALUE;
+        for (Note n : notes) first = Math.min(first, n.onset);
+        double[] score = new double[beatsPerBar];
+        double maxScore = 0;
+        for (int k = 0; k < beatsPerBar; k++) {
+            for (double p = bestPhase + k * period; p < env.length; p += period * beatsPerBar) {
+                score[k] += sampleEnv(low, p) + 0.25 * sampleEnv(env, p);
+            }
+            maxScore = Math.max(maxScore, score[k]);
+        }
+        // near-ties (e.g. an octave bass on beats 1 and 3): prefer a bar starting at the first note
+        double barFrames = period * beatsPerBar;
         double bestBar = -1;
         int bestK = 0;
         for (int k = 0; k < beatsPerBar; k++) {
-            double s = 0;
-            for (double p = bestPhase + k * period; p < env.length; p += period * beatsPerBar) {
-                s += sampleEnv(low, p) + 0.25 * sampleEnv(env, p);
-            }
+            double d = (first * FPS - (bestPhase + k * period)) % barFrames;
+            if (d < 0) d += barFrames;
+            boolean atFirst = Math.min(d, barFrames - d) < period / 4;
+            double s = score[k] + (atFirst ? 0.06 * maxScore : 0);
             if (s > bestBar) {
                 bestBar = s;
                 bestK = k;
             }
         }
-        double first = Double.MAX_VALUE;
-        for (Note n : notes) first = Math.min(first, n.onset);
         double origin = (bestPhase + bestK * period) / FPS;
         double bar = 60.0 / bpm * beatsPerBar;
         double half16 = 60.0 / bpm / 8; // half a 16th: notes this early still quantize to the downbeat

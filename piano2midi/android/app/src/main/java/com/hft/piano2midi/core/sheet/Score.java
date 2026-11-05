@@ -26,11 +26,14 @@ public final class Score {
 
     public static final class Head {
         public final int pitch, step, alter, part;
+        /** Step used for drawing: step shifted by an octave inside 8va / 8vb brackets. */
+        public int disp;
         public boolean accidental, tieStart, tieEnd;
 
         Head(int pitch, int step, int alter, int part) {
             this.pitch = pitch;
             this.step = step;
+            this.disp = step;
             this.alter = alter;
             this.part = part;
         }
@@ -42,6 +45,8 @@ public final class Score {
         public boolean measureRest;
         public final List<Head> heads = new ArrayList<Head>();
         public int beam = -1;
+        /** +1 inside an 8va bracket, -1 inside 8vb, 0 otherwise. */
+        public int ottava;
 
         Event(int start, int dur, boolean rest) {
             this.start = start;
@@ -78,6 +83,105 @@ public final class Score {
     public final int unitsPerBar;
     public final List<Measure> measures = new ArrayList<Measure>();
     public final List<ChordSymbol> chords = new ArrayList<ChordSymbol>();
+    public final List<Ottava> ottavas = new ArrayList<Ottava>();
+
+    /** An 8va (dir +1) or 8vb (dir -1) bracket from event (m0, e0) to (m1, e1) inclusive. */
+    public static final class Ottava {
+        public final int staff, dir, m0, e0, m1, e1;
+
+        Ottava(int staff, int dir, int m0, int e0, int m1, int e1) {
+            this.staff = staff;
+            this.dir = dir;
+            this.m0 = m0;
+            this.e0 = e0;
+            this.m1 = m1;
+            this.e1 = e1;
+        }
+    }
+
+    // ottava thresholds in diatonic steps (C4 = 28)
+    private static final int HIGH_TRIGGER = 45;  // F6: more than three ledger lines above the treble staff
+    private static final int HIGH_NEAR = 42;     // C6: notes this high are kept inside a bracket
+    private static final int HIGH_FLOOR = 35;    // C5: lower notes end the bracket (would sit below the staff)
+    private static final int LOW_TRIGGER = 11;   // G1: more than three ledger lines below the bass staff
+    private static final int LOW_NEAR = 14;      // C2
+    private static final int LOW_CEIL = 21;      // C3
+
+    /** Finds runs of very high (treble) / very low (bass) notes and shifts them by an octave. */
+    private void placeOttavas() {
+        for (int st = 0; st < clefs.length; st++) {
+            int dir = clefs[st] == TREBLE ? 1 : -1;
+            // flatten the staff's events
+            List<int[]> idx = new ArrayList<int[]>();
+            for (int m = 0; m < measures.size(); m++) {
+                List<Event> evs = measures.get(m).staves.get(st);
+                for (int e = 0; e < evs.size(); e++) idx.add(new int[]{m, e});
+            }
+            int i = 0, floor = 0;
+            while (i < idx.size()) {
+                Event e = ev(st, idx.get(i));
+                if (e.rest || !(dir > 0 ? top(e) >= HIGH_TRIGGER : bottom(e) <= LOW_TRIGGER)) {
+                    i++;
+                    continue;
+                }
+                // grow left and right over events that fit inside the bracket
+                int a = i, b = i;
+                while (a - 1 >= floor && fits(ev(st, idx.get(a - 1)), dir)) a--;
+                while (b + 1 < idx.size() && fits(ev(st, idx.get(b + 1)), dir)) b++;
+                // trim to notes that are actually high (rests and middling notes at the edges go out)
+                while (a < i && !near(ev(st, idx.get(a)), dir)) a++;
+                while (b > i && !near(ev(st, idx.get(b)), dir)) b--;
+                // never split a tie chain
+                while (a - 1 >= floor && tiedFromPrev(ev(st, idx.get(a)))) a--;
+                while (b + 1 < idx.size() && tiedFromPrev(ev(st, idx.get(b + 1)))) b++;
+                // short excursions read better with ledger lines than with a bracket
+                int units = 0, notesIn = 0;
+                for (int k = a; k <= b; k++) {
+                    Event x = ev(st, idx.get(k));
+                    units += x.dur;
+                    if (!x.rest) notesIn++;
+                }
+                if (units < 2 * UPB && notesIn < 3) {
+                    i = b + 1;
+                    continue;
+                }
+                for (int k = a; k <= b; k++) {
+                    Event x = ev(st, idx.get(k));
+                    x.ottava = dir;
+                    for (Head h : x.heads) h.disp = h.step - 7 * dir;
+                }
+                ottavas.add(new Ottava(st, dir, idx.get(a)[0], idx.get(a)[1], idx.get(b)[0], idx.get(b)[1]));
+                i = b + 1;
+                floor = i;
+            }
+        }
+    }
+
+    private Event ev(int st, int[] me) {
+        return measures.get(me[0]).staves.get(st).get(me[1]);
+    }
+
+    private static int top(Event e) {
+        return e.heads.get(e.heads.size() - 1).step;
+    }
+
+    private static int bottom(Event e) {
+        return e.heads.get(0).step;
+    }
+
+    private static boolean fits(Event e, int dir) {
+        if (e.measureRest) return false;
+        if (e.rest) return true;
+        return dir > 0 ? bottom(e) >= HIGH_FLOOR : top(e) <= LOW_CEIL;
+    }
+
+    private static boolean near(Event e, int dir) {
+        return !e.rest && (dir > 0 ? top(e) >= HIGH_NEAR : bottom(e) <= LOW_NEAR);
+    }
+
+    private static boolean tiedFromPrev(Event e) {
+        return !e.heads.isEmpty() && e.heads.get(0).tieEnd;
+    }
 
     private Score(String title, Tempo tempo, Key key, int[] clefs) {
         this.title = title;
@@ -259,6 +363,8 @@ public final class Score {
                 }
             }
         }
+
+        sc.placeOttavas();
 
         // chord symbols
         String last = null;
