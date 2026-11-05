@@ -38,6 +38,7 @@ import com.hft.piano2midi.core.Resampler;
 import com.hft.piano2midi.core.Transcriber;
 import com.hft.piano2midi.core.music.ChordRecognizer;
 import com.hft.piano2midi.core.music.Key;
+import com.hft.piano2midi.core.music.Monophonic;
 import com.hft.piano2midi.core.music.Part;
 import com.hft.piano2midi.core.music.PartSplitter;
 import com.hft.piano2midi.core.music.Tempo;
@@ -331,6 +332,33 @@ public final class MainActivity extends Activity {
         setupSpinner(offsetModeSpinner, R.array.offset_modes);
         setupSpinner(timeSigSpinner, R.array.time_sigs);
         setupSpinner(exportSpinner, R.array.export_parts);
+        final CheckBox monoBox = (CheckBox) findViewById(R.id.export_mono);
+        final Spinner monoRule = (Spinner) findViewById(R.id.export_mono_rule);
+        setupSpinner(monoRule, R.array.mono_rules);
+        monoRule.setSelection(prefs.getInt("mono_rule", Monophonic.HIGHEST));
+        monoBox.setChecked(prefs.getBoolean("mono", false));
+        final Runnable monoVis = new Runnable() {
+            @Override
+            public void run() {
+                int v = monoBox.isChecked() ? View.VISIBLE : View.GONE;
+                findViewById(R.id.export_mono_row).setVisibility(v);
+                findViewById(R.id.export_mono_hint).setVisibility(v);
+            }
+        };
+        monoVis.run();
+        monoBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean on) {
+                prefs.edit().putBoolean("mono", on).apply();
+                monoVis.run();
+            }
+        });
+        monoRule.setOnItemSelectedListener(new SimpleItemListener() {
+            @Override
+            void onSelected(int position) {
+                prefs.edit().putInt("mono_rule", position).apply();
+            }
+        });
         offsetModeSpinner.setOnItemSelectedListener(new SimpleItemListener() {
             @Override
             void onSelected(int position) {
@@ -498,6 +526,9 @@ public final class MainActivity extends Activity {
         setResultButtonsEnabled(false);
         playBtn.setEnabled(false);
         Object retained = getLastNonConfigurationInstance();
+        if (!(retained instanceof Retained) && savedInstanceState == null && prefs.getBoolean("splash", true)) {
+            showSplash();
+        }
         if (retained instanceof Retained) {
             restore((Retained) retained);
         } else {
@@ -790,6 +821,26 @@ public final class MainActivity extends Activity {
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
+    }
+
+    /** Animated intro on top of the UI (not shown again when the activity is re-created for a theme switch). */
+    private void showSplash() {
+        final SplashView sv = new SplashView(this);
+        addContentView(sv, new android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+        sv.play(new Runnable() {
+            @Override
+            public void run() {
+                sv.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (sv.getParent() instanceof android.view.ViewGroup) {
+                            ((android.view.ViewGroup) sv.getParent()).removeView(sv);
+                        }
+                    }
+                });
+            }
+        });
     }
 
     private void setPlayIcon(boolean playing) {
@@ -2035,6 +2086,7 @@ public final class MainActivity extends Activity {
         else if (mask == Part.mask(Part.CHORDS)) suffix = " - chords";
         else if (mask == Part.mask(Part.BASS)) suffix = " - bass";
         else suffix = " - selection";
+        if (monoExport()) suffix += " - mono";
         if (format == FMT_PDF) suffix += " - sheet";
         return safeName(audioName + suffix) + (format == FMT_PDF ? ".pdf" : ".mid");
     }
@@ -2063,7 +2115,39 @@ public final class MainActivity extends Activity {
         };
     }
 
+    private boolean monoExport() {
+        return ((CheckBox) findViewById(R.id.export_mono)).isChecked();
+    }
+
+    private int monoRule() {
+        return Math.max(0, ((Spinner) findViewById(R.id.export_mono_rule)).getSelectedItemPosition());
+    }
+
     private void writeExport(int format, int mask, OutputStream os) throws IOException {
+        if (monoExport()) {
+            List<Note> line = Monophonic.apply(PartSplitter.filter(notes, mask), monoRule());
+            if (format == FMT_PDF) {
+                int lo = 127, hi = 0;
+                for (Note n : line) {
+                    lo = Math.min(lo, n.pitch);
+                    hi = Math.max(hi, n.pitch);
+                }
+                boolean grand = !line.isEmpty() && hi - lo > 24 && lo < 55 && hi > 64;
+                Score sc = Score.build(line, tempo, key, mask == Part.mask(Part.BASS) ? null : chords, grand,
+                        audioName + " (" + getString(R.string.mono_suffix) + ")");
+                PdfExporter.write(new SheetLayout(sc), musicFont, os);
+            } else {
+                // one track; instrument of the part the line mostly comes from
+                int[] c = new int[3];
+                for (Note n : line) c[n.part]++;
+                int part = c[0] >= c[1] && c[0] >= c[2] ? 0 : c[1] >= c[2] ? 1 : 2;
+                int program = presets[part] != null ? presets[part].program : 0;
+                List<MidiWriter.Track> tracks = new ArrayList<MidiWriter.Track>();
+                tracks.add(new MidiWriter.Track("Monophonic", 0, program, line));
+                MidiWriter.write(tracks, tempo.bpm, tempo.beatsPerBar, tempo.origin, os);
+            }
+            return;
+        }
         if (format == FMT_PDF) {
             String title = audioName;
             if (mask != Part.ALL) {
