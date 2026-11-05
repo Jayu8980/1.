@@ -73,7 +73,8 @@ public final class MainActivity extends Activity {
     private SharedPreferences prefs;
 
     // views
-    private Button pickBtn, convertBtn, playBtn, stopBtn;
+    private Button pickBtn, convertBtn;
+    private android.widget.ImageButton playBtn, stopBtn;
     private Button[] tabs;
     private View[] tabViews;
     private TextView fileText, statusText, statsText, timeText, onsetLabel, offsetLabel, frameLabel;
@@ -193,8 +194,19 @@ public final class MainActivity extends Activity {
 
         pickBtn = (Button) findViewById(R.id.pick);
         convertBtn = (Button) findViewById(R.id.convert);
-        playBtn = (Button) findViewById(R.id.play);
-        stopBtn = (Button) findViewById(R.id.stop);
+        playBtn = (android.widget.ImageButton) findViewById(R.id.play);
+        stopBtn = (android.widget.ImageButton) findViewById(R.id.stop);
+        findViewById(R.id.viz_frame).setClipToOutline(true);
+        setupSection(R.id.sec_loop_h, R.id.sec_loop_b, "sec_loop", false);
+        setupSection(R.id.sec_inst_h, R.id.sec_inst_b, "sec_inst", false);
+        setupSection(R.id.sec_music_h, R.id.sec_music_b, "sec_music", false);
+        setupSection(R.id.sec_detect_h, R.id.sec_detect_b, "sec_detect", false);
+        findViewById(R.id.theme_btn).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showThemeDialog();
+            }
+        });
         fileText = (TextView) findViewById(R.id.file_name);
         statusText = (TextView) findViewById(R.id.status);
         statsText = (TextView) findViewById(R.id.stats);
@@ -657,7 +669,7 @@ public final class MainActivity extends Activity {
                         @Override
                         public void run() {
                             pausedAt = 0;
-                            playBtn.setText(R.string.play);
+                            setPlayIcon(false);
                             showPosition(0, false);
                         }
                     });
@@ -753,6 +765,11 @@ public final class MainActivity extends Activity {
     @Override
     public boolean onOptionsItemSelected(android.view.MenuItem item) {
         if (item.getItemId() != 1) return super.onOptionsItemSelected(item);
+        showThemeDialog();
+        return true;
+    }
+
+    private void showThemeDialog() {
         int cur = prefs.getInt("theme", THEME_SYSTEM);
         new AlertDialog.Builder(this)
                 .setTitle(R.string.theme)
@@ -767,7 +784,38 @@ public final class MainActivity extends Activity {
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
-        return true;
+    }
+
+    private void setPlayIcon(boolean playing) {
+        if (playBtn == null) return;
+        playBtn.setImageResource(playing ? R.drawable.ic_pause : R.drawable.ic_play);
+        playBtn.setContentDescription(getString(playing ? R.string.pause : R.string.play));
+    }
+
+    /** Collapsible card: tapping the header shows/hides the body; the state is remembered. */
+    private void setupSection(int headerId, int bodyId, final String key, boolean defaultOpen) {
+        final TextView header = (TextView) findViewById(headerId);
+        final View body = findViewById(bodyId);
+        final Runnable apply = new Runnable() {
+            @Override
+            public void run() {
+                boolean open = body.getVisibility() == View.VISIBLE;
+                android.graphics.drawable.Drawable[] d = header.getCompoundDrawablesRelative();
+                header.setCompoundDrawablesRelativeWithIntrinsicBounds(d[0], null,
+                        getDrawable(open ? R.drawable.ic_collapse : R.drawable.ic_expand), null);
+            }
+        };
+        body.setVisibility(prefs.getBoolean(key, defaultOpen) ? View.VISIBLE : View.GONE);
+        apply.run();
+        header.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean open = body.getVisibility() != View.VISIBLE;
+                body.setVisibility(open ? View.VISIBLE : View.GONE);
+                prefs.edit().putBoolean(key, open).apply();
+                apply.run();
+            }
+        });
     }
 
     private void recreateKeepingState() {
@@ -1249,6 +1297,7 @@ public final class MainActivity extends Activity {
         statusText.setText(R.string.recording_starting);
         statsText.setText("");
         recordBtn.setText(R.string.record_stop);
+        recordBtn.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_stop, 0, 0, 0);
         saveWavBtn.setVisibility(View.GONE);
         levelBar.setVisibility(View.VISIBLE);
         pickBtn.setEnabled(false);
@@ -1383,6 +1432,7 @@ public final class MainActivity extends Activity {
         ui.removeCallbacks(recordTick);
         getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         recordBtn.setText(R.string.record);
+        recordBtn.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_mic, 0, 0, 0);
         recordBtn.setEnabled(true);
         levelBar.setVisibility(View.GONE);
         falling.setLive(false);
@@ -1771,7 +1821,7 @@ public final class MainActivity extends Activity {
             stopMic();
             pausedAt = Math.max(0, player.position());
             player.stop();
-            playBtn.setText(R.string.play);
+            setPlayIcon(false);
             showPosition(pausedAt, false);
             return;
         }
@@ -1785,7 +1835,7 @@ public final class MainActivity extends Activity {
         lastWrong = 0;
         if (waitBox.isChecked() && waitMicBox.isChecked()) startMic();
         player.play(notes, playMask(), pausedAt, countInBox.isChecked() && tempo != null ? 1 : 0);
-        playBtn.setText(R.string.pause);
+        setPlayIcon(true);
         keyboard.postOnAnimation(frame);
     }
 
@@ -1802,7 +1852,7 @@ public final class MainActivity extends Activity {
         stopMic();
         if (keyboard != null) keyboard.setExpected(null);
         if (player != null) player.stop();
-        if (playBtn != null) playBtn.setText(R.string.play);
+        if (playBtn != null) setPlayIcon(false);
     }
 
     private static String clock(double s) {

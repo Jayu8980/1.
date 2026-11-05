@@ -9,56 +9,23 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="12dp">
+        android:paddingStart="14dp"
+        android:paddingTop="14dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="24dp">
 
+        <!-- ============================== hero ============================== -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/subtitle"
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
-
-            <Button
-                android:id="@+id/about"
-                style="?android:attr/borderlessButtonStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/about" />
-        </LinearLayout>
-
-        <!-- 1. input -->
-        <LinearLayout style="@style/Card">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/pick"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/pick" />
-
-                <Button
-                    android:id="@+id/convert"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:backgroundTint="@color/accent"
-                    android:enabled="false"
-                    android:text="@string/convert"
-                    android:textColor="#FFFFFFFF" />
-            </LinearLayout>
+            android:layout_marginBottom="14dp"
+            android:background="@drawable/hero_bg"
+            android:elevation="3dp"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingTop="16dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="20dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -66,67 +33,161 @@
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
-                <Button
-                    android:id="@+id/record"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:backgroundTint="@color/record"
-                    android:text="@string/record"
-                    android:textColor="#FFFFFFFF" />
+                <ImageView
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_piano"
+                    android:tint="#FFFFFFFF" />
 
-                <Button
-                    android:id="@+id/save_wav"
-                    style="?android:attr/borderlessButtonStyle"
+                <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
                     android:layout_weight="1"
-                    android:text="@string/save_wav"
-                    android:visibility="gone" />
+                    android:fontFamily="sans-serif-medium"
+                    android:text="@string/app_name"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="24sp" />
+
+                <ImageButton
+                    android:id="@+id/theme_btn"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/btn_hero_outline"
+                    android:contentDescription="@string/theme"
+                    android:src="@drawable/ic_theme"
+                    android:tint="#FFFFFFFF" />
+
+                <ImageButton
+                    android:id="@+id/about"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/btn_hero_outline"
+                    android:contentDescription="@string/about"
+                    android:src="@drawable/ic_info"
+                    android:tint="#FFFFFFFF" />
             </LinearLayout>
 
-            <ProgressBar
-                android:id="@+id/level"
-                style="?android:attr/progressBarStyleHorizontal"
+            <TextView
                 android:layout_width="match_parent"
-                android:layout_height="8dp"
-                android:max="100"
-                android:progressTint="@color/record"
-                android:visibility="gone" />
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/subtitle"
+                android:textColor="#D9FFFFFF"
+                android:textSize="14sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/record"
+                    style="@style/Btn"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/btn_hero_light"
+                    android:drawableStart="@drawable/ic_mic"
+                    android:drawableTint="@color/record"
+                    android:text="@string/record"
+                    android:textColor="@color/record" />
+
+                <Button
+                    android:id="@+id/pick"
+                    style="@style/Btn"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/btn_hero_outline"
+                    android:drawableStart="@drawable/ic_folder"
+                    android:drawableTint="#FFFFFFFF"
+                    android:text="@string/pick"
+                    android:textColor="#FFFFFFFF" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/file_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="14dp"
+                android:drawableStart="@drawable/ic_music"
+                android:drawablePadding="8dp"
+                android:drawableTint="#CCFFFFFF"
                 android:ellipsize="middle"
+                android:gravity="center_vertical"
                 android:singleLine="true"
                 android:text="@string/no_file"
-                android:textColor="@color/text_secondary" />
+                android:textColor="#F2FFFFFF"
+                android:textSize="14sp" />
+
+            <Button
+                android:id="@+id/convert"
+                style="@style/Btn"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/btn_hero_light"
+                android:enabled="false"
+                android:text="@string/convert"
+                android:textColor="@color/hero_start" />
+
+            <ProgressBar
+                android:id="@+id/level"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="6dp"
+                android:layout_marginTop="12dp"
+                android:max="100"
+                android:progressDrawable="@drawable/progress_hero"
+                android:visibility="gone" />
 
             <ProgressBar
                 android:id="@+id/progress"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_height="6dp"
+                android:layout_marginTop="12dp"
                 android:max="1000"
+                android:progressDrawable="@drawable/progress_hero"
                 android:visibility="gone" />
 
             <TextView
                 android:id="@+id/status"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textColor="#E6FFFFFF"
                 android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/save_wav"
+                style="@style/Btn"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/btn_hero_outline"
+                android:drawableStart="@drawable/ic_download"
+                android:drawableTint="#FFFFFFFF"
+                android:text="@string/save_wav"
+                android:textColor="#FFFFFFFF"
+                android:textSize="13sp"
+                android:visibility="gone" />
         </LinearLayout>
 
-        <!-- 2. player -->
+        <!-- ============================== player ============================== -->
         <LinearLayout style="@style/Card">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:background="@drawable/track_bg"
+                android:orientation="horizontal"
+                android:padding="4dp">
 
                 <Button
                     android:id="@+id/tab_falling"
@@ -145,9 +206,11 @@
             </LinearLayout>
 
             <FrameLayout
+                android:id="@+id/viz_frame"
                 android:layout_width="match_parent"
-                android:layout_height="330dp"
-                android:layout_marginTop="6dp">
+                android:layout_height="320dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/viz_bg">
 
                 <com.hft.piano2midi.FallingNotesView
                     android:id="@+id/falling"
@@ -173,6 +236,7 @@
                     android:layout_height="match_parent"
                     android:background="@color/sheet_bg"
                     android:nestedScrollingEnabled="true"
+                    android:padding="6dp"
                     android:visibility="gone">
 
                     <com.hft.piano2midi.SheetView
@@ -185,83 +249,83 @@
             <com.hft.piano2midi.KeyboardView
                 android:id="@+id/keyboard"
                 android:layout_width="match_parent"
-                android:layout_height="96dp" />
+                android:layout_height="92dp"
+                android:layout_marginTop="2dp" />
 
+            <!-- transport -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:layout_marginTop="14dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
-                <Button
+                <ImageButton
                     android:id="@+id/play"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="96dp"
-                    android:text="@string/play" />
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:background="@drawable/btn_round"
+                    android:contentDescription="@string/play"
+                    android:elevation="2dp"
+                    android:src="@drawable/ic_play"
+                    android:tint="@color/on_primary" />
 
-                <Button
+                <ImageButton
                     android:id="@+id/stop"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/stop" />
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="12dp"
+                    android:background="@drawable/btn_round_tonal"
+                    android:contentDescription="@string/stop"
+                    android:src="@drawable/ic_stop"
+                    android:tint="@color/on_primary_container" />
 
-                <TextView
-                    android:id="@+id/time"
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
                     android:layout_weight="1"
-                    android:gravity="end"
-                    android:text="0:00 / 0:00"
-                    android:textColor="@color/text_secondary" />
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="0:00 / 0:00"
+                        android:textColor="@color/text_primary"
+                        android:textSize="20sp" />
+
+                    <TextView
+                        android:id="@+id/beat"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:letterSpacing="0.2"
+                        android:textColor="@color/primary"
+                        android:textSize="16sp" />
+                </LinearLayout>
             </LinearLayout>
 
+            <!-- speed -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <CheckBox
-                    android:id="@+id/metronome"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/metronome" />
-
-                <CheckBox
-                    android:id="@+id/count_in"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="@string/count_in" />
-
-                <TextView
-                    android:id="@+id/beat"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="end"
-                    android:letterSpacing="0.15"
-                    android:textColor="@color/primary"
-                    android:textSize="18sp" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
                 <TextView
                     android:id="@+id/speed_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="128dp"
+                    style="@style/Label"
+                    android:drawableStart="@drawable/ic_speed"
+                    android:drawablePadding="8dp"
+                    android:drawableTint="@color/text_secondary"
+                    android:minWidth="150dp"
                     android:textSize="13sp" />
 
                 <SeekBar
                     android:id="@+id/speed_seek"
+                    style="@style/Slider"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -270,513 +334,596 @@
 
                 <Button
                     android:id="@+id/speed_reset"
-                    style="?android:attr/borderlessButtonStyle"
+                    style="@style/Btn.Text"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="48dp"
+                    android:layout_height="40dp"
                     android:text="@string/speed_reset" />
             </LinearLayout>
 
-            <LinearLayout
+            <!-- toggle chips -->
+            <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:layout_marginTop="10dp"
+                android:scrollbars="none">
 
-                <CheckBox
-                    android:id="@+id/part_melody"
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:buttonTint="#FFFF7043"
-                    android:checked="true"
-                    android:text="@string/part_melody" />
+                    android:orientation="horizontal">
 
-                <CheckBox
-                    android:id="@+id/part_chords"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:buttonTint="#FF66BB6A"
-                    android:checked="true"
-                    android:text="@string/part_chords" />
+                    <CheckBox
+                        android:id="@+id/part_melody"
+                        style="@style/Chip"
+                        android:backgroundTint="@color/chip_melody"
+                        android:checked="true"
+                        android:text="@string/part_melody" />
 
-                <CheckBox
-                    android:id="@+id/part_bass"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:buttonTint="#FF42A5F5"
-                    android:checked="true"
-                    android:text="@string/part_bass" />
-            </LinearLayout>
+                    <CheckBox
+                        android:id="@+id/part_chords"
+                        style="@style/Chip"
+                        android:backgroundTint="@color/chip_chords"
+                        android:checked="true"
+                        android:text="@string/part_chords" />
+
+                    <CheckBox
+                        android:id="@+id/part_bass"
+                        style="@style/Chip"
+                        android:backgroundTint="@color/chip_bass"
+                        android:checked="true"
+                        android:text="@string/part_bass" />
+
+                    <CheckBox
+                        android:id="@+id/metronome"
+                        style="@style/Chip"
+                        android:drawableStart="@drawable/ic_metronome"
+                        android:text="@string/metronome" />
+
+                    <CheckBox
+                        android:id="@+id/count_in"
+                        style="@style/Chip"
+                        android:text="@string/count_in" />
+                </LinearLayout>
+            </HorizontalScrollView>
 
             <TextView
                 android:id="@+id/stats"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
+                style="@style/Hint"
+                android:layout_marginTop="10dp" />
         </LinearLayout>
 
-        <!-- loop & practice -->
+        <!-- ============================== download ============================== -->
         <LinearLayout style="@style/Card">
 
             <TextView
                 style="@style/CardTitle"
-                android:text="@string/loop_title" />
-
-            <CheckBox
-                android:id="@+id/loop_on"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/loop_on" />
-
-            <LinearLayout style="@style/Row">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/from_bar" />
-
-                <Button
-                    android:id="@+id/loop_a_minus"
-                    style="@style/Stepper"
-                    android:text="−" />
-
-                <TextView
-                    android:id="@+id/loop_a"
-                    style="@style/StepperValue" />
-
-                <Button
-                    android:id="@+id/loop_a_plus"
-                    style="@style/Stepper"
-                    android:text="+" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="@string/to_bar" />
-
-                <Button
-                    android:id="@+id/loop_b_minus"
-                    style="@style/Stepper"
-                    android:text="−" />
-
-                <TextView
-                    android:id="@+id/loop_b"
-                    style="@style/StepperValue" />
-
-                <Button
-                    android:id="@+id/loop_b_plus"
-                    style="@style/Stepper"
-                    android:text="+" />
-            </LinearLayout>
+                android:drawableStart="@drawable/ic_download"
+                android:drawablePadding="14dp"
+                android:drawableTint="@color/primary"
+                android:gravity="center_vertical"
+                android:text="@string/download" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
-                <Button
-                    android:id="@+id/loop_a_here"
-                    style="?android:attr/borderlessButtonStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/loop_a_here" />
-
-                <Button
-                    android:id="@+id/loop_b_here"
-                    style="?android:attr/borderlessButtonStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/loop_b_here" />
+                <Spinner
+                    android:id="@+id/export_part"
+                    style="@style/Field" />
             </LinearLayout>
 
-            <CheckBox
-                android:id="@+id/practice_on"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/practice_on" />
-
             <LinearLayout
-                android:id="@+id/practice_opts"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingStart="8dp"
-                android:visibility="gone">
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal">
 
-                <TextView
-                    android:id="@+id/practice_start_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
+                <Button
+                    android:id="@+id/save_midi"
+                    style="@style/Btn.Filled"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:drawableStart="@drawable/ic_music"
+                    android:text="@string/save_midi" />
 
-                <SeekBar
-                    android:id="@+id/practice_start"
+                <Button
+                    android:id="@+id/save_pdf"
+                    style="@style/Btn.Filled"
+                    android:layout_width="0dp"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:drawableStart="@drawable/ic_download"
+                    android:text="@string/save_pdf" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/share_midi"
+                    style="@style/Btn.Outlined"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:drawableStart="@drawable/ic_share"
+                    android:text="@string/share_midi" />
+
+                <Button
+                    android:id="@+id/share_pdf"
+                    style="@style/Btn.Outlined"
+                    android:layout_width="0dp"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:drawableStart="@drawable/ic_share"
+                    android:text="@string/share_pdf" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ============================== loop & practice ============================== -->
+        <LinearLayout
+            style="@style/Card"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
+
+            <TextView
+                android:id="@+id/sec_loop_h"
+                style="@style/SectionHeader"
+                android:drawableStart="@drawable/ic_repeat"
+                android:text="@string/loop_title" />
+
+            <LinearLayout
+                android:id="@+id/sec_loop_b"
+                style="@style/SectionBody">
+
+                <CheckBox
+                    android:id="@+id/loop_on"
+                    style="@style/Chip"
+                    android:drawableStart="@drawable/ic_repeat"
+                    android:text="@string/loop_on" />
+
+                <LinearLayout
+                    style="@style/Row"
+                    android:layout_marginTop="12dp">
+
+                    <TextView
+                        style="@style/Label"
+                        android:layout_marginEnd="8dp"
+                        android:text="@string/from_bar" />
+
+                    <Button
+                        android:id="@+id/loop_a_minus"
+                        style="@style/Stepper"
+                        android:text="−" />
+
+                    <TextView
+                        android:id="@+id/loop_a"
+                        style="@style/StepperValue" />
+
+                    <Button
+                        android:id="@+id/loop_a_plus"
+                        style="@style/Stepper"
+                        android:text="+" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginEnd="8dp"
+                        android:text="@string/to_bar" />
+
+                    <Button
+                        android:id="@+id/loop_b_minus"
+                        style="@style/Stepper"
+                        android:text="−" />
+
+                    <TextView
+                        android:id="@+id/loop_b"
+                        style="@style/StepperValue" />
+
+                    <Button
+                        android:id="@+id/loop_b_plus"
+                        style="@style/Stepper"
+                        android:text="+" />
+                </LinearLayout>
+
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:max="15"
-                    android:progress="7" />
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/loop_a_here"
+                        style="@style/Btn.Tonal"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="1"
+                        android:text="@string/loop_a_here"
+                        android:textSize="13sp" />
+
+                    <Button
+                        android:id="@+id/loop_b_here"
+                        style="@style/Btn.Tonal"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="10dp"
+                        android:layout_weight="1"
+                        android:text="@string/loop_b_here"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="horizontal">
+
+                    <CheckBox
+                        android:id="@+id/practice_on"
+                        style="@style/Chip"
+                        android:drawableStart="@drawable/ic_speed"
+                        android:text="@string/practice_on" />
+
+                    <CheckBox
+                        android:id="@+id/wait_on"
+                        style="@style/Chip"
+                        android:drawableStart="@drawable/ic_piano"
+                        android:text="@string/wait_short" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/practice_opts"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/practice_start_label"
+                        style="@style/Label" />
+
+                    <SeekBar
+                        android:id="@+id/practice_start"
+                        style="@style/Slider"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:max="15"
+                        android:progress="7" />
+
+                    <LinearLayout style="@style/Row">
+
+                        <TextView
+                            style="@style/RowLabel"
+                            android:layout_width="150dp"
+                            android:text="@string/practice_step" />
+
+                        <Spinner
+                            android:id="@+id/practice_step"
+                            style="@style/Field" />
+                    </LinearLayout>
+
+                    <CheckBox
+                        android:id="@+id/practice_countin"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:buttonTint="@color/primary"
+                        android:text="@string/practice_countin" />
+
+                    <TextView
+                        style="@style/Hint"
+                        android:text="@string/practice_hint" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/wait_opts"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        style="@style/Label"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="@string/wait_on" />
+
+                    <CheckBox
+                        android:id="@+id/wait_mic"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:buttonTint="@color/primary"
+                        android:text="@string/wait_mic" />
+
+                    <TextView
+                        android:id="@+id/wait_midi"
+                        style="@style/Hint"
+                        android:drawableStart="@drawable/ic_piano"
+                        android:drawablePadding="6dp"
+                        android:drawableTint="@color/text_secondary"
+                        android:gravity="center_vertical" />
+
+                    <TextView
+                        style="@style/Hint"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/wait_hint" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/play_part_row"
+                    style="@style/Row"
+                    android:layout_marginTop="10dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        style="@style/RowLabel"
+                        android:layout_width="110dp"
+                        android:text="@string/practice_mute" />
+
+                    <Spinner
+                        android:id="@+id/practice_mute"
+                        style="@style/Field" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/wait_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:textColor="@color/wait_text" />
+
+                <TextView
+                    android:id="@+id/loop_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="8dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:textColor="@color/primary" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ============================== instruments ============================== -->
+        <LinearLayout
+            style="@style/Card"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
+
+            <TextView
+                android:id="@+id/sec_inst_h"
+                style="@style/SectionHeader"
+                android:drawableStart="@drawable/ic_piano"
+                android:text="@string/instruments" />
+
+            <LinearLayout
+                android:id="@+id/sec_inst_b"
+                style="@style/SectionBody">
 
                 <LinearLayout style="@style/Row">
 
                     <TextView
                         style="@style/RowLabel"
-                        android:layout_width="140dp"
-                        android:text="@string/practice_step" />
+                        android:text="@string/part_melody"
+                        android:textColor="@color/part_melody_text" />
 
                     <Spinner
-                        android:id="@+id/practice_step"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
+                        android:id="@+id/inst_melody"
+                        style="@style/Field" />
                 </LinearLayout>
 
-                <CheckBox
-                    android:id="@+id/practice_countin"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/practice_countin" />
+                <LinearLayout
+                    style="@style/Row"
+                    android:layout_marginTop="8dp">
+
+                    <TextView
+                        style="@style/RowLabel"
+                        android:text="@string/part_chords"
+                        android:textColor="@color/part_chords_text" />
+
+                    <Spinner
+                        android:id="@+id/inst_chords"
+                        style="@style/Field" />
+                </LinearLayout>
+
+                <LinearLayout
+                    style="@style/Row"
+                    android:layout_marginTop="8dp">
+
+                    <TextView
+                        style="@style/RowLabel"
+                        android:text="@string/part_bass"
+                        android:textColor="@color/part_bass_text" />
+
+                    <Spinner
+                        android:id="@+id/inst_bass"
+                        style="@style/Field" />
+                </LinearLayout>
 
                 <TextView
+                    android:id="@+id/sf2_name"
+                    style="@style/Hint"
+                    android:layout_marginTop="10dp" />
+
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/practice_hint"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
-            </LinearLayout>
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:orientation="horizontal">
 
-            <CheckBox
-                android:id="@+id/wait_on"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/wait_on" />
+                    <Button
+                        android:id="@+id/load_sf2"
+                        style="@style/Btn.Tonal"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:drawableStart="@drawable/ic_folder"
+                        android:text="@string/load_sf2" />
 
-            <LinearLayout
-                android:id="@+id/wait_opts"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingStart="8dp"
-                android:visibility="gone">
-
-                <CheckBox
-                    android:id="@+id/wait_mic"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/wait_mic" />
-
-                <TextView
-                    android:id="@+id/wait_midi"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/wait_hint"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/play_part_row"
-                style="@style/Row"
-                android:visibility="gone">
-
-                <TextView
-                    style="@style/RowLabel"
-                    android:layout_width="140dp"
-                    android:text="@string/practice_mute" />
-
-                <Spinner
-                    android:id="@+id/practice_mute"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/wait_status"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textColor="@color/wait_text"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/loop_status"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textColor="@color/primary"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <!-- 3. instruments -->
-        <LinearLayout style="@style/Card">
-
-            <TextView
-                style="@style/CardTitle"
-                android:text="@string/instruments" />
-
-            <LinearLayout style="@style/Row">
-
-                <TextView
-                    style="@style/RowLabel"
-                    android:text="@string/part_melody"
-                    android:textColor="@color/part_melody_text" />
-
-                <Spinner
-                    android:id="@+id/inst_melody"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-            </LinearLayout>
-
-            <LinearLayout style="@style/Row">
-
-                <TextView
-                    style="@style/RowLabel"
-                    android:text="@string/part_chords"
-                    android:textColor="@color/part_chords_text" />
-
-                <Spinner
-                    android:id="@+id/inst_chords"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-            </LinearLayout>
-
-            <LinearLayout style="@style/Row">
-
-                <TextView
-                    style="@style/RowLabel"
-                    android:text="@string/part_bass"
-                    android:textColor="@color/part_bass_text" />
-
-                <Spinner
-                    android:id="@+id/inst_bass"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/sf2_name"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/load_sf2"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/load_sf2" />
-
-                <Button
-                    android:id="@+id/builtin_sf2"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/builtin_sf2" />
+                    <Button
+                        android:id="@+id/builtin_sf2"
+                        style="@style/Btn.Outlined"
+                        android:layout_width="0dp"
+                        android:layout_marginStart="10dp"
+                        android:layout_weight="1"
+                        android:text="@string/builtin_sf2" />
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
 
-        <!-- 4. download -->
-        <LinearLayout style="@style/Card">
+        <!-- ============================== tempo, key, chords ============================== -->
+        <LinearLayout
+            style="@style/Card"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
 
             <TextView
-                style="@style/CardTitle"
-                android:text="@string/download" />
-
-            <Spinner
-                android:id="@+id/export_part"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/save_midi"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:backgroundTint="@color/primary"
-                    android:text="@string/save_midi"
-                    android:textColor="#FFFFFFFF" />
-
-                <Button
-                    android:id="@+id/save_pdf"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:backgroundTint="@color/primary"
-                    android:text="@string/save_pdf"
-                    android:textColor="#FFFFFFFF" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/share_midi"
-                    style="?android:attr/borderlessButtonStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/share_midi" />
-
-                <Button
-                    android:id="@+id/share_pdf"
-                    style="?android:attr/borderlessButtonStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/share_pdf" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- 5. music analysis -->
-        <LinearLayout style="@style/Card">
-
-            <TextView
-                style="@style/CardTitle"
+                android:id="@+id/sec_music_h"
+                style="@style/SectionHeader"
+                android:drawableStart="@drawable/ic_key"
                 android:text="@string/music" />
 
-            <TextView
-                android:id="@+id/tempo_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <SeekBar
-                    android:id="@+id/tempo_seek"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:max="180"
-                    android:progress="80" />
-
-                <Button
-                    android:id="@+id/tempo_auto"
-                    style="?android:attr/borderlessButtonStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/auto" />
-            </LinearLayout>
-
-            <LinearLayout style="@style/Row">
+                android:id="@+id/sec_music_b"
+                style="@style/SectionBody">
 
                 <TextView
-                    style="@style/RowLabel"
-                    android:text="@string/time_signature" />
+                    android:id="@+id/tempo_label"
+                    style="@style/Label"
+                    android:fontFamily="sans-serif-medium" />
 
-                <Spinner
-                    android:id="@+id/time_sig"
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-            </LinearLayout>
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/analysis"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
+                    <SeekBar
+                        android:id="@+id/tempo_seek"
+                        style="@style/Slider"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:max="180"
+                        android:progress="80" />
+
+                    <Button
+                        android:id="@+id/tempo_auto"
+                        style="@style/Btn.Tonal"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:minHeight="36dp"
+                        android:text="@string/auto"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    style="@style/Row"
+                    android:layout_marginTop="8dp">
+
+                    <TextView
+                        style="@style/RowLabel"
+                        android:text="@string/time_signature" />
+
+                    <Spinner
+                        android:id="@+id/time_sig"
+                        style="@style/Field" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/analysis"
+                    style="@style/Label"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="8dp"
+                    android:lineSpacingMultiplier="1.2"
+                    android:textColor="@color/text_secondary" />
+            </LinearLayout>
         </LinearLayout>
 
-        <!-- 6. detection -->
-        <LinearLayout style="@style/Card">
+        <!-- ============================== note detection ============================== -->
+        <LinearLayout
+            style="@style/Card"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
 
             <TextView
-                style="@style/CardTitle"
+                android:id="@+id/sec_detect_h"
+                style="@style/SectionHeader"
+                android:drawableStart="@drawable/ic_tune"
                 android:text="@string/settings" />
 
-            <TextView
-                android:id="@+id/onset_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-
-            <SeekBar
-                android:id="@+id/onset_seek"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:max="95"
-                android:progress="50" />
-
-            <TextView
-                android:id="@+id/offset_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp" />
-
-            <SeekBar
-                android:id="@+id/offset_seek"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:max="95"
-                android:progress="50" />
-
-            <TextView
-                android:id="@+id/frame_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp" />
-
-            <SeekBar
-                android:id="@+id/frame_seek"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:max="95"
-                android:progress="50" />
-
-            <LinearLayout style="@style/Row">
+            <LinearLayout
+                android:id="@+id/sec_detect_b"
+                style="@style/SectionBody">
 
                 <TextView
-                    style="@style/RowLabel"
-                    android:text="@string/offset_mode" />
+                    android:id="@+id/onset_label"
+                    style="@style/Label" />
 
-                <Spinner
-                    android:id="@+id/offset_mode"
-                    android:layout_width="0dp"
+                <SeekBar
+                    android:id="@+id/onset_seek"
+                    style="@style/Slider"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-            </LinearLayout>
+                    android:max="95"
+                    android:progress="50" />
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/settings_hint"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
+                <TextView
+                    android:id="@+id/offset_label"
+                    style="@style/Label"
+                    android:layout_marginTop="8dp" />
+
+                <SeekBar
+                    android:id="@+id/offset_seek"
+                    style="@style/Slider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="95"
+                    android:progress="50" />
+
+                <TextView
+                    android:id="@+id/frame_label"
+                    style="@style/Label"
+                    android:layout_marginTop="8dp" />
+
+                <SeekBar
+                    android:id="@+id/frame_seek"
+                    style="@style/Slider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="95"
+                    android:progress="50" />
+
+                <LinearLayout
+                    style="@style/Row"
+                    android:layout_marginTop="8dp">
+
+                    <TextView
+                        style="@style/RowLabel"
+                        android:text="@string/offset_mode" />
+
+                    <Spinner
+                        android:id="@+id/offset_mode"
+                        style="@style/Field" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/Hint"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/settings_hint" />
+            </LinearLayout>
         </LinearLayout>
+
+        <TextView
+            style="@style/Hint"
+            android:layout_marginTop="4dp"
+            android:gravity="center"
+            android:text="@string/footer" />
     </LinearLayout>
 </ScrollView>
