@@ -26,6 +26,7 @@ audio file ─► MediaCodec decode ─► mono ─► resample 16 kHz ─► lo
   - the microphone for an acoustic piano. A fast targeted detector looks at energy that has just appeared and runs iterative harmonic pitch estimation on it. It ignores pitches the app itself is playing, and accepts 3+-note chords with one note missed.
 
   Tests: simulated in-time players are never held up (29.5 s of audio for 29.1 s of music), late players are waited for at every chord, and wrong keys never advance. On synthetic piano chords the detector finds about 82–85% of expected notes within about 90 ms, with about 7% false alarms on unplayed pitches; single notes reach 93–98%.
+- **Dark mode:** the Theme menu offers System default (follows Android's dark mode), Light or Dark. The dark palette covers cards, text, tabs, buttons and the system bars, and the sheet music becomes light ink on dark paper. Exported PDFs stay black on white. Switching themes keeps the transcription and all settings.
 - **Animated keyboard:** an 88-key keyboard where keys light up in their part's colour, sink while held and fade out on release. It stays in exact sync with the audio, and you can also tap it to play live with the melody instrument.
 - **Three views:**
   - *Falling notes*: notes fall onto their keys, with bar lines and chord names.
@@ -37,8 +38,8 @@ audio file ─► MediaCodec decode ─► mono ─► resample 16 kHz ─► lo
 
 ## Download
 
-**[Piano2MIDI 1.1 for Android (arm64): Piano2MIDI-1.1-android-arm64.apk](https://github.com/Jayu8980/1./raw/ccr-0beb1834-f8votw/piano2midi/release/Piano2MIDI-1.1-android-arm64.apk)**
-(49 MB, SHA-256 in `release/Piano2MIDI-1.1-android-arm64.apk.sha256`)
+**[Piano2MIDI 1.2 for Android (arm64): Piano2MIDI-1.2-android-arm64.apk](https://github.com/Jayu8980/1./raw/ccr-0beb1834-f8votw/piano2midi/release/Piano2MIDI-1.2-android-arm64.apk)**
+(49 MB, SHA-256 in `release/Piano2MIDI-1.2-android-arm64.apk.sha256`)
 
 - Runs on Android 8.0 through Android 16, on 64-bit ARM phones and tablets.
 - Supports 16 KB memory pages: ONNX Runtime 1.23.2 native libraries with 16 KB-aligned ELF segments.
