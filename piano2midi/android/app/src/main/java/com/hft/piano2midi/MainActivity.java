@@ -60,7 +60,7 @@ import java.util.Locale;
 
 public final class MainActivity extends Activity {
 
-    private static final int REQ_PICK = 1, REQ_SAVE = 2, REQ_SF2 = 3, REQ_SAVE_WAV = 4, REQ_MIC = 5;
+    private static final int REQ_PICK = 1, REQ_SAVE = 2, REQ_SF2 = 3, REQ_SAVE_WAV = 4, REQ_MIC = 5, REQ_MIC_LISTEN = 6;
     private static final String MODEL_ASSET = "hft_transformer.onnx";
     private static final String SF2_ASSET = "instruments.sf2";
     private static final String CUSTOM_SF2 = "custom.sf2";
@@ -134,6 +134,14 @@ public final class MainActivity extends Activity {
     private View practiceOpts;
     private int loopA = 1, loopB = 4;
     private static final double[] PRACTICE_STEPS = {0, 0.05, 0.10, 0.20};
+    // wait mode
+    private CheckBox waitBox, waitMicBox;
+    private View waitOpts, playPartRow;
+    private TextView waitStatus, waitMidiText;
+    private MidiInput midi;
+    private MicListener mic;
+    private int lastPressed = -1, lastWrong;
+    private final boolean[] accompSounding = new boolean[128];
     private volatile MicRecorder recorder;
     private float[] recordedPcm;
     private int recordedLen, recordedRate;
@@ -171,6 +179,7 @@ public final class MainActivity extends Activity {
             showPosition(player.position(), true);
             updateLoopStatus();
             if (practiceBox.isChecked()) updateSpeedLabel();
+            updateWait(player.position());
             keyboard.postOnAnimation(this);
         }
     };
@@ -370,6 +379,7 @@ public final class MainActivity extends Activity {
                     falling.setPartMask(partMask);
                     sheetDirty = true;
                     if (tab == 2) rebuildSheet();
+                    applyWait();
                     restartIfPlaying();
                 }
             });
@@ -420,6 +430,7 @@ public final class MainActivity extends Activity {
             @Override
             public void onKeyDown(int pitch) {
                 if (player != null) player.liveNoteOn(pitch, 96);
+                userPressed(pitch);
             }
 
             @Override
@@ -833,6 +844,7 @@ public final class MainActivity extends Activity {
         syncPlayerTiming();
         updateSpeedLabel();
         if (loopBox != null) applyLoop(false);
+        applyWait();
         showPosition(pausedAt, false);
     }
 
@@ -1010,6 +1022,16 @@ public final class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_MIC_LISTEN) {
+            boolean ok = grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            if (!ok) {
+                waitMicBox.setChecked(false);
+                Toast.makeText(this, R.string.wait_mic_permission, Toast.LENGTH_LONG).show();
+            } else if (player != null && player.isPlaying() && waitBox.isChecked()) {
+                startMic();
+            }
+            return;
+        }
         if (requestCode != REQ_MIC) return;
         if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             startRecording();
@@ -1218,6 +1240,55 @@ public final class MainActivity extends Activity {
         practiceStepSpinner = (Spinner) findViewById(R.id.practice_step);
         practiceMuteSpinner = (Spinner) findViewById(R.id.practice_mute);
         practiceOpts = findViewById(R.id.practice_opts);
+        waitBox = (CheckBox) findViewById(R.id.wait_on);
+        waitMicBox = (CheckBox) findViewById(R.id.wait_mic);
+        waitOpts = findViewById(R.id.wait_opts);
+        playPartRow = findViewById(R.id.play_part_row);
+        waitStatus = (TextView) findViewById(R.id.wait_status);
+        waitMidiText = (TextView) findViewById(R.id.wait_midi);
+        waitMidiText.setText(R.string.wait_midi_none);
+        waitMicBox.setChecked(prefs.getBoolean("wait_mic", false));
+        waitBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean on) {
+                waitOpts.setVisibility(on ? View.VISIBLE : View.GONE);
+                updatePlayPartRow();
+                if (!on) {
+                    keyboard.setExpected(null);
+                    waitStatus.setText("");
+                    stopMic();
+                } else if (player != null && player.isPlaying() && waitMicBox.isChecked()) {
+                    startMic();
+                }
+                applyWait();
+                restartIfPlaying();
+            }
+        });
+        waitMicBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean on) {
+                prefs.edit().putBoolean("wait_mic", on).apply();
+                if (on && checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                        != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, REQ_MIC_LISTEN);
+                }
+                if (on && player != null && player.isPlaying() && waitBox.isChecked()) startMic();
+                if (!on) stopMic();
+                applyWait();
+            }
+        });
+        midi = MidiInput.create(this, new MidiInput.Listener() {
+            @Override
+            public void onMidiNote(int pitch, int velocity, boolean on) {
+                if (!on) return;
+                userPressed(pitch);
+            }
+
+            @Override
+            public void onMidiDevices(String names) {
+                waitMidiText.setText(names.isEmpty() ? getString(R.string.wait_midi_none) : getString(R.string.wait_midi, names));
+            }
+        });
         setupSpinner(practiceStepSpinner, R.array.practice_steps);
         setupSpinner(practiceMuteSpinner, R.array.practice_mutes);
         practiceStepSpinner.setSelection(prefs.getInt("practice_step", 1));
@@ -1232,7 +1303,9 @@ public final class MainActivity extends Activity {
                 if (b == loopBox && !on) practiceBox.setChecked(false);
                 if (b == practiceCountIn) prefs.edit().putBoolean("practice_countin", on).apply();
                 practiceOpts.setVisibility(practiceBox.isChecked() ? View.VISIBLE : View.GONE);
+                updatePlayPartRow();
                 applyLoop(b == practiceBox);
+                if (b == practiceBox) applyWait();
             }
         };
         loopBox.setOnCheckedChangeListener(boxes);
@@ -1265,6 +1338,7 @@ public final class MainActivity extends Activity {
             @Override
             void onSelected(int position) {
                 prefs.edit().putInt("practice_mute", position).apply();
+                applyWait();
                 restartIfPlaying();
             }
         });
@@ -1329,15 +1403,109 @@ public final class MainActivity extends Activity {
 
     /** Part muted in practice mode ("you play"), or -1. */
     private int mutedPart() {
-        if (!practiceBox.isChecked()) return -1;
+        if (!practiceBox.isChecked() && !waitBox.isChecked()) return -1;
         int p = practiceMuteSpinner.getSelectedItemPosition();
         return p <= 0 ? -1 : p - 1;
     }
 
     /** Parts that are audible: the checked parts minus the one you practise. */
     private int playMask() {
+        if (waitBox.isChecked()) return partMask & ~waitTargetMask();
         int m = mutedPart();
         return m < 0 ? partMask : partMask & ~(1 << m);
+    }
+
+    // ------------------------------------------------------------ wait mode
+
+    private void updatePlayPartRow() {
+        playPartRow.setVisibility(practiceBox.isChecked() || waitBox.isChecked() ? View.VISIBLE : View.GONE);
+    }
+
+    /** Parts the user has to play in wait mode: the chosen part, or every enabled part. */
+    private int waitTargetMask() {
+        int m = mutedPart();
+        return m >= 0 ? (1 << m) & partMask : partMask;
+    }
+
+    private void applyWait() {
+        if (player == null || waitBox == null) return;
+        boolean on = waitBox.isChecked() && !notes.isEmpty();
+        player.setWait(notes, on ? waitTargetMask() : 0, on && waitMicBox.isChecked());
+        if (!on) keyboard.setExpected(null);
+    }
+
+    /** A key from the on-screen keyboard, a MIDI keyboard or the microphone. */
+    private void userPressed(int pitch) {
+        if (player == null) return;
+        lastPressed = pitch;
+        if (waitBox.isChecked() && player.isPlaying()) player.press(pitch);
+    }
+
+    private void startMic() {
+        if (mic != null) return;
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) return;
+        try {
+            android.media.AudioManager am = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
+            boolean unprocessed = "true".equals(am.getProperty(android.media.AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED));
+            mic = new MicListener(unprocessed, new com.hft.piano2midi.core.music.NoteListener.Callback() {
+                @Override
+                public void onNote(final int pitch) {
+                    ui.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            userPressed(pitch);
+                        }
+                    });
+                }
+            });
+            mic.start();
+        } catch (Throwable e) {
+            mic = null;
+            Toast.makeText(this, getString(R.string.mic_error, e.getMessage()), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void stopMic() {
+        if (mic != null) {
+            mic.stop();
+            mic = null;
+        }
+    }
+
+    private String noteName(int p) {
+        String n = key != null ? key.pcName(p % 12) : new String[]{"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}[p % 12];
+        return n + (p / 12 - 1);
+    }
+
+    /** Per frame while playing in wait mode: key hints, status, mic watch list, wrong-key flash. */
+    private void updateWait(double pos) {
+        if (!waitBox.isChecked() || player == null) return;
+        int[] ex = player.expected();
+        keyboard.setExpected(ex);
+        int wrong = player.wrong();
+        if (wrong > lastWrong && lastPressed >= 0) keyboard.flashWrong(lastPressed);
+        lastWrong = wrong;
+        if (player.waiting() && ex.length > 0) {
+            StringBuilder sb = new StringBuilder();
+            for (int p : ex) {
+                if (sb.length() > 0) sb.append(' ');
+                sb.append(noteName(p));
+            }
+            waitStatus.setText(getString(R.string.wait_waiting, sb, player.correct(), wrong));
+        } else {
+            waitStatus.setText(getString(R.string.wait_score, player.correct(), wrong));
+        }
+        if (mic != null) {
+            // tell the listener what to expect and which pitches our own speaker is playing
+            int pm = playMask();
+            boolean[] snd = new boolean[128];
+            for (Note n : notes) {
+                if (n.onset > pos + 0.1) break;
+                if (n.offset > pos - 0.1 && (pm & (1 << n.part)) != 0) snd[n.pitch] = true;
+            }
+            mic.update(ex, snd);
+        }
     }
 
     private void restartIfPlaying() {
@@ -1420,6 +1588,7 @@ public final class MainActivity extends Activity {
     private void togglePlay() {
         if (player == null || notes.isEmpty()) return;
         if (player.isPlaying()) {
+            stopMic();
             pausedAt = Math.max(0, player.position());
             player.stop();
             playBtn.setText(R.string.play);
@@ -1432,6 +1601,9 @@ public final class MainActivity extends Activity {
         syncPlayerTiming();
         applyLoop(false);
         if (loopActive() && (pausedAt < barStart(loopA) || pausedAt >= barStart(loopB + 1))) pausedAt = barStart(loopA);
+        applyWait();
+        lastWrong = 0;
+        if (waitBox.isChecked() && waitMicBox.isChecked()) startMic();
         player.play(notes, playMask(), pausedAt, countInBox.isChecked() && tempo != null ? 1 : 0);
         playBtn.setText(R.string.pause);
         keyboard.postOnAnimation(frame);
@@ -1447,6 +1619,8 @@ public final class MainActivity extends Activity {
     }
 
     private void stopPlayback() {
+        stopMic();
+        if (keyboard != null) keyboard.setExpected(null);
         if (player != null) player.stop();
         if (playBtn != null) playBtn.setText(R.string.play);
     }
@@ -1620,6 +1794,8 @@ public final class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         cancelled = true;
+        stopMic();
+        if (midi != null) midi.close();
         if (player != null) player.release();
         super.onDestroy();
     }

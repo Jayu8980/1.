@@ -44,6 +44,14 @@
     <string name="practice_hint">Practice loops the selected bars, starting slow and speeding up after every repeat until it reaches the Speed setting above. The part you play is muted but still shown on the keyboard, falling notes and sheet.</string>
     <string name="loop_status">Looping bars %1$d–%2$d · repeat %3$d · speed %4$d%%</string>
     <string name="loop_ready">Loop: bars %1$d–%2$d (%3$.1f s)</string>
+    <string name="wait_on">Wait mode: pause until you play the right keys</string>
+    <string name="wait_mic">Listen with the microphone (acoustic piano)</string>
+    <string name="wait_hint">Play on the on-screen keyboard, a USB/Bluetooth MIDI keyboard (connected automatically) or, with the microphone option, your acoustic piano. Expected keys glow gold; wrong keys flash red. Choose below which part you play; with "Nothing" you play every part. Headphones help the microphone ignore the accompaniment.</string>
+    <string name="wait_midi_none">No MIDI keyboard connected</string>
+    <string name="wait_midi">MIDI keyboard: %s</string>
+    <string name="wait_waiting">Waiting for %1$s  ·  ✓ %2$d  ✗ %3$d</string>
+    <string name="wait_score">Wait mode  ·  ✓ %1$d correct  ✗ %2$d wrong</string>
+    <string name="wait_mic_permission">Microphone permission is needed to listen to your piano</string>
     <string name="tab_falling">Falling notes</string>
     <string name="tab_roll">Piano roll</string>
     <string name="tab_sheet">Sheet</string>
@@ -105,7 +113,7 @@
         <item>+20% per repeat</item>
     </string-array>
     <string-array name="practice_mutes">
-        <item>Nothing (listen)</item>
+        <item>Nothing (listen / play everything)</item>
         <item>Melody (muted)</item>
         <item>Chords (muted)</item>
         <item>Bass (muted)</item>

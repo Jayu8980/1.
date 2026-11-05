@@ -436,20 +436,6 @@
                         android:layout_weight="1" />
                 </LinearLayout>
 
-                <LinearLayout style="@style/Row">
-
-                    <TextView
-                        style="@style/RowLabel"
-                        android:layout_width="140dp"
-                        android:text="@string/practice_mute" />
-
-                    <Spinner
-                        android:id="@+id/practice_mute"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-                </LinearLayout>
-
                 <CheckBox
                     android:id="@+id/practice_countin"
                     android:layout_width="wrap_content"
@@ -463,6 +449,66 @@
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp" />
             </LinearLayout>
+
+            <CheckBox
+                android:id="@+id/wait_on"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/wait_on" />
+
+            <LinearLayout
+                android:id="@+id/wait_opts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="8dp"
+                android:visibility="gone">
+
+                <CheckBox
+                    android:id="@+id/wait_mic"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/wait_mic" />
+
+                <TextView
+                    android:id="@+id/wait_midi"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/wait_hint"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/play_part_row"
+                style="@style/Row"
+                android:visibility="gone">
+
+                <TextView
+                    style="@style/RowLabel"
+                    android:layout_width="140dp"
+                    android:text="@string/practice_mute" />
+
+                <Spinner
+                    android:id="@+id/practice_mute"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/wait_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="#FFB26A00"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/loop_status"

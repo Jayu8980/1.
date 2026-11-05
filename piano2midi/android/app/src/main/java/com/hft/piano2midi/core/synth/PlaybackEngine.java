@@ -32,6 +32,10 @@ public final class PlaybackEngine {
     private int loops;
     private float[] tl = new float[1024], tr = new float[1024];
 
+    // wait mode
+    private WaitTrack wait;
+    private boolean waiting;
+
     // click voice
     private int clickPos = -1, clickLen;
     private double clickPhase, clickFreq;
@@ -86,6 +90,40 @@ public final class PlaybackEngine {
         if (!on && was) speed = practiceTarget;
     }
 
+    /** Wait mode: stop at each chord of `w` until it is played (null turns it off). */
+    public void setWait(WaitTrack w) {
+        wait = w;
+        waiting = false;
+        if (w != null) w.seek(music);
+    }
+
+    /** A key played by the user (on-screen, MIDI or detected by the microphone). */
+    public void press(int pitch) {
+        if (wait != null) wait.press(pitch, music);
+    }
+
+    public boolean waiting() {
+        return waiting;
+    }
+
+    /** Chord the user is expected to play next (empty without wait mode). */
+    public int[] expected() {
+        return wait != null ? wait.expected() : new int[0];
+    }
+
+    public int correct() {
+        return wait != null ? wait.correct() : 0;
+    }
+
+    public int wrong() {
+        return wait != null ? wait.wrong() : 0;
+    }
+
+    /** Speed of the musical clock right now (0 while waiting). */
+    public double effectiveSpeed() {
+        return waiting ? 0 : speed;
+    }
+
     /** Completed repeats since play started. */
     public int loops() {
         return loops;
@@ -99,6 +137,8 @@ public final class PlaybackEngine {
         loops++;
         synth.allNotesOff();
         if (sequence != null) sequence.seek(loopA);
+        if (wait != null) wait.seek(loopA);
+        waiting = false;
         music = countInEachLoop ? loopA - barSec() : loopA;
         if (practice) speed = Math.min(practiceTarget, speed + practiceStep);
     }
@@ -122,6 +162,11 @@ public final class PlaybackEngine {
         if (loop && (from < loopA || from >= loopB)) from = loopA;
         if (practice) speed = Math.min(practiceStart, practiceTarget);
         seq.seek(from);
+        waiting = false;
+        if (wait != null) {
+            wait.seek(from);
+            wait.resetScore();
+        }
         musicEnd = seq.duration;
         double start = from;
         if (countInBars > 0) {
@@ -148,7 +193,7 @@ public final class PlaybackEngine {
 
     /** True once all notes were sent and have died away. */
     public boolean finished() {
-        return !loop && sequence != null && sequence.finished() && music > musicEnd && synth.activeVoices() == 0;
+        return !loop && !waiting && sequence != null && sequence.finished() && music > musicEnd && synth.activeVoices() == 0;
     }
 
     /** Renders one block (wrapping at the loop end sample-accurately); returns the musical time at its start. */
@@ -161,6 +206,26 @@ public final class PlaybackEngine {
         int done = 0;
         while (done < frames) {
             int n = frames - done;
+            if (sequence != null && wait != null) {
+                if (waiting) {
+                    if (wait.resolvedWhileWaiting()) {
+                        waiting = false;
+                        continue;
+                    }
+                    renderFrozen(left, right, done, n);
+                    done += n;
+                    continue;
+                }
+                double stop = wait.nextStop();
+                if (music >= stop - 1e-9 && (!loop || stop < loopB)) {
+                    if (!wait.arrive()) waiting = true;
+                    continue;
+                }
+                if (stop < Double.POSITIVE_INFINITY) {
+                    int toStop = (int) Math.ceil((stop - music) / speed * rate);
+                    n = Math.max(1, Math.min(n, toStop));
+                }
+            }
             if (sequence != null && loop) {
                 if (music >= loopB - 1e-9) {
                     wrap();
@@ -173,6 +238,14 @@ public final class PlaybackEngine {
             done += n;
         }
         return m0;
+    }
+
+    /** Clock stopped (waiting): sounding notes ring on, nothing new starts. */
+    private void renderFrozen(float[] left, float[] right, int off, int n) {
+        synth.render(tl, tr, n);
+        mixClick(tl, tr, n, music);
+        System.arraycopy(tl, 0, left, off, n);
+        System.arraycopy(tr, 0, right, off, n);
     }
 
     private void renderChunk(float[] left, float[] right, int off, int n) {

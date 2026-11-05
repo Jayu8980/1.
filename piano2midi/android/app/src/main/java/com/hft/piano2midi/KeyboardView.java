@@ -47,6 +47,10 @@ public final class KeyboardView extends View {
     private long lastFrame;
     private Listener listener;
     private int touchColor = 0xFFFFCA28;
+    /** Wait mode: keys to play next (pulsing gold) and recently wrong keys (red flash). */
+    private final boolean[] expectedKey = new boolean[128];
+    private final long[] wrongUntil = new long[128];
+    private final Paint hintPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     public KeyboardView(Context ctx, AttributeSet attrs) {
         super(ctx, attrs);
@@ -60,6 +64,23 @@ public final class KeyboardView extends View {
         label.setColor(0xFF8A8A8A);
         label.setTextAlign(Paint.Align.CENTER);
         felt.setColor(0xFFB71C1C);
+    }
+
+    void setExpected(int[] pitches) {
+        boolean changed = false;
+        boolean[] n = new boolean[128];
+        if (pitches != null) for (int p : pitches) if (p >= 0 && p < 128) n[p] = true;
+        for (int p = 0; p < 128; p++) if (n[p] != expectedKey[p]) {
+            expectedKey[p] = n[p];
+            changed = true;
+        }
+        if (changed) postInvalidateOnAnimation();
+    }
+
+    void flashWrong(int pitch) {
+        if (pitch < 0 || pitch > 127) return;
+        wrongUntil[pitch] = SystemClock.uptimeMillis() + 400;
+        postInvalidateOnAnimation();
     }
 
     void setListener(Listener l) {
@@ -168,7 +189,29 @@ public final class KeyboardView extends View {
                 canvas.drawRect(geo.left(p), 0, geo.right(p), top, glow);
             }
         }
-        if (animating) postInvalidateOnAnimation();
+        // wait-mode hints on top
+        boolean anyHint = false;
+        float pulse = 0.55f + 0.45f * (float) Math.sin(now / 160.0);
+        hintPaint.setStyle(Paint.Style.STROKE);
+        hintPaint.setStrokeWidth(3 * density);
+        for (int p = KeyGeometry.LOW; p <= KeyGeometry.HIGH; p++) {
+            boolean wrongNow = wrongUntil[p] > now;
+            if (!expectedKey[p] && !wrongNow) continue;
+            anyHint = true;
+            boolean blackKey = KeyGeometry.isBlack(p);
+            float bottom = blackKey ? top + (h - top) * 0.62f : h - depth;
+            r.set(geo.left(p) + 2, top + 2, geo.right(p) - 2, bottom - 2);
+            if (wrongNow) {
+                hintPaint.setStyle(Paint.Style.FILL);
+                hintPaint.setColor(0xB0E53935);
+                canvas.drawRoundRect(r, 2 * density, 2 * density, hintPaint);
+                hintPaint.setStyle(Paint.Style.STROKE);
+            } else {
+                hintPaint.setColor(((int) (255 * pulse) << 24) | 0xFFC400);
+                canvas.drawRoundRect(r, 2 * density, 2 * density, hintPaint);
+            }
+        }
+        if (animating || anyHint) postInvalidateOnAnimation();
         else lastFrame = 0;
     }
 

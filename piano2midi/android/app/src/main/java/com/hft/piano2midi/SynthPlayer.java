@@ -10,6 +10,7 @@ import com.hft.piano2midi.core.synth.PlaybackEngine;
 import com.hft.piano2midi.core.synth.Sequence;
 import com.hft.piano2midi.core.synth.SoundFont;
 import com.hft.piano2midi.core.synth.Synth;
+import com.hft.piano2midi.core.synth.WaitTrack;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -124,6 +125,56 @@ final class SynthPlayer {
     }
 
     private volatile int loops;
+    private volatile boolean waiting;
+    private volatile int[] expected = new int[0];
+    private volatile int correct, wrong;
+
+    /**
+     * Wait mode: playback pauses at every chord of the parts in targetMask until it is played.
+     * Pass targetMask 0 to turn it off.
+     */
+    void setWait(List<Note> notes, int targetMask, boolean lenient) {
+        final WaitTrack w;
+        if (targetMask == 0) {
+            w = null;
+        } else {
+            w = new WaitTrack(notes, targetMask);
+            w.setLenient(lenient);
+        }
+        post(new Runnable() {
+            @Override
+            public void run() {
+                engine.setWait(w);
+            }
+        });
+    }
+
+    /** A key the user played (on-screen keyboard, MIDI keyboard or microphone). */
+    void press(final int pitch) {
+        post(new Runnable() {
+            @Override
+            public void run() {
+                engine.press(pitch);
+            }
+        });
+    }
+
+    boolean waiting() {
+        return waiting && playing;
+    }
+
+    /** Chord expected next in wait mode. */
+    int[] expected() {
+        return expected;
+    }
+
+    int correct() {
+        return correct;
+    }
+
+    int wrong() {
+        return wrong;
+    }
     private volatile double currentSpeed = 1.0;
 
     /** Completed loop repeats since play started. */
@@ -276,12 +327,17 @@ final class SynthPlayer {
                 double m = engine.render(l, r, BLOCK);
                 loops = engine.loops();
                 currentSpeed = engine.speed();
+                waiting = engine.waiting();
+                int[] ex = engine.expected();
+                if (ex != expected) expected = ex;
+                correct = engine.correct();
+                wrong = engine.wrong();
                 if (seqActive) {
                     synchronized (anchorFrame) {
                         int k = anchorCount % ANCHORS;
                         anchorFrame[k] = framesWritten;
                         anchorMusic[k] = m;
-                        anchorSpeed[k] = engine.speed();
+                        anchorSpeed[k] = engine.effectiveSpeed();
                         if (anchorCount == 0) firstSeqFrame = framesWritten;
                         anchorCount++;
                     }
