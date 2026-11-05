@@ -32,7 +32,9 @@ public final class FallingNotesView extends View {
     private double pos;
     private double maxDur = 0;
     /** Seconds of music visible above the hit line. */
-    private final double window = 3.0;
+    private double window = 3.0;
+    /** Live mode: time flows upward, the newest notes appear at the keyboard. */
+    private boolean live;
 
     public FallingNotesView(Context ctx, AttributeSet attrs) {
         super(ctx, attrs);
@@ -58,6 +60,12 @@ public final class FallingNotesView extends View {
         invalidate();
     }
 
+    void setLive(boolean on) {
+        live = on;
+        window = on ? 6.0 : 3.0;
+        invalidate();
+    }
+
     void setPartMask(int mask) {
         partMask = mask;
         invalidate();
@@ -74,7 +82,7 @@ public final class FallingNotesView extends View {
     }
 
     private float yFor(double t, float h) {
-        return (float) (h - (t - pos) / window * h);
+        return live ? (float) (h - (pos - t) / window * h) : (float) (h - (t - pos) / window * h);
     }
 
     @Override
@@ -84,7 +92,7 @@ public final class FallingNotesView extends View {
         for (int p = KeyGeometry.LOW; p <= KeyGeometry.HIGH; p++) {
             if (p % 12 == 0 || p % 12 == 5) c.drawRect(geo.left(p), 0, geo.left(p) + 1, h, lane);
         }
-        if (tempo != null) {
+        if (tempo != null && !live) {
             double beatSec = tempo.beatSec();
             long b0 = (long) Math.floor((pos - tempo.origin) / beatSec);
             for (long b = b0; ; b++) {
@@ -95,7 +103,7 @@ public final class FallingNotesView extends View {
                 c.drawRect(0, y, w, y + (b % tempo.beatsPerBar == 0 ? 1.5f * density : 1), b % tempo.beatsPerBar == 0 ? bar : beat);
             }
         }
-        double t0 = pos - 0.05, t1 = pos + window;
+        double t0 = live ? pos - window : pos - 0.05, t1 = live ? pos + 0.05 : pos + window;
         // notes are sorted by onset; start from the first that may still be visible
         int lo = 0, hi = notes.size();
         double from = t0 - maxDur;
@@ -112,7 +120,8 @@ public final class FallingNotesView extends View {
             boolean on = (partMask & (1 << n.part)) != 0;
             int col = Part.COLORS[n.part];
             boolean sounding = n.onset <= pos && n.offset > pos;
-            float y0 = yFor(n.offset, h), y1 = yFor(n.onset, h);
+            float ya = yFor(n.offset, h), yb = yFor(n.onset, h);
+            float y0 = Math.min(ya, yb), y1 = Math.max(ya, yb);
             float x0 = geo.left(n.pitch) + 1, x1 = geo.right(n.pitch) - 1;
             r.set(x0, y0, x1, Math.max(y0 + 3 * density, y1));
             int alpha = on ? (sounding ? 0xFF : 0xE0) : 0x30;
@@ -126,6 +135,7 @@ public final class FallingNotesView extends View {
         }
         // chord names at their onset
         for (ChordRecognizer.Chord ch : chords) {
+            if (live) break;
             if (ch.root < 0 || ch.end < pos || ch.start > t1) continue;
             float y = yFor(ch.start, h);
             if (y > h) y = h;

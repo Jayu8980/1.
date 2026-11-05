@@ -30,6 +30,14 @@ public final class Transcriber {
         /** Number of frames that correspond to real audio (the rest is padding). */
         public final int validFrames;
 
+        public Result(float[][] onset, float[][] offset, float[][] mpe, int[][] velocity, int validFrames) {
+            this.onset = onset;
+            this.offset = offset;
+            this.mpe = mpe;
+            this.velocity = velocity;
+            this.validFrames = validFrames;
+        }
+
         Result(int frames, int validFrames) {
             onset = new float[frames][NUM_NOTE];
             offset = new float[frames][NUM_NOTE];
@@ -43,6 +51,22 @@ public final class Transcriber {
 
     public static int numChunks(int numFrames) {
         return (numFrames + NUM_FRAME - 1) / NUM_FRAME;
+    }
+
+    /**
+     * Model input for chunk c: frames [c*128 - 32, c*128 + 160) transposed to [N_MELS][WINDOW],
+     * padded with log(1e-8) outside [0, nFrames).
+     */
+    static void fillWindow(java.util.List<float[]> feature, int nFrames, int c, float[] spec) {
+        int nBins = FeatureExtractor.N_MELS;
+        int i = c * NUM_FRAME;
+        for (int w = 0; w < WINDOW; w++) {
+            int fr = i + w - MARGIN_B;
+            float[] row = (fr >= 0 && fr < nFrames) ? feature.get(fr) : null;
+            for (int b = 0; b < nBins; b++) {
+                spec[b * WINDOW + w] = row != null ? row[b] : FeatureExtractor.MIN_VALUE;
+            }
+        }
     }
 
     public static Result transcribe(float[][] feature, Model model, Progress progress) throws Exception {
@@ -61,14 +85,7 @@ public final class Transcriber {
         for (int c = 0; c < chunks; c++) {
             if (progress != null && progress.isCancelled()) throw new InterruptedException("cancelled");
             int i = c * NUM_FRAME;
-            // padded input row r corresponds to feature row r - MARGIN_B
-            for (int w = 0; w < WINDOW; w++) {
-                int fr = i + w - MARGIN_B;
-                float[] row = (fr >= 0 && fr < nFrames) ? feature[fr] : null;
-                for (int b = 0; b < nBins; b++) {
-                    spec[b * WINDOW + w] = row != null ? row[b] : FeatureExtractor.MIN_VALUE;
-                }
-            }
+            fillWindow(java.util.Arrays.asList(feature), nFrames, c, spec);
             model.run(spec, on, off, mp, vel);
             for (int f = 0; f < NUM_FRAME; f++) {
                 System.arraycopy(on, f * NUM_NOTE, res.onset[i + f], 0, NUM_NOTE);

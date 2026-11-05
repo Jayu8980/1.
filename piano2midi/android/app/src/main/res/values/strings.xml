@@ -4,7 +4,7 @@
     <string name="open_with">Convert to MIDI</string>
     <string name="subtitle">Polyphonic piano transcription with hFT-Transformer, fully on-device.</string>
     <string name="pick">Choose audio file</string>
-    <string name="no_file">No file selected (mp3, m4a, wav, flac, ogg… up to 10 minutes)</string>
+    <string name="no_file">Record live piano, or choose an audio file (mp3, m4a, wav, flac, ogg… up to 10 minutes)</string>
     <string name="convert">Convert to MIDI</string>
     <string name="cancel">Cancel</string>
     <string name="play">Play</string>
@@ -14,6 +14,17 @@
     <string name="share_midi">Share MIDI</string>
     <string name="share_pdf">Share PDF</string>
     <string name="share">Share</string>
+    <string name="record">● Record piano</string>
+    <string name="record_stop">■ Stop recording</string>
+    <string name="save_wav">Save recording (.wav)</string>
+    <string name="recording_status">● Recording %1$s · transcribed %2$s · %3$d notes</string>
+    <string name="recording_starting">Starting microphone and model…</string>
+    <string name="recording_finishing">Finishing transcription (%d segments left)…</string>
+    <string name="recording_name">Recording %s</string>
+    <string name="mic_denied">Microphone permission is needed to record</string>
+    <string name="mic_error">Microphone unavailable: %s</string>
+    <string name="recording_hint">Place the phone near the piano. Notes appear about 2–3 s after you play them.</string>
+    <string name="wav_saved">Recording saved</string>
     <string name="tab_falling">Falling notes</string>
     <string name="tab_roll">Piano roll</string>
     <string name="tab_sheet">Sheet</string>

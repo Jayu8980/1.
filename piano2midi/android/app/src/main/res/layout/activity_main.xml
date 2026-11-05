@@ -60,6 +60,40 @@
                     android:textColor="#FFFFFFFF" />
             </LinearLayout>
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/record"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:backgroundTint="#FFE53935"
+                    android:text="@string/record"
+                    android:textColor="#FFFFFFFF" />
+
+                <Button
+                    android:id="@+id/save_wav"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/save_wav"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/level"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="8dp"
+                android:max="100"
+                android:progressTint="#FFE53935"
+                android:visibility="gone" />
+
             <TextView
                 android:id="@+id/file_name"
                 android:layout_width="match_parent"

@@ -14,6 +14,7 @@ audio file ─► MediaCodec decode ─► mono ─► resample 16 kHz ─► lo
 ## Features
 
 - **Input:** mp3, m4a/aac, wav, flac, ogg/opus and anything else the device decoder supports, up to 10 minutes. You can also share audio straight into the app from another app ("Convert to MIDI").
+- **Live microphone recording ("● Record piano"):** the app transcribes while you play. Each 2 s window runs through the model as soon as its 0.5 s of look-ahead audio has arrived, so notes appear 2–3 s after you play them, rising from the keyboard. A level meter shows the input. It uses the UNPROCESSED audio source when the device supports it (no voice noise-suppression or automatic gain). If the phone is slower than real time it catches up after you stop. The result is bit-identical to transcribing the saved recording as a file, and you can save the recording as `.wav`.
 - **Transcription:** polyphonic, across all 88 piano keys, with velocity.
 - **Melody, chords and bass:** every note is assigned to one of three parts (top line, accompaniment, lowest line). Checkboxes turn each part on or off for playback, display and the sheet.
 - **Playback with SF2 instruments:** a built-in SoundFont synthesizer, written in Java, plays through AudioTrack. Each part gets its own instrument: Grand Piano, Electric Piano, Nylon or Steel Guitar, Violin, Flute, Acoustic or Fingered Bass. You can also **load any `.sf2` file** and choose from its presets.
@@ -123,6 +124,8 @@ WAV file or to compare results with the Python implementation.
 | `.../core/sheet/` | quantized score model and engraver (draws to Canvas, PDF or Java2D) |
 | `.../core/synth/` | SoundFont 2 parser, sampler synth and note sequencer |
 | `.../core/OnnxModel.java` | ONNX Runtime wrapper |
+| `.../core/LiveTranscriber.java` | streaming resample → features → model chunks for the microphone |
+| `.../MicRecorder.java` | AudioRecord capture (UNPROCESSED/16 kHz preferred) |
 | `.../AudioDecoder.java` | MediaExtractor/MediaCodec decoder → mono float PCM |
 | `.../SynthPlayer.java` | AudioTrack streaming, play position, live keys |
 | `.../KeyboardView.java`, `FallingNotesView.java`, `PianoRollView.java`, `SheetView.java` | views |

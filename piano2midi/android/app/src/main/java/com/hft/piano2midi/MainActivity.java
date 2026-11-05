@@ -28,6 +28,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.hft.piano2midi.core.FeatureExtractor;
+import com.hft.piano2midi.core.LiveTranscriber;
+import com.hft.piano2midi.core.WavWriter;
 import com.hft.piano2midi.core.MidiWriter;
 import com.hft.piano2midi.core.Note;
 import com.hft.piano2midi.core.NoteDecoder;
@@ -58,7 +60,7 @@ import java.util.Locale;
 
 public final class MainActivity extends Activity {
 
-    private static final int REQ_PICK = 1, REQ_SAVE = 2, REQ_SF2 = 3;
+    private static final int REQ_PICK = 1, REQ_SAVE = 2, REQ_SF2 = 3, REQ_SAVE_WAV = 4, REQ_MIC = 5;
     private static final String MODEL_ASSET = "hft_transformer.onnx";
     private static final String SF2_ASSET = "instruments.sf2";
     private static final String CUSTOM_SF2 = "custom.sf2";
@@ -116,6 +118,36 @@ public final class MainActivity extends Activity {
     private final int[] activeKeys = new int[128];
     private boolean suppressSpinner;
 
+    // microphone recording
+    private Button recordBtn, saveWavBtn;
+    private ProgressBar levelBar;
+    private volatile MicRecorder recorder;
+    private float[] recordedPcm;
+    private int recordedLen, recordedRate;
+    private volatile double liveHead;
+    private volatile int liveNoteCount;
+    private double liveShown;
+    private final Runnable recordTick = new Runnable() {
+        @Override
+        public void run() {
+            MicRecorder r = recorder;
+            if (r == null) return;
+            levelBar.setProgress((int) Math.min(100, Math.sqrt(r.rms()) * 220));
+            if (r.isRunning()) {
+                statusText.setText(getString(R.string.recording_status, clock(r.seconds()), clock(liveHead), liveNoteCount));
+            }
+            // glide the live view toward the transcription head
+            liveShown += (liveHead - liveShown) * 0.12;
+            falling.setPosition(liveShown);
+            for (int i = 0; i < 128; i++) activeKeys[i] = -1;
+            for (Note n : notes) {
+                if (n.onset <= liveShown && n.offset > liveShown - 0.05) activeKeys[n.pitch] = n.part;
+            }
+            keyboard.setActive(activeKeys);
+            keyboard.postOnAnimation(this);
+        }
+    };
+
     // pending export (waiting for the save dialog)
     private int pendingFormat, pendingMask;
 
@@ -169,6 +201,35 @@ public final class MainActivity extends Activity {
         sheet = (SheetView) findViewById(R.id.sheet);
         sheetScroll = (ScrollView) findViewById(R.id.sheet_scroll);
         keyboard = (KeyboardView) findViewById(R.id.keyboard);
+        recordBtn = (Button) findViewById(R.id.record);
+        saveWavBtn = (Button) findViewById(R.id.save_wav);
+        levelBar = (ProgressBar) findViewById(R.id.level);
+        recordBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (recorder != null) {
+                    stopRecording();
+                } else if (worker == null) {
+                    if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                            == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        startRecording();
+                    } else {
+                        requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, REQ_MIC);
+                    }
+                }
+            }
+        });
+        saveWavBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (recordedPcm == null) return;
+                Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType("audio/wav");
+                i.putExtra(Intent.EXTRA_TITLE, safeName(audioName) + ".wav");
+                startActivityForResult(i, REQ_SAVE_WAV);
+            }
+        });
 
         tabs = new Button[]{(Button) findViewById(R.id.tab_falling), (Button) findViewById(R.id.tab_roll),
                 (Button) findViewById(R.id.tab_sheet)};
@@ -600,10 +661,11 @@ public final class MainActivity extends Activity {
         if (requestCode == REQ_PICK) setAudio(data.getData());
         else if (requestCode == REQ_SAVE) saveTo(data.getData());
         else if (requestCode == REQ_SF2) importSoundFont(data.getData());
+        else if (requestCode == REQ_SAVE_WAV) saveWav(data.getData());
     }
 
     private void setAudio(Uri uri) {
-        if (worker != null) return;
+        if (worker != null || recorder != null) return;
         audioUri = uri;
         String name = displayName(uri);
         fileText.setText(name);
@@ -769,6 +831,7 @@ public final class MainActivity extends Activity {
         setResultButtonsEnabled(false);
         playBtn.setEnabled(false);
         pickBtn.setEnabled(false);
+        recordBtn.setEnabled(false);
         convertBtn.setText(R.string.cancel);
         progress.setMax(1000);
         progress.setProgress(0);
@@ -875,10 +938,210 @@ public final class MainActivity extends Activity {
 
     private void finishWorker() {
         worker = null;
+        recordBtn.setEnabled(true);
         pickBtn.setEnabled(true);
         convertBtn.setEnabled(audioUri != null);
         convertBtn.setText(R.string.convert);
         progress.setVisibility(View.GONE);
+    }
+
+    // ------------------------------------------------------------ microphone
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQ_MIC) return;
+        if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            startRecording();
+        } else {
+            Toast.makeText(this, R.string.mic_denied, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void startRecording() {
+        if (worker != null || recorder != null) return;
+        stopPlayback();
+        final MicRecorder rec;
+        try {
+            android.media.AudioManager am = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
+            boolean unprocessed = "true".equals(am.getProperty(android.media.AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED));
+            rec = new MicRecorder(MAX_SECONDS, unprocessed);
+            rec.start();
+        } catch (Throwable e) {
+            Toast.makeText(this, getString(R.string.mic_error, e.getMessage()), Toast.LENGTH_LONG).show();
+            return;
+        }
+        recorder = rec;
+        cancelled = false;
+        result = null;
+        notes = Collections.emptyList();
+        pausedAt = 0;
+        liveHead = 0;
+        liveShown = 0;
+        liveNoteCount = 0;
+        recordedPcm = null;
+        analyze();
+        audioName = getString(R.string.recording_name,
+                new java.text.SimpleDateFormat("yyyy-MM-dd HH-mm", Locale.US).format(new java.util.Date()));
+        fileText.setText(audioName + " — " + getString(R.string.recording_hint));
+        statusText.setText(R.string.recording_starting);
+        statsText.setText("");
+        recordBtn.setText(R.string.record_stop);
+        saveWavBtn.setVisibility(View.GONE);
+        levelBar.setVisibility(View.VISIBLE);
+        pickBtn.setEnabled(false);
+        convertBtn.setEnabled(false);
+        setResultButtonsEnabled(false);
+        playBtn.setEnabled(false);
+        falling.setLive(true);
+        falling.setData(notes, null, null);
+        if (tab == 2) selectTab(0);
+        keyboard.postOnAnimation(recordTick);
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        worker = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final long t0 = SystemClock.elapsedRealtime();
+                try {
+                    File modelFile = ensureAsset(MODEL_ASSET);
+                    int threads = Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors()));
+                    OnnxModel model = new OnnxModel(modelFile.getAbsolutePath(), threads);
+                    try {
+                        LiveTranscriber lt = new LiveTranscriber(model, rec.sampleRate());
+                        while (rec.isRunning() && !cancelled) {
+                            Object[] snap = rec.snapshot();
+                            if (lt.step((float[]) snap[0], (Integer) snap[1])) {
+                                publishLive(lt);
+                            } else {
+                                Thread.sleep(40);
+                            }
+                        }
+                        rec.stop();
+                        Object[] snap = rec.snapshot();
+                        final float[] pcm = (float[]) snap[0];
+                        final int len = (Integer) snap[1];
+                        lt.finish(pcm, len);
+                        while (!cancelled) {
+                            final int left = lt.remainingChunks();
+                            ui.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    statusText.setText(getString(R.string.recording_finishing, left));
+                                }
+                            });
+                            if (!lt.finishStep()) break;
+                            publishLive(lt);
+                        }
+                        if (cancelled) throw new InterruptedException();
+                        final Transcriber.Result r = lt.result();
+                        final double seconds = lt.samples16k() / (double) FeatureExtractor.SAMPLE_RATE;
+                        final int rate = rec.sampleRate();
+                        final long elapsed = SystemClock.elapsedRealtime() - t0;
+                        ui.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                endRecordingUi();
+                                recordedPcm = pcm;
+                                recordedLen = len;
+                                recordedRate = rate;
+                                saveWavBtn.setVisibility(len > 0 ? View.VISIBLE : View.GONE);
+                                result = r;
+                                audioSeconds = seconds;
+                                finishWorker();
+                                redecode();
+                                updateStats(elapsed);
+                                statusText.setText(R.string.status_done);
+                            }
+                        });
+                    } finally {
+                        model.close();
+                    }
+                } catch (final Throwable e) {
+                    rec.stop();
+                    ui.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            endRecordingUi();
+                            finishWorker();
+                            if (e instanceof InterruptedException) {
+                                statusText.setText(R.string.status_cancelled);
+                            } else {
+                                String msg = e instanceof OutOfMemoryError ? getString(R.string.err_oom)
+                                        : (e.getMessage() != null ? e.getMessage() : e.toString());
+                                statusText.setText(getString(R.string.status_error, msg));
+                            }
+                        }
+                    });
+                }
+            }
+        }, "live-transcriber");
+        worker.start();
+    }
+
+    /** Decodes the partial result on the worker thread and shows it. */
+    private void publishLive(LiveTranscriber lt) {
+        Transcriber.Result partial = lt.result();
+        final List<Note> ns = NoteDecoder.decode(partial, Math.max(0.01, thr(onsetSeek)),
+                Math.max(0.01, thr(offsetSeek)), Math.max(0.01, thr(frameSeek)), NoteDecoder.OffsetMode.SHORTER, true);
+        PartSplitter.split(ns);
+        final double head = lt.transcribedSeconds();
+        ui.post(new Runnable() {
+            @Override
+            public void run() {
+                if (recorder == null && worker == null) return;
+                notes = ns;
+                liveHead = head;
+                liveNoteCount = ns.size();
+                falling.setData(ns, null, null);
+                roll.setData(ns, null, null, head);
+                roll.setPartMask(partMask);
+                if (tab == 1) rollScroll.scrollTo(Math.max(0, (int) roll.xFor(head) - rollScroll.getWidth() * 2 / 3), 0);
+            }
+        });
+    }
+
+    private void stopRecording() {
+        MicRecorder r = recorder;
+        if (r == null) return;
+        recordBtn.setEnabled(false);
+        levelBar.setVisibility(View.GONE);
+        // the worker notices, stops the device and transcribes the remaining audio
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                MicRecorder rr = recorder;
+                if (rr != null) rr.stop();
+            }
+        }, "mic-stop").start();
+    }
+
+    private void endRecordingUi() {
+        recorder = null;
+        ui.removeCallbacks(recordTick);
+        getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        recordBtn.setText(R.string.record);
+        recordBtn.setEnabled(true);
+        levelBar.setVisibility(View.GONE);
+        falling.setLive(false);
+        fileText.setText(audioName);
+        for (int i = 0; i < 128; i++) activeKeys[i] = -1;
+        keyboard.setActive(activeKeys);
+    }
+
+    private void saveWav(Uri uri) {
+        try {
+            OutputStream os = getContentResolver().openOutputStream(uri);
+            if (os == null) throw new IOException("cannot open destination");
+            try {
+                WavWriter.write(recordedPcm, recordedLen, recordedRate, new java.io.BufferedOutputStream(os));
+            } finally {
+                os.close();
+            }
+            Toast.makeText(this, R.string.wav_saved, Toast.LENGTH_SHORT).show();
+        } catch (IOException e) {
+            Toast.makeText(this, getString(R.string.status_error, e.getMessage()), Toast.LENGTH_LONG).show();
+        }
     }
 
     // ------------------------------------------------------------ playback
@@ -1071,6 +1334,8 @@ public final class MainActivity extends Activity {
     @Override
     protected void onStop() {
         super.onStop();
+        // background apps get silence from the microphone: finish the recording instead
+        if (recorder != null) stopRecording();
         if (player != null && player.isPlaying()) {
             pausedAt = player.position();
             stopPlayback();

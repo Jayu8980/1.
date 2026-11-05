@@ -103,38 +103,49 @@ public final class FeatureExtractor {
     public float[][] logMel(float[] wav16k, Progress progress) {
         int n = wav16k.length;
         int frames = numFrames(n);
-        int pad = N_FFT / 2;
-        float[][] out = new float[frames][N_MELS];
-        double[] re = new double[N_FFT];
-        double[] im = new double[N_FFT];
-        double[] power = new double[N_FREQS];
+        float[][] out = new float[frames][];
         for (int t = 0; t < frames; t++) {
-            int start = t * HOP - pad;
-            for (int i = 0; i < N_FFT; i++) {
-                int idx = start + i;
-                re[i] = (idx >= 0 && idx < n) ? wav16k[idx] * window[i] : 0.0;
-                im[i] = 0.0;
-            }
-            fft.transform(re, im);
-            for (int k = 0; k < N_FREQS; k++) {
-                power[k] = re[k] * re[k] + im[k] * im[k];
-            }
-            float[] row = out[t];
-            for (int m = 0; m < N_MELS; m++) {
-                float[] w = melWeights[m];
-                int s = melStart[m];
-                double acc = 0.0;
-                for (int k = 0; k < w.length; k++) {
-                    acc += w[k] * power[s + k];
-                }
-                row[m] = (float) Math.log(acc + LOG_OFFSET);
-            }
+            out[t] = frame(wav16k, n, t);
             if (progress != null && (t & 255) == 0) {
                 progress.onProgress(t / (float) frames);
             }
         }
         if (progress != null) progress.onProgress(1f);
         return out;
+    }
+
+    /** Frames whose analysis window lies completely inside the first n samples (for streaming). */
+    public static int framesReady(int n) {
+        return n < N_FFT / 2 ? 0 : (n - N_FFT / 2) / HOP + 1;
+    }
+
+    private final double[] re = new double[N_FFT];
+    private final double[] im = new double[N_FFT];
+    private final double[] power = new double[N_FREQS];
+
+    /** Log-mel frame t of a signal whose first n samples are wav[0..n) (zero beyond). Not thread-safe. */
+    public float[] frame(float[] wav, int n, int t) {
+        int start = t * HOP - N_FFT / 2;
+        for (int i = 0; i < N_FFT; i++) {
+            int idx = start + i;
+            re[i] = (idx >= 0 && idx < n) ? wav[idx] * window[i] : 0.0;
+            im[i] = 0.0;
+        }
+        fft.transform(re, im);
+        for (int k = 0; k < N_FREQS; k++) {
+            power[k] = re[k] * re[k] + im[k] * im[k];
+        }
+        float[] row = new float[N_MELS];
+        for (int m = 0; m < N_MELS; m++) {
+            float[] w = melWeights[m];
+            int s0 = melStart[m];
+            double acc = 0.0;
+            for (int k = 0; k < w.length; k++) {
+                acc += w[k] * power[s0 + k];
+            }
+            row[m] = (float) Math.log(acc + LOG_OFFSET);
+        }
+        return row;
     }
 
     /** Iterative radix-2 complex FFT. */
