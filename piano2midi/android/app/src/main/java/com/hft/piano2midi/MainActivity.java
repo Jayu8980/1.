@@ -121,6 +121,11 @@ public final class MainActivity extends Activity {
     // microphone recording
     private Button recordBtn, saveWavBtn;
     private ProgressBar levelBar;
+    // metronome / speed
+    private CheckBox metronomeBox, countInBox;
+    private TextView beatText, speedLabel;
+    private SeekBar speedSeek;
+    private double speed = 1.0;
     private volatile MicRecorder recorder;
     private float[] recordedPcm;
     private int recordedLen, recordedRate;
@@ -201,6 +206,48 @@ public final class MainActivity extends Activity {
         sheet = (SheetView) findViewById(R.id.sheet);
         sheetScroll = (ScrollView) findViewById(R.id.sheet_scroll);
         keyboard = (KeyboardView) findViewById(R.id.keyboard);
+        metronomeBox = (CheckBox) findViewById(R.id.metronome);
+        countInBox = (CheckBox) findViewById(R.id.count_in);
+        beatText = (TextView) findViewById(R.id.beat);
+        speedLabel = (TextView) findViewById(R.id.speed_label);
+        speedSeek = (SeekBar) findViewById(R.id.speed_seek);
+        metronomeBox.setChecked(prefs.getBoolean("metronome", false));
+        countInBox.setChecked(prefs.getBoolean("count_in", false));
+        speed = prefs.getInt("speed_pct", 100) / 100.0;
+        speedSeek.setProgress((int) Math.round(speed * 100 - 25) / 5);
+        metronomeBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean on) {
+                prefs.edit().putBoolean("metronome", on).apply();
+                if (player != null) player.setMetronome(on);
+            }
+        });
+        countInBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean on) {
+                prefs.edit().putBoolean("count_in", on).apply();
+            }
+        });
+        speedSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar sb, int p, boolean fromUser) {
+                if (fromUser) setSpeed((25 + 5 * p) / 100.0);
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar sb) { }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar sb) { }
+        });
+        findViewById(R.id.speed_reset).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                setSpeed(1.0);
+                speedSeek.setProgress(15);
+            }
+        });
+        updateSpeedLabel();
         recordBtn = (Button) findViewById(R.id.record);
         saveWavBtn = (Button) findViewById(R.id.save_wav);
         levelBar = (ProgressBar) findViewById(R.id.level);
@@ -593,6 +640,7 @@ public final class MainActivity extends Activity {
             });
         }
         player.setFont(sf, chans);
+        syncPlayerTiming();
         playBtn.setEnabled(!notes.isEmpty());
     }
 
@@ -774,6 +822,8 @@ public final class MainActivity extends Activity {
         }
         sheetDirty = true;
         if (tab == 2) rebuildSheet();
+        syncPlayerTiming();
+        updateSpeedLabel();
         showPosition(pausedAt, false);
     }
 
@@ -1144,12 +1194,51 @@ public final class MainActivity extends Activity {
         }
     }
 
+    // ------------------------------------------------------------ metronome / speed
+
+    private void setSpeed(double s) {
+        speed = Math.max(0.25, Math.min(2.0, s));
+        prefs.edit().putInt("speed_pct", (int) Math.round(speed * 100)).apply();
+        if (player != null) player.setSpeed(speed);
+        updateSpeedLabel();
+    }
+
+    private void updateSpeedLabel() {
+        int pct = (int) Math.round(speed * 100);
+        speedLabel.setText(tempo != null ? getString(R.string.speed_label, pct, (int) Math.round(tempo.bpm * speed))
+                : getString(R.string.speed_label_nobpm, pct));
+    }
+
+    /** Sends the current beat grid and metronome settings to the player. */
+    private void syncPlayerTiming() {
+        if (player == null) return;
+        if (tempo != null) player.setGrid(tempo.origin, tempo.beatSec(), tempo.beatsPerBar);
+        player.setMetronome(metronomeBox.isChecked());
+        player.setSpeed(speed);
+    }
+
+    private void updateBeat(double pos, boolean playing) {
+        if (tempo == null) {
+            beatText.setText("");
+            return;
+        }
+        int n = tempo.beatsPerBar;
+        int cur = -1;
+        if (playing) {
+            long k = (long) Math.floor((pos - tempo.origin) / tempo.beatSec() + 1e-6);
+            cur = (int) Math.floorMod(k, (long) n);
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < n; i++) sb.append(i == cur ? '\u25CF' : '\u25CB');
+        beatText.setText(sb);
+    }
+
     // ------------------------------------------------------------ playback
 
     private void togglePlay() {
         if (player == null || notes.isEmpty()) return;
         if (player.isPlaying()) {
-            pausedAt = player.position();
+            pausedAt = Math.max(0, player.position());
             player.stop();
             playBtn.setText(R.string.play);
             showPosition(pausedAt, false);
@@ -1158,7 +1247,8 @@ public final class MainActivity extends Activity {
         double end = 0;
         for (Note n : notes) end = Math.max(end, n.offset);
         if (pausedAt >= end) pausedAt = 0;
-        player.play(notes, partMask, pausedAt);
+        syncPlayerTiming();
+        player.play(notes, partMask, pausedAt, countInBox.isChecked() && tempo != null ? 1 : 0);
         playBtn.setText(R.string.pause);
         keyboard.postOnAnimation(frame);
     }
@@ -1202,6 +1292,7 @@ public final class MainActivity extends Activity {
             }
         }
         keyboard.setActive(activeKeys);
+        updateBeat(pos, playing);
         timeText.setText(clock(pos) + " / " + clock(audioSeconds));
         if (tab == 0) {
             falling.setPosition(pos);

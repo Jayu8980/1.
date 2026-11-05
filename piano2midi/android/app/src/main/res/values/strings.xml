@@ -25,6 +25,11 @@
     <string name="mic_error">Microphone unavailable: %s</string>
     <string name="recording_hint">Place the phone near the piano. Notes appear about 2–3 s after you play them.</string>
     <string name="wav_saved">Recording saved</string>
+    <string name="metronome">Metronome</string>
+    <string name="count_in">Count-in</string>
+    <string name="speed_label">Speed %1$d%% · %2$d BPM</string>
+    <string name="speed_label_nobpm">Speed %d%%</string>
+    <string name="speed_reset">1×</string>
     <string name="tab_falling">Falling notes</string>
     <string name="tab_roll">Piano roll</string>
     <string name="tab_sheet">Sheet</string>

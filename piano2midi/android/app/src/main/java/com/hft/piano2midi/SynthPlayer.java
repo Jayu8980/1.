@@ -6,6 +6,7 @@ import android.media.AudioManager;
 import android.media.AudioTrack;
 
 import com.hft.piano2midi.core.Note;
+import com.hft.piano2midi.core.synth.PlaybackEngine;
 import com.hft.piano2midi.core.synth.Sequence;
 import com.hft.piano2midi.core.synth.SoundFont;
 import com.hft.piano2midi.core.synth.Synth;
@@ -14,33 +15,41 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
- * Streams the SoundFont synth to an AudioTrack. Handles sequence playback (with an
- * accurate play position for the keyboard / sheet animation) and live notes from the
- * on-screen keyboard. All synth access happens on the audio thread via a command queue.
+ * Streams the {@link PlaybackEngine} (SoundFont synth + metronome, variable speed) to an
+ * AudioTrack and reports the audible musical position for the keyboard / sheet animation.
+ * Live notes from the on-screen keyboard go through the same synth. All engine access
+ * happens on the audio thread via a command queue.
  */
 final class SynthPlayer {
 
     static final int LIVE_CHANNEL = 3;
     private static final int BLOCK = 256;
+    private static final int ANCHORS = 512;
 
     private final int rate;
     private final Synth synth;
+    private final PlaybackEngine engine;
     private final ConcurrentLinkedQueue<Runnable> commands = new ConcurrentLinkedQueue<Runnable>();
     private Thread thread;
     private volatile boolean running;
 
-    // sequence state (audio thread writes, UI reads)
-    private Sequence sequence;
     private volatile boolean playing;
-    private volatile double seqFrom;
-    private volatile long seqStartFrame = -1;
+    private volatile double idlePosition;
     private volatile AudioTrack track;
     private volatile Runnable onFinished;
+
+    // (frame written, musical time, speed) for recent blocks: maps the playback head to music time
+    private final long[] anchorFrame = new long[ANCHORS];
+    private final double[] anchorMusic = new double[ANCHORS];
+    private final double[] anchorSpeed = new double[ANCHORS];
+    private int anchorCount;
+    private long firstSeqFrame = -1;
 
     SynthPlayer(SoundFont font) {
         int r = AudioTrack.getNativeOutputSampleRate(AudioManager.STREAM_MUSIC);
         rate = r >= 22050 && r <= 96000 ? r : 44100;
         synth = new Synth(font, rate);
+        engine = new PlaybackEngine(synth, rate);
     }
 
     void setFont(final SoundFont font, final SoundFont.Preset[] presets) {
@@ -66,22 +75,64 @@ final class SynthPlayer {
         onFinished = r;
     }
 
-    /** Starts playing `notes` (parts in partMask) from `from` seconds. */
-    void play(List<Note> notes, int partMask, final double from) {
-        final Sequence seq = new Sequence(notes, partMask);
-        seq.seek(from);
-        playing = true;
-        seqFrom = from;
-        seqStartFrame = -1;
+    /** Beat grid for the metronome. */
+    void setGrid(final double origin, final double beatSec, final int beatsPerBar) {
         post(new Runnable() {
             @Override
             public void run() {
-                synth.allNotesOff();
-                sequence = seq;
-                seqStartFrame = -2; // set on the first rendered block
+                engine.setGrid(origin, beatSec, beatsPerBar);
+            }
+        });
+    }
+
+    void setMetronome(final boolean on) {
+        post(new Runnable() {
+            @Override
+            public void run() {
+                engine.setMetronome(on);
+            }
+        });
+    }
+
+    void setClickVolume(final float v) {
+        post(new Runnable() {
+            @Override
+            public void run() {
+                engine.setClickGain(v);
+            }
+        });
+    }
+
+    /** Playback speed (1.0 = original tempo); applied immediately, also while playing. */
+    void setSpeed(final double s) {
+        post(new Runnable() {
+            @Override
+            public void run() {
+                engine.setSpeed(s);
+            }
+        });
+    }
+
+    /** Starts playing `notes` (parts in partMask) from `from` seconds, optionally after a count-in. */
+    void play(List<Note> notes, int partMask, final double from, final int countInBars) {
+        final Sequence seq = new Sequence(notes, partMask);
+        playing = true;
+        idlePosition = from;
+        post(new Runnable() {
+            @Override
+            public void run() {
+                engine.start(seq, from, countInBars);
+                synchronized (anchorFrame) {
+                    anchorCount = 0;
+                    firstSeqFrame = -1;
+                }
             }
         });
         ensureThread();
+    }
+
+    void play(List<Note> notes, int partMask, double from) {
+        play(notes, partMask, from, 0);
     }
 
     void stop() {
@@ -89,8 +140,7 @@ final class SynthPlayer {
         post(new Runnable() {
             @Override
             public void run() {
-                sequence = null;
-                synth.allNotesOff();
+                engine.stop();
             }
         });
     }
@@ -99,13 +149,23 @@ final class SynthPlayer {
         return playing;
     }
 
-    /** Current playback position in seconds (what is audible now). */
+    /** Musical position (seconds of the transcription) that is audible right now. */
     double position() {
         AudioTrack t = track;
-        long start = seqStartFrame;
-        if (!playing || t == null || start < 0) return seqFrom;
+        if (!playing || t == null) return idlePosition;
         long head = t.getPlaybackHeadPosition() & 0xFFFFFFFFL;
-        return seqFrom + Math.max(0, head - start) / (double) rate;
+        synchronized (anchorFrame) {
+            if (anchorCount == 0 || head < firstSeqFrame) return idlePosition;
+            // newest anchor at or before the head
+            for (int i = anchorCount - 1; i >= Math.max(0, anchorCount - ANCHORS); i--) {
+                int k = i % ANCHORS;
+                if (anchorFrame[k] <= head) {
+                    return anchorMusic[k] + (head - anchorFrame[k]) / (double) rate * anchorSpeed[k];
+                }
+            }
+            int k = Math.max(0, anchorCount - ANCHORS) % ANCHORS;
+            return anchorMusic[k];
+        }
     }
 
     void liveNoteOn(final int key, final int vel) {
@@ -179,19 +239,24 @@ final class SynthPlayer {
             while (running) {
                 Runnable cmd;
                 while ((cmd = commands.poll()) != null) cmd.run();
-                Sequence seq = sequence;
-                if (seq != null) {
-                    if (seqStartFrame == -2) seqStartFrame = framesWritten;
-                    double tEnd = seqFrom + (framesWritten + BLOCK - Math.max(0, seqStartFrame)) / (double) rate;
-                    seq.dispatchUntil(synth, tEnd);
-                    if (seq.finished() && synth.activeVoices() == 0) {
-                        sequence = null;
+                boolean seqActive = engine.isPlaying();
+                double m = engine.render(l, r, BLOCK);
+                if (seqActive) {
+                    synchronized (anchorFrame) {
+                        int k = anchorCount % ANCHORS;
+                        anchorFrame[k] = framesWritten;
+                        anchorMusic[k] = m;
+                        anchorSpeed[k] = engine.speed();
+                        if (anchorCount == 0) firstSeqFrame = framesWritten;
+                        anchorCount++;
+                    }
+                    if (engine.finished()) {
+                        engine.stop();
                         playing = false;
                         Runnable f = onFinished;
                         if (f != null) f.run();
                     }
                 }
-                synth.render(l, r, BLOCK);
                 for (int i = 0; i < BLOCK; i++) {
                     pcm[2 * i] = (short) (l[i] * 32767f);
                     pcm[2 * i + 1] = (short) (r[i] * 32767f);
@@ -199,7 +264,7 @@ final class SynthPlayer {
                 int w = t.write(pcm, 0, pcm.length);
                 if (w < 0) break;
                 framesWritten += BLOCK;
-                if (sequence == null && synth.activeVoices() == 0 && commands.isEmpty()) {
+                if (!engine.isPlaying() && synth.activeVoices() == 0 && commands.isEmpty()) {
                     if (++idleBlocks > rate * 3 / BLOCK) {
                         // stop the thread after 3 s of silence (atomically with ensureThread)
                         synchronized (this) {

@@ -18,6 +18,7 @@ audio file ─► MediaCodec decode ─► mono ─► resample 16 kHz ─► lo
 - **Transcription:** polyphonic, across all 88 piano keys, with velocity.
 - **Melody, chords and bass:** every note is assigned to one of three parts (top line, accompaniment, lowest line). Checkboxes turn each part on or off for playback, display and the sheet.
 - **Playback with SF2 instruments:** a built-in SoundFont synthesizer, written in Java, plays through AudioTrack. Each part gets its own instrument: Grand Piano, Electric Piano, Nylon or Steel Guitar, Violin, Flute, Acoustic or Fingered Bass. You can also **load any `.sf2` file** and choose from its presets.
+- **Metronome and tempo change:** a metronome locked to the detected beat grid, with an accented first beat and sample-accurate clicks mixed into the synth output. There's an optional one-bar count-in, a beat indicator (● ○ ○ ○), and a speed control from 25% to 200% that shows the resulting BPM and applies live while playing. Keyboard, falling notes, roll and sheet cursor all follow the slowed-down or sped-up clock. On the desktop test, clicks land within 0.1 ms of the grid, and an 80% render transcribes back with the same accuracy against the time-scaled ground truth.
 - **Animated keyboard:** an 88-key keyboard where keys light up in their part's colour, sink while held and fade out on release. It stays in exact sync with the audio, and you can also tap it to play live with the melody instrument.
 - **Three views:**
   - *Falling notes*: notes fall onto their keys, with bar lines and chord names.
