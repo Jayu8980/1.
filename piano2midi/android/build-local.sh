@@ -63,7 +63,7 @@ echo "== resources (aapt2)"
 "$AAPT2" compile --dir "$APP/res" -o "$OUT/res/res.zip"
 "$AAPT2" link -o "$OUT/base.apk" -I "$ANDROID_JAR" --manifest "$OUT/AndroidManifest.xml" \
   --min-sdk-version $MIN_SDK --target-sdk-version $TARGET_SDK \
-  --java "$OUT/gen" -A "$APP/assets" -0 onnx --auto-add-overlay "$OUT/res/res.zip"
+  --java "$OUT/gen" -A "$APP/assets" -0 onnx -0 sf2 --auto-add-overlay "$OUT/res/res.zip"
 
 echo "== javac"
 find "$APP/java" "$OUT/gen" -name '*.java' > "$OUT/sources.txt"

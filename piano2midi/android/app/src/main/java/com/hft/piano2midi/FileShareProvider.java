@@ -61,7 +61,8 @@ public final class FileShareProvider extends ContentProvider {
 
     @Override
     public String getType(Uri uri) {
-        return "audio/midi";
+        String n = uri.getLastPathSegment();
+        return n != null && n.toLowerCase(java.util.Locale.US).endsWith(".pdf") ? "application/pdf" : "audio/midi";
     }
 
     @Override

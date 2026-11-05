@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/main_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true">
@@ -8,12 +9,12 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="12dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
+            android:layout_marginBottom="8dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -23,7 +24,7 @@
                 android:layout_weight="1"
                 android:text="@string/subtitle"
                 android:textColor="@color/text_secondary"
-                android:textSize="14sp" />
+                android:textSize="13sp" />
 
             <Button
                 android:id="@+id/about"
@@ -36,40 +37,47 @@
         <!-- 1. input -->
         <LinearLayout style="@style/Card">
 
-            <Button
-                android:id="@+id/pick"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/pick" />
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/pick"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/pick" />
+
+                <Button
+                    android:id="@+id/convert"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:backgroundTint="@color/accent"
+                    android:enabled="false"
+                    android:text="@string/convert"
+                    android:textColor="#FFFFFFFF" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/file_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="4dp"
                 android:ellipsize="middle"
                 android:singleLine="true"
                 android:text="@string/no_file"
                 android:textColor="@color/text_secondary" />
-
-            <Button
-                android:id="@+id/convert"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:backgroundTint="@color/accent"
-                android:enabled="false"
-                android:text="@string/convert"
-                android:textColor="#FFFFFFFF" />
 
             <ProgressBar
                 android:id="@+id/progress"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="4dp"
                 android:max="1000"
-                android:visibility="invisible" />
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/status"
@@ -78,59 +86,338 @@
                 android:textSize="13sp" />
         </LinearLayout>
 
-        <!-- 2. result -->
+        <!-- 2. player -->
         <LinearLayout style="@style/Card">
 
-            <HorizontalScrollView
-                android:id="@+id/roll_scroll"
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="260dp"
-                android:fillViewport="true">
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
 
-                <com.hft.piano2midi.PianoRollView
-                    android:id="@+id/roll"
-                    android:layout_width="wrap_content"
+                <Button
+                    android:id="@+id/tab_falling"
+                    style="@style/Tab"
+                    android:text="@string/tab_falling" />
+
+                <Button
+                    android:id="@+id/tab_roll"
+                    style="@style/Tab"
+                    android:text="@string/tab_roll" />
+
+                <Button
+                    android:id="@+id/tab_sheet"
+                    style="@style/Tab"
+                    android:text="@string/tab_sheet" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="330dp"
+                android:layout_marginTop="6dp">
+
+                <com.hft.piano2midi.FallingNotesView
+                    android:id="@+id/falling"
+                    android:layout_width="match_parent"
                     android:layout_height="match_parent" />
-            </HorizontalScrollView>
+
+                <HorizontalScrollView
+                    android:id="@+id/roll_scroll"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fillViewport="true"
+                    android:visibility="gone">
+
+                    <com.hft.piano2midi.PianoRollView
+                        android:id="@+id/roll"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent" />
+                </HorizontalScrollView>
+
+                <ScrollView
+                    android:id="@+id/sheet_scroll"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="#FFDADCE3"
+                    android:nestedScrollingEnabled="true"
+                    android:visibility="gone">
+
+                    <com.hft.piano2midi.SheetView
+                        android:id="@+id/sheet"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+                </ScrollView>
+            </FrameLayout>
+
+            <com.hft.piano2midi.KeyboardView
+                android:id="@+id/keyboard"
+                android:layout_width="match_parent"
+                android:layout_height="96dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/play"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="96dp"
+                    android:text="@string/play" />
+
+                <Button
+                    android:id="@+id/stop"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/stop" />
+
+                <TextView
+                    android:id="@+id/time"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:text="0:00 / 0:00"
+                    android:textColor="@color/text_secondary" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <CheckBox
+                    android:id="@+id/part_melody"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="#FFFF7043"
+                    android:checked="true"
+                    android:text="@string/part_melody" />
+
+                <CheckBox
+                    android:id="@+id/part_chords"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="#FF66BB6A"
+                    android:checked="true"
+                    android:text="@string/part_chords" />
+
+                <CheckBox
+                    android:id="@+id/part_bass"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="#FF42A5F5"
+                    android:checked="true"
+                    android:text="@string/part_bass" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/stats"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
                 android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- 3. instruments -->
+        <LinearLayout style="@style/Card">
+
+            <TextView
+                style="@style/CardTitle"
+                android:text="@string/instruments" />
+
+            <LinearLayout style="@style/Row">
+
+                <TextView
+                    style="@style/RowLabel"
+                    android:text="@string/part_melody"
+                    android:textColor="#FFE64A19" />
+
+                <Spinner
+                    android:id="@+id/inst_melody"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/Row">
+
+                <TextView
+                    style="@style/RowLabel"
+                    android:text="@string/part_chords"
+                    android:textColor="#FF388E3C" />
+
+                <Spinner
+                    android:id="@+id/inst_chords"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/Row">
+
+                <TextView
+                    style="@style/RowLabel"
+                    android:text="@string/part_bass"
+                    android:textColor="#FF1976D2" />
+
+                <Spinner
+                    android:id="@+id/inst_bass"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/sf2_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
                 android:orientation="horizontal">
 
                 <Button
-                    android:id="@+id/play"
+                    android:id="@+id/load_sf2"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/play" />
+                    android:text="@string/load_sf2" />
 
                 <Button
-                    android:id="@+id/save"
+                    android:id="@+id/builtin_sf2"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/save" />
-
-                <Button
-                    android:id="@+id/share"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/share" />
+                    android:text="@string/builtin_sf2" />
             </LinearLayout>
         </LinearLayout>
 
-        <!-- 3. settings -->
+        <!-- 4. download -->
+        <LinearLayout style="@style/Card">
+
+            <TextView
+                style="@style/CardTitle"
+                android:text="@string/download" />
+
+            <Spinner
+                android:id="@+id/export_part"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/save_midi"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:backgroundTint="@color/primary"
+                    android:text="@string/save_midi"
+                    android:textColor="#FFFFFFFF" />
+
+                <Button
+                    android:id="@+id/save_pdf"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:backgroundTint="@color/primary"
+                    android:text="@string/save_pdf"
+                    android:textColor="#FFFFFFFF" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/share_midi"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/share_midi" />
+
+                <Button
+                    android:id="@+id/share_pdf"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/share_pdf" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 5. music analysis -->
+        <LinearLayout style="@style/Card">
+
+            <TextView
+                style="@style/CardTitle"
+                android:text="@string/music" />
+
+            <TextView
+                android:id="@+id/tempo_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <SeekBar
+                    android:id="@+id/tempo_seek"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:max="180"
+                    android:progress="80" />
+
+                <Button
+                    android:id="@+id/tempo_auto"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/auto" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/Row">
+
+                <TextView
+                    style="@style/RowLabel"
+                    android:text="@string/time_signature" />
+
+                <Spinner
+                    android:id="@+id/time_sig"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/analysis"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- 6. detection -->
         <LinearLayout style="@style/Card">
 
             <TextView
@@ -175,16 +462,18 @@
                 android:max="95"
                 android:progress="50" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/offset_mode" />
+            <LinearLayout style="@style/Row">
 
-            <Spinner
-                android:id="@+id/offset_mode"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                <TextView
+                    style="@style/RowLabel"
+                    android:text="@string/offset_mode" />
+
+                <Spinner
+                    android:id="@+id/offset_mode"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"

@@ -13,11 +13,18 @@ audio file ─► MediaCodec decode ─► mono ─► resample 16 kHz ─► lo
 
 ## Features
 
-- Opens mp3, m4a/aac, wav, flac, ogg/opus and anything else the device decoder supports, up to 10 minutes. You can also share audio straight into the app from another app ("Convert to MIDI").
-- Polyphonic transcription across all 88 piano keys, with velocity.
-- Scrollable piano-roll preview, plus MIDI playback with a moving playhead.
-- Adjustable onset, offset and frame thresholds and a note-end mode. Changing them re-decodes the notes instantly, without running the model again.
-- Save a `.mid` file anywhere (Storage Access Framework) or share it to other apps.
+- **Input:** mp3, m4a/aac, wav, flac, ogg/opus and anything else the device decoder supports, up to 10 minutes. You can also share audio straight into the app from another app ("Convert to MIDI").
+- **Transcription:** polyphonic, across all 88 piano keys, with velocity.
+- **Melody, chords and bass:** every note is assigned to one of three parts (top line, accompaniment, lowest line). Checkboxes turn each part on or off for playback, display and the sheet.
+- **Playback with SF2 instruments:** a built-in SoundFont synthesizer, written in Java, plays through AudioTrack. Each part gets its own instrument: Grand Piano, Electric Piano, Nylon or Steel Guitar, Violin, Flute, Acoustic or Fingered Bass. You can also **load any `.sf2` file** and choose from its presets.
+- **Animated keyboard:** an 88-key keyboard where keys light up in their part's colour, sink while held and fade out on release. It stays in exact sync with the audio, and you can also tap it to play live with the melody instrument.
+- **Three views:**
+  - *Falling notes*: notes fall onto their keys, with bar lines and chord names.
+  - *Piano roll*: coloured by part, with a chord lane and bar numbers. Tap it to jump to a position.
+  - *Sheet*: piano sheet music with a playback cursor.
+- **Piano sheet:** tempo, beat phase, downbeat, key (Krumhansl) and chords are detected automatically. Notes are quantized to 16ths and engraved on a grand staff (or a single staff for one part) with key signature, accidentals, beams, ties, rests and chord symbols, using the Bravura music font. Tempo and time signature (4/4, 3/4, 2/4) can be adjusted.
+- **Downloads:** **MIDI** or **PDF** for all parts, the selected parts, **melody only**, **chords only** or **bass line only**. MIDI files have one track per part, with the chosen instruments and a tempo map aligned to the detected bars. You can save anywhere or share to other apps.
+- **Detection settings:** adjustable onset, offset and frame thresholds and a note-end mode. Changing them re-decodes the notes instantly, without running the model again.
 
 ## Install
 
@@ -71,6 +78,14 @@ sudo apt-get install aapt apksigner zipalign openjdk-17-jdk
 piano2midi/android/build-local.sh   # → piano2midi/android/build/piano2midi.apk
 ```
 
+### Verifying the music features
+
+On the test pieces the analysis recovers the true tempo exactly (100 and 132 BPM), the
+downbeat, the key (C major, E♭ major) and the chord progressions (C–Am–F–G in 4/4;
+E♭–B♭–Cm–A♭ in a 3/4 waltz). Transcribing the synth's own rendering again gives the same
+95 notes, which confirms the synth's pitch and timing. The tempo and chord detectors are
+heuristics: for rubato or complex harmony, set the tempo by hand.
+
 ### Re-exporting the model
 
 `app/src/main/assets/hft_transformer.onnx` is already included. To regenerate it from
@@ -103,17 +118,28 @@ WAV file or to compare results with the Python implementation.
 | `.../core/FeatureExtractor.java` | STFT + slaney/htk mel filterbank + log, matching torchaudio |
 | `.../core/Transcriber.java` | windowing/padding over the feature matrix (port of `AMT.transcript`) |
 | `.../core/NoteDecoder.java` | peak picking and note assembly (port of `AMT.mpe2note`) |
-| `.../core/MidiWriter.java` | Standard MIDI File writer |
+| `.../core/MidiWriter.java` | Multi-track Standard MIDI File writer with a tempo map |
+| `.../core/music/` | part splitting, tempo/downbeat, key and chord detection |
+| `.../core/sheet/` | quantized score model and engraver (draws to Canvas, PDF or Java2D) |
+| `.../core/synth/` | SoundFont 2 parser, sampler synth and note sequencer |
 | `.../core/OnnxModel.java` | ONNX Runtime wrapper |
 | `.../AudioDecoder.java` | MediaExtractor/MediaCodec decoder → mono float PCM |
-| `.../MainActivity.java`, `PianoRollView.java`, `FileShareProvider.java` | UI, preview, sharing |
+| `.../SynthPlayer.java` | AudioTrack streaming, play position, live keys |
+| `.../KeyboardView.java`, `FallingNotesView.java`, `PianoRollView.java`, `SheetView.java` | views |
+| `.../PdfExporter.java`, `FileShareProvider.java`, `MainActivity.java` | export, sharing, UI |
 | `tools/export_onnx.py`, `tools/model/` | checkpoint → ONNX export |
+| `tools/make_soundfont.py` | cuts the built-in `instruments.sf2` out of FluidR3_GM |
+| `tools/desktop/` | desktop CLI and Java2D renderer for testing the core |
 
 ## License
 
 - App code in this folder: MIT.
 - hFT-Transformer source code (`tools/model/model_spec2midi.py`, and the algorithms
   ported to Java): MIT, © 2023 Sony Group Corporation. See `tools/LICENSE-CODE`.
+- Built-in instruments (`instruments.sf2`): an excerpt of FluidR3_GM by Frank Wen, MIT license.
+  Rebuild it with `python3 tools/make_soundfont.py FluidR3_GM.sf2 android/app/src/main/assets/instruments.sf2 0 4 24 25 32 33 40 73`.
+- Music font (`assets/fonts/Bravura.otf`): Bravura by Steinberg, SIL Open Font License 1.1
+  (`assets/fonts/Bravura-OFL.txt`).
 - Model weights (`hft_transformer.onnx`, converted from `model_016_003.pkl`):
   **CC BY-NC-SA 4.0**. They were trained on MAESTRO v3.0.0, so **non-commercial use only**,
   and modified copies must be shared under the same license. See `tools/LICENSE-CHECKPOINTS.md`.

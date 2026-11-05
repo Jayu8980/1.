@@ -9,8 +9,34 @@
     <string name="cancel">Cancel</string>
     <string name="play">Play</string>
     <string name="stop">Stop</string>
-    <string name="save">Save .mid</string>
+    <string name="save_midi">Download MIDI</string>
+    <string name="save_pdf">Download PDF</string>
+    <string name="share_midi">Share MIDI</string>
+    <string name="share_pdf">Share PDF</string>
     <string name="share">Share</string>
+    <string name="tab_falling">Falling notes</string>
+    <string name="tab_roll">Piano roll</string>
+    <string name="tab_sheet">Sheet</string>
+    <string name="part_melody">Melody</string>
+    <string name="part_chords">Chords</string>
+    <string name="part_bass">Bass</string>
+    <string name="instruments">Instruments (SoundFont)</string>
+    <string name="load_sf2">Load .sf2…</string>
+    <string name="builtin_sf2">Built-in sounds</string>
+    <string name="sf2_info">SoundFont: %1$s (%2$d instruments)</string>
+    <string name="sf2_loading">Loading SoundFont…</string>
+    <string name="sf2_error">Could not load SoundFont: %s</string>
+    <string name="download">Download</string>
+    <string name="music">Tempo, key &amp; chords</string>
+    <string name="tempo_label">Tempo: %1$d BPM%2$s</string>
+    <string name="tempo_auto_suffix"> (detected)</string>
+    <string name="auto">Auto</string>
+    <string name="time_signature">Time</string>
+    <string name="analysis">Key: %1$s\nChords: %2$s</string>
+    <string name="sheet_empty">The score appears here after conversion</string>
+    <string name="pause">Pause</string>
+    <string name="nothing_to_export">No notes in this selection</string>
+    <string name="pdf_saved">PDF saved</string>
     <string name="about">About</string>
     <string name="settings">Note detection</string>
     <string name="onset_threshold">Onset threshold: %.2f</string>
@@ -29,12 +55,24 @@
     <string name="status_error">Error: %s</string>
     <string name="err_empty">The file contains no audio samples</string>
     <string name="err_oom">Out of memory: try a shorter recording</string>
-    <string name="stats">%1$d notes · %2$.1f s of audio</string>
+    <string name="stats">%1$d notes (melody %3$d · chords %4$d · bass %5$d) · %2$.1f s of audio</string>
     <string name="elapsed">processed in %.1f s</string>
     <string name="saved">MIDI file saved</string>
     <string name="roll_empty">The piano roll appears here after conversion</string>
     <string name="about_title">About Piano2MIDI</string>
-    <string name="about_text">Converts piano recordings to MIDI using the hFT-Transformer (Hierarchical Frequency-Time Transformer) by Sony, ISMIR 2023 (arXiv:2307.04305).\n\nAll processing happens on this device: audio → 16 kHz log-mel spectrogram → hFT-Transformer → onset/offset/frame/velocity → notes → MIDI.\n\nSource code: MIT License, © Sony Group Corporation.\nModel weights: trained on MAESTRO v3.0.0, CC BY-NC-SA 4.0 (non-commercial use only).\n\nBest results come from solo piano recordings.</string>
+    <string name="about_text">Converts piano recordings to MIDI using the hFT-Transformer (Hierarchical Frequency-Time Transformer) by Sony, ISMIR 2023 (arXiv:2307.04305).\n\nAll processing happens on this device: audio → 16 kHz log-mel spectrogram → hFT-Transformer → onset/offset/frame/velocity → notes → MIDI.\n\nSource code: MIT License, © Sony Group Corporation.\nModel weights: trained on MAESTRO v3.0.0, CC BY-NC-SA 4.0 (non-commercial use only).\n\nBest results come from solo piano recordings.\n\nThe transcription is split into melody (top line), chords (accompaniment) and bass (lowest line). Tempo, key and chords are detected automatically for the sheet music; adjust the tempo if bars look wrong.\n\nBuilt-in instruments: excerpt of FluidR3_GM by Frank Wen (MIT license). Music font: Bravura by Steinberg (SIL Open Font License).</string>
+    <string-array name="export_parts">
+        <item>All parts (melody, chords, bass)</item>
+        <item>Selected parts (checkboxes above)</item>
+        <item>Melody only</item>
+        <item>Chords only</item>
+        <item>Bass line only</item>
+    </string-array>
+    <string-array name="time_sigs">
+        <item>4/4</item>
+        <item>3/4</item>
+        <item>2/4</item>
+    </string-array>
     <string-array name="offset_modes">
         <item>Shorter of offset / frame (default)</item>
         <item>Longer of offset / frame</item>

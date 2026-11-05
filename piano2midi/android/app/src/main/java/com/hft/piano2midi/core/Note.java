@@ -6,6 +6,8 @@ public final class Note {
     public final double onset;
     public double offset;
     public final int velocity;
+    /** {@link com.hft.piano2midi.core.music.Part} ordinal assigned by PartSplitter. */
+    public int part;
 
     public Note(int pitch, double onset, double offset, int velocity) {
         this.pitch = pitch;

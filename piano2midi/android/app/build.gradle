@@ -33,7 +33,7 @@ android {
 
     androidResources {
         // keep the model stored so it can be memory-mapped / copied quickly
-        noCompress 'onnx'
+        noCompress 'onnx', 'sf2'
     }
 
     packagingOptions {
