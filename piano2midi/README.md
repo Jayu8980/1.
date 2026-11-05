@@ -1,3 +1,5 @@
+<img src="docs/icon-512.png" width="96" align="right" alt="Piano2MIDI icon" />
+
 # Piano2MIDI: polyphonic audio → MIDI on Android
 
 An Android app that converts piano recordings into MIDI files on the device, using
@@ -29,6 +31,7 @@ audio file ─► MediaCodec decode ─► mono ─► resample 16 kHz ─► lo
 - **Dark mode:** the Theme menu offers System default (follows Android's dark mode), Light or Dark. The dark palette covers cards, text, tabs, buttons and the system bars, and the sheet music becomes light ink on dark paper. Exported PDFs stay black on white. Switching themes keeps the transcription and all settings.
 - **One note at a time (monophonic export):** on the Export screen, MIDI and PDF can be reduced to a single line. Notes struck together keep the highest (melody), lowest (bass) or loudest note, every note ends where the next begins (no overlaps), and fragments under 30 ms are removed. On the test piece, the "highest" line matches the true melody with onset F1 0.94, with zero overlapping notes.
 - **Splash screen animation:** the Android 12+ system splash on the brand colour continues into an animated intro (keys light up, notes rise, the title slides in) that fades into the app. It doesn't replay on theme switches.
+- **App icon:** an adaptive icon with a gradient background, piano keys, a rising eighth note and piano-roll bars in the part colours. A monochrome layer lets Android 13+ themed icons work, and there is a round icon too ([preview](docs/icon-preview.png)).
 - **Animated keyboard:** an 88-key keyboard where keys light up in their part's colour, sink while held and fade out on release. It stays in exact sync with the audio, and you can also tap it to play live with the melody instrument.
 - **Three views:**
   - *Falling notes*: notes fall onto their keys, with bar lines and chord names.
@@ -42,8 +45,8 @@ audio file ─► MediaCodec decode ─► mono ─► resample 16 kHz ─► lo
 
 ## Download
 
-**[Piano2MIDI 1.5 for Android (arm64): Piano2MIDI-1.5-android-arm64.apk](https://github.com/Jayu8980/1./raw/ccr-0beb1834-f8votw/piano2midi/release/Piano2MIDI-1.5-android-arm64.apk)**
-(49 MB, SHA-256 in `release/Piano2MIDI-1.5-android-arm64.apk.sha256`)
+**[Piano2MIDI 1.6 for Android (arm64): Piano2MIDI-1.6-android-arm64.apk](https://github.com/Jayu8980/1./raw/ccr-0beb1834-f8votw/piano2midi/release/Piano2MIDI-1.6-android-arm64.apk)**
+(49 MB, SHA-256 in `release/Piano2MIDI-1.6-android-arm64.apk.sha256`)
 
 - Runs on Android 8.0 through Android 16, on 64-bit ARM phones and tablets.
 - Supports 16 KB memory pages: ONNX Runtime 1.23.2 native libraries with 16 KB-aligned ELF segments.

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon layer (Android 13+): single colour, tinted by the launcher. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <group android:pivotX="54" android:pivotY="54" android:scaleX="0.9" android:scaleY="0.9">
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M30,56h11.2v22a2.8,2.8 0,0 1,-2.8 2.8h-5.6a2.8,2.8 0,0 1,-2.8 -2.8zM42.3,56h11.2v22a2.8,2.8 0,0 1,-2.8 2.8h-5.6a2.8,2.8 0,0 1,-2.8 -2.8zM54.5,56h11.2v22a2.8,2.8 0,0 1,-2.8 2.8h-5.6a2.8,2.8 0,0 1,-2.8 -2.8zM66.8,56h11.2v22a2.8,2.8 0,0 1,-2.8 2.8h-5.6a2.8,2.8 0,0 1,-2.8 -2.8z" />
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M31,44.5h11a2.2,2.2 0,0 1,0 4.4h-11a2.2,2.2 0,0 1,0 -4.4zM37,37h12a2.2,2.2 0,0 1,0 4.4h-12a2.2,2.2 0,0 1,0 -4.4zM33,29.5h9a2.2,2.2 0,0 1,0 4.4h-9a2.2,2.2 0,0 1,0 -4.4z" />
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M68.6,22.5v22.2a7.4,5.6 0,1 1,-3.2 -4.6v-17.6zM68.6,22.5c1.2,3.6 4.6,5.4 7.2,7.8 2.4,2.2 3.2,5.6 1.6,8.6 0.4,-3 -1.2,-5.2 -3.6,-6.6 -1.8,-1 -3.6,-1.6 -5.2,-2.4z" />
+    </group>
+</vector>

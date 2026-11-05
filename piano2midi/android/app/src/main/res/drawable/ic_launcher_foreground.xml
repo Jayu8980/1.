@@ -1,25 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Piano keys with a waveform turning into MIDI blocks. 108x108 adaptive canvas, art inside the 66dp safe zone. -->
+<!-- Adaptive icon foreground (108dp canvas, artwork inside the 66dp safe zone 21..87):
+     piano keys, a rising eighth note and three piano-roll bars in the part colours. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <group android:pivotX="54" android:pivotY="54" android:scaleX="0.9" android:scaleY="0.9">
+    <!-- key shadow -->
+    <path android:fillColor="#33000000"
+        android:pathData="M30,58h48v21.5a3,3 0,0 1,-3 3h-42a3,3 0,0 1,-3 -3z" />
     <!-- white keys -->
-    <path android:fillColor="#FFFFFFFF" android:pathData="M27,58h10v24h-10z" />
-    <path android:fillColor="#FFFFFFFF" android:pathData="M38,58h10v24h-10z" />
-    <path android:fillColor="#FFFFFFFF" android:pathData="M49,58h10v24h-10z" />
-    <path android:fillColor="#FFFFFFFF" android:pathData="M60,58h10v24h-10z" />
-    <path android:fillColor="#FFFFFFFF" android:pathData="M71,58h10v24h-10z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M30,56h11.2v22a2.8,2.8 0,0 1,-2.8 2.8h-5.6a2.8,2.8 0,0 1,-2.8 -2.8z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M42.3,56h11.2v22a2.8,2.8 0,0 1,-2.8 2.8h-5.6a2.8,2.8 0,0 1,-2.8 -2.8z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M54.5,56h11.2v22a2.8,2.8 0,0 1,-2.8 2.8h-5.6a2.8,2.8 0,0 1,-2.8 -2.8z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M66.8,56h11.2v22a2.8,2.8 0,0 1,-2.8 2.8h-5.6a2.8,2.8 0,0 1,-2.8 -2.8z" />
     <!-- black keys -->
-    <path android:fillColor="#FF1A237E" android:pathData="M34,58h6v14h-6z" />
-    <path android:fillColor="#FF1A237E" android:pathData="M45,58h6v14h-6z" />
-    <path android:fillColor="#FF1A237E" android:pathData="M67,58h6v14h-6z" />
-    <!-- waveform -->
-    <path android:strokeColor="#FFFFCCBC" android:strokeWidth="2.5" android:strokeLineCap="round"
-        android:pathData="M27,42 L31,42 L33,34 L36,50 L39,30 L42,52 L45,38 L48,46 L50,42" />
-    <!-- MIDI note blocks -->
-    <path android:fillColor="#FFFF7043" android:pathData="M54,30h12v5h-12z" />
-    <path android:fillColor="#FFFF7043" android:pathData="M60,39h16v5h-16z" />
-    <path android:fillColor="#FFFF7043" android:pathData="M56,48h9v5h-9z" />
+    <path android:fillColor="#FF1F2160" android:pathData="M37.6,56h7.4v13.2a1.8,1.8 0,0 1,-1.8 1.8h-3.8a1.8,1.8 0,0 1,-1.8 -1.8z" />
+    <path android:fillColor="#FF1F2160" android:pathData="M49.9,56h7.4v13.2a1.8,1.8 0,0 1,-1.8 1.8h-3.8a1.8,1.8 0,0 1,-1.8 -1.8z" />
+    <path android:fillColor="#FF1F2160" android:pathData="M74.4,56h3.6v13.2a1.8,1.8 0,0 1,-1.8 1.8h-1.8z" />
+    <!-- piano-roll bars (bass, chords, melody) rising out of the keys -->
+    <path android:fillColor="#FF42A5F5" android:pathData="M31,44.5h11a2.2,2.2 0,0 1,0 4.4h-11a2.2,2.2 0,0 1,0 -4.4z" />
+    <path android:fillColor="#FF66BB6A" android:pathData="M37,37h12a2.2,2.2 0,0 1,0 4.4h-12a2.2,2.2 0,0 1,0 -4.4z" />
+    <path android:fillColor="#FFFF7043" android:pathData="M33,29.5h9a2.2,2.2 0,0 1,0 4.4h-9a2.2,2.2 0,0 1,0 -4.4z" />
+    <!-- eighth note -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M68.6,22.5v22.2a7.4,5.6 0,1 1,-3.2 -4.6v-17.6z" />
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M68.6,22.5c1.2,3.6 4.6,5.4 7.2,7.8 2.4,2.2 3.2,5.6 1.6,8.6 0.4,-3 -1.2,-5.2 -3.6,-6.6 -1.8,-1 -3.6,-1.6 -5.2,-2.4z" />
+    </group>
 </vector>
