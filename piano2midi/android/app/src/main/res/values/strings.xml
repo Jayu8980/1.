@@ -74,15 +74,6 @@
     <string name="tile_sounds">Instruments</string>
     <string name="appearance">Appearance</string>
     <string name="export_hint">MIDI files contain one track per part with the instruments you chose and a tempo map that matches the detected bars. PDFs are printable A4 piano sheets (grand staff, chord symbols, 8va).</string>
-    <string name="export_mono">One note at a time</string>
-    <string name="export_mono_keep">Keep</string>
-    <string name="export_mono_hint">Monophonic MIDI / PDF: only one note sounds at any moment. When notes start together the chosen one is kept, every note ends where the next begins (no overlaps) and tiny fragments are removed — ideal for melodies, single-line instruments and MIDI controllers.</string>
-    <string name="mono_suffix">one note at a time</string>
-    <string-array name="mono_rules">
-        <item>Highest note (melody)</item>
-        <item>Lowest note (bass line)</item>
-        <item>Loudest note</item>
-    </string-array>
     <string name="splash_tagline">Piano audio → MIDI · sheet music · practice</string>
     <string name="tab_falling">Falling notes</string>
     <string name="tab_roll">Piano roll</string>
