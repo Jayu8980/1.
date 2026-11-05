@@ -35,6 +35,15 @@ audio file ─► MediaCodec decode ─► mono ─► resample 16 kHz ─► lo
 - **Downloads:** **MIDI** or **PDF** for all parts, the selected parts, **melody only**, **chords only** or **bass line only**. MIDI files have one track per part, with the chosen instruments and a tempo map aligned to the detected bars. You can save anywhere or share to other apps.
 - **Detection settings:** adjustable onset, offset and frame thresholds and a note-end mode. Changing them re-decodes the notes instantly, without running the model again.
 
+## Download
+
+**[Piano2MIDI 1.1 for Android (arm64): Piano2MIDI-1.1-android-arm64.apk](https://github.com/Jayu8980/1./raw/ccr-0beb1834-f8votw/piano2midi/release/Piano2MIDI-1.1-android-arm64.apk)**
+(49 MB, SHA-256 in `release/Piano2MIDI-1.1-android-arm64.apk.sha256`)
+
+- Runs on Android 8.0 through Android 16, on 64-bit ARM phones and tablets.
+- Supports 16 KB memory pages: ONNX Runtime 1.23.2 native libraries with 16 KB-aligned ELF segments.
+- Signed with APK Signature Scheme v2 and v3 (debug key).
+
 ## Install
 
 Download `piano2midi.apk`, either from the build artifacts of the **Piano2MIDI APK**

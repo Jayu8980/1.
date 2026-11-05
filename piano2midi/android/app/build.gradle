@@ -10,8 +10,8 @@ android {
         applicationId 'com.hft.piano2midi'
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName '1.0'
+        versionCode 2
+        versionName '1.1'
         ndk {
             abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64'
         }
@@ -44,5 +44,5 @@ android {
 }
 
 dependencies {
-    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.20.0'
+    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.23.2'
 }
