@@ -24,6 +24,14 @@ public final class PlaybackEngine {
     private int beatsPerBar = 4;
     private float clickGain = 0.45f;
 
+    // loop / practice
+    private boolean loop;
+    private double loopA, loopB;
+    private boolean practice, countInEachLoop;
+    private double practiceStart = 0.6, practiceStep = 0.05, practiceTarget = 1.0;
+    private int loops;
+    private float[] tl = new float[1024], tr = new float[1024];
+
     // click voice
     private int clickPos = -1, clickLen;
     private double clickPhase, clickFreq;
@@ -52,6 +60,49 @@ public final class PlaybackEngine {
         clickGain = g;
     }
 
+    /** Repeat [a, b) (musical seconds) while playing. */
+    public void setLoop(boolean on, double a, double b) {
+        loop = on && b > a + 0.05;
+        // transcribed onsets jitter by a few ms around bar lines: shift both edges slightly
+        // earlier so a downbeat chord belongs to the bar it starts, not the previous one
+        double guard = Math.min(0.05, beatSec / 4);
+        loopA = a - guard;
+        loopB = b - guard;
+        if (loop && sequence != null && (music >= loopB || music < loopA - barSec() - 1e-6)) wrap();
+    }
+
+    /**
+     * Practice mode: start each play at `start` speed and add `step` after every repeat until
+     * `target`; optionally count in one bar before each repeat.
+     */
+    public void setPractice(boolean on, double start, double step, double target, boolean countInEach) {
+        boolean was = practice;
+        practice = on;
+        practiceStart = start;
+        practiceStep = step;
+        practiceTarget = target;
+        countInEachLoop = countInEach;
+        if (on && !was && sequence != null) speed = Math.min(speed, practiceStart);
+        if (!on && was) speed = practiceTarget;
+    }
+
+    /** Completed repeats since play started. */
+    public int loops() {
+        return loops;
+    }
+
+    private double barSec() {
+        return beatSec * beatsPerBar;
+    }
+
+    private void wrap() {
+        loops++;
+        synth.allNotesOff();
+        if (sequence != null) sequence.seek(loopA);
+        music = countInEachLoop ? loopA - barSec() : loopA;
+        if (practice) speed = Math.min(practiceTarget, speed + practiceStep);
+    }
+
     public void setSpeed(double s) {
         speed = Math.max(0.1, Math.min(4.0, s));
     }
@@ -67,6 +118,9 @@ public final class PlaybackEngine {
     public void start(Sequence seq, double from, int countInBars) {
         synth.allNotesOff();
         sequence = seq;
+        loops = 0;
+        if (loop && (from < loopA || from >= loopB)) from = loopA;
+        if (practice) speed = Math.min(practiceStart, practiceTarget);
         seq.seek(from);
         musicEnd = seq.duration;
         double start = from;
@@ -94,22 +148,46 @@ public final class PlaybackEngine {
 
     /** True once all notes were sent and have died away. */
     public boolean finished() {
-        return sequence != null && sequence.finished() && music > musicEnd && synth.activeVoices() == 0;
+        return !loop && sequence != null && sequence.finished() && music > musicEnd && synth.activeVoices() == 0;
     }
 
-    /** Renders one block; returns the musical time at the start of the block. */
+    /** Renders one block (wrapping at the loop end sample-accurately); returns the musical time at its start. */
     public double render(float[] left, float[] right, int frames) {
         double m0 = music;
-        double dm = frames / (double) rate * speed;
+        if (tl.length < frames) {
+            tl = new float[frames];
+            tr = new float[frames];
+        }
+        int done = 0;
+        while (done < frames) {
+            int n = frames - done;
+            if (sequence != null && loop) {
+                if (music >= loopB - 1e-9) {
+                    wrap();
+                    continue;
+                }
+                int toB = (int) Math.ceil((loopB - music) / speed * rate);
+                n = Math.max(1, Math.min(n, toB));
+            }
+            renderChunk(left, right, done, n);
+            done += n;
+        }
+        return m0;
+    }
+
+    private void renderChunk(float[] left, float[] right, int off, int n) {
+        double m0 = music;
+        double dm = n / (double) rate * speed;
         Sequence seq = sequence;
         if (seq != null) seq.dispatchUntil(synth, m0 + dm);
-        synth.render(left, right, frames);
+        synth.render(tl, tr, n);
         if (seq != null) {
             if (metronome) scheduleClicks(m0, m0 + dm);
             music = m0 + dm;
         }
-        mixClick(left, right, frames, m0);
-        return m0;
+        mixClick(tl, tr, n, m0);
+        System.arraycopy(tl, 0, left, off, n);
+        System.arraycopy(tr, 0, right, off, n);
     }
 
     private int pendingClickFrame = -1;

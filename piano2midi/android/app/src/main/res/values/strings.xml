@@ -30,6 +30,20 @@
     <string name="speed_label">Speed %1$d%% · %2$d BPM</string>
     <string name="speed_label_nobpm">Speed %d%%</string>
     <string name="speed_reset">1×</string>
+    <string name="loop_title">Loop &amp; practice</string>
+    <string name="loop_on">Loop selected bars</string>
+    <string name="from_bar">Bars</string>
+    <string name="to_bar">to</string>
+    <string name="loop_a_here">Start at playhead</string>
+    <string name="loop_b_here">End at playhead</string>
+    <string name="practice_on">Practice mode</string>
+    <string name="practice_start">Start speed: %d%%</string>
+    <string name="practice_step">Speed up each repeat</string>
+    <string name="practice_mute">You play</string>
+    <string name="practice_countin">Count-in bar before each repeat</string>
+    <string name="practice_hint">Practice loops the selected bars, starting slow and speeding up after every repeat until it reaches the Speed setting above. The part you play is muted but still shown on the keyboard, falling notes and sheet.</string>
+    <string name="loop_status">Looping bars %1$d–%2$d · repeat %3$d · speed %4$d%%</string>
+    <string name="loop_ready">Loop: bars %1$d–%2$d (%3$.1f s)</string>
     <string name="tab_falling">Falling notes</string>
     <string name="tab_roll">Piano roll</string>
     <string name="tab_sheet">Sheet</string>
@@ -83,6 +97,18 @@
         <item>Melody only</item>
         <item>Chords only</item>
         <item>Bass line only</item>
+    </string-array>
+    <string-array name="practice_steps">
+        <item>Keep speed</item>
+        <item>+5% per repeat</item>
+        <item>+10% per repeat</item>
+        <item>+20% per repeat</item>
+    </string-array>
+    <string-array name="practice_mutes">
+        <item>Nothing (listen)</item>
+        <item>Melody (muted)</item>
+        <item>Chords (muted)</item>
+        <item>Bass (muted)</item>
     </string-array>
     <string-array name="time_sigs">
         <item>4/4</item>

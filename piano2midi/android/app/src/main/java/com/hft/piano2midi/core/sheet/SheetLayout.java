@@ -210,6 +210,19 @@ public final class SheetLayout {
         return unitX(l, u);
     }
 
+    public int measureCount() {
+        return ml.length;
+    }
+
+    /** Box around measure m (0-based): {page, x0, x1, yTop, yBottom} or null. */
+    public float[] measureBox(int m) {
+        if (m < 0 || m >= ml.length) return null;
+        MLayout l = ml[m];
+        System s = systems.get(l.system);
+        float x0 = l.x, x1 = l.x + l.width * l.scale;
+        return new float[]{l.page, x0, x1, s.top - 1.5f * sp, staffTop(s, staves - 1) + 5.5f * sp};
+    }
+
     /** Playback cursor position for a time in seconds: {page, x, yTop, yBottom} or null. */
     public float[] locate(double sec) {
         double rel = (sec - score.tempo.origin) / score.unitSec();

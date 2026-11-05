@@ -126,6 +126,14 @@ public final class MainActivity extends Activity {
     private TextView beatText, speedLabel;
     private SeekBar speedSeek;
     private double speed = 1.0;
+    // loop / practice
+    private CheckBox loopBox, practiceBox, practiceCountIn;
+    private TextView loopAText, loopBText, loopStatus, practiceStartLabel;
+    private SeekBar practiceStartSeek;
+    private Spinner practiceStepSpinner, practiceMuteSpinner;
+    private View practiceOpts;
+    private int loopA = 1, loopB = 4;
+    private static final double[] PRACTICE_STEPS = {0, 0.05, 0.10, 0.20};
     private volatile MicRecorder recorder;
     private float[] recordedPcm;
     private int recordedLen, recordedRate;
@@ -161,6 +169,8 @@ public final class MainActivity extends Activity {
         public void run() {
             if (player == null || !player.isPlaying()) return;
             showPosition(player.position(), true);
+            updateLoopStatus();
+            if (practiceBox.isChecked()) updateSpeedLabel();
             keyboard.postOnAnimation(this);
         }
     };
@@ -248,6 +258,7 @@ public final class MainActivity extends Activity {
             }
         });
         updateSpeedLabel();
+        setupLoopUi();
         recordBtn = (Button) findViewById(R.id.record);
         saveWavBtn = (Button) findViewById(R.id.save_wav);
         levelBar = (ProgressBar) findViewById(R.id.level);
@@ -359,10 +370,7 @@ public final class MainActivity extends Activity {
                     falling.setPartMask(partMask);
                     sheetDirty = true;
                     if (tab == 2) rebuildSheet();
-                    if (player != null && player.isPlaying()) {
-                        double pos = player.position();
-                        player.play(notes, partMask, pos);
-                    }
+                    restartIfPlaying();
                 }
             });
         }
@@ -824,6 +832,7 @@ public final class MainActivity extends Activity {
         if (tab == 2) rebuildSheet();
         syncPlayerTiming();
         updateSpeedLabel();
+        if (loopBox != null) applyLoop(false);
         showPosition(pausedAt, false);
     }
 
@@ -841,6 +850,7 @@ public final class MainActivity extends Activity {
             return;
         }
         sheet.setLayout(new SheetLayout(buildScore(partMask, audioName)), musicFont);
+        if (loopBox != null) sheet.setLoopMeasures(loopActive() ? loopA - 1 : -1, loopB - 1);
     }
 
     private void updateStats(long elapsedMs) {
@@ -1194,6 +1204,174 @@ public final class MainActivity extends Activity {
         }
     }
 
+    // ------------------------------------------------------------ loop / practice
+
+    private void setupLoopUi() {
+        loopBox = (CheckBox) findViewById(R.id.loop_on);
+        practiceBox = (CheckBox) findViewById(R.id.practice_on);
+        practiceCountIn = (CheckBox) findViewById(R.id.practice_countin);
+        loopAText = (TextView) findViewById(R.id.loop_a);
+        loopBText = (TextView) findViewById(R.id.loop_b);
+        loopStatus = (TextView) findViewById(R.id.loop_status);
+        practiceStartLabel = (TextView) findViewById(R.id.practice_start_label);
+        practiceStartSeek = (SeekBar) findViewById(R.id.practice_start);
+        practiceStepSpinner = (Spinner) findViewById(R.id.practice_step);
+        practiceMuteSpinner = (Spinner) findViewById(R.id.practice_mute);
+        practiceOpts = findViewById(R.id.practice_opts);
+        setupSpinner(practiceStepSpinner, R.array.practice_steps);
+        setupSpinner(practiceMuteSpinner, R.array.practice_mutes);
+        practiceStepSpinner.setSelection(prefs.getInt("practice_step", 1));
+        practiceMuteSpinner.setSelection(prefs.getInt("practice_mute", 0));
+        practiceCountIn.setChecked(prefs.getBoolean("practice_countin", false));
+        practiceStartSeek.setProgress(prefs.getInt("practice_start", 7));
+
+        CompoundButton.OnCheckedChangeListener boxes = new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean on) {
+                if (b == practiceBox && on) loopBox.setChecked(true);
+                if (b == loopBox && !on) practiceBox.setChecked(false);
+                if (b == practiceCountIn) prefs.edit().putBoolean("practice_countin", on).apply();
+                practiceOpts.setVisibility(practiceBox.isChecked() ? View.VISIBLE : View.GONE);
+                applyLoop(b == practiceBox);
+            }
+        };
+        loopBox.setOnCheckedChangeListener(boxes);
+        practiceBox.setOnCheckedChangeListener(boxes);
+        practiceCountIn.setOnCheckedChangeListener(boxes);
+        practiceStartSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar sb, int p, boolean fromUser) {
+                practiceStartLabel.setText(getString(R.string.practice_start, 25 + 5 * p));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar sb) { }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar sb) {
+                prefs.edit().putInt("practice_start", sb.getProgress()).apply();
+                applyLoop(false);
+            }
+        });
+        practiceStartLabel.setText(getString(R.string.practice_start, 25 + 5 * practiceStartSeek.getProgress()));
+        practiceStepSpinner.setOnItemSelectedListener(new SimpleItemListener() {
+            @Override
+            void onSelected(int position) {
+                prefs.edit().putInt("practice_step", position).apply();
+                applyLoop(false);
+            }
+        });
+        practiceMuteSpinner.setOnItemSelectedListener(new SimpleItemListener() {
+            @Override
+            void onSelected(int position) {
+                prefs.edit().putInt("practice_mute", position).apply();
+                restartIfPlaying();
+            }
+        });
+        int[][] steppers = {{R.id.loop_a_minus, 0, -1}, {R.id.loop_a_plus, 0, 1}, {R.id.loop_b_minus, 1, -1}, {R.id.loop_b_plus, 1, 1}};
+        for (final int[] st : steppers) {
+            findViewById(st[0]).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (st[1] == 0) {
+                        loopA += st[2];
+                        if (loopA > loopB) loopB = loopA;
+                    } else {
+                        loopB += st[2];
+                        if (loopB < loopA) loopA = loopB;
+                    }
+                    applyLoop(false);
+                }
+            });
+        }
+        findViewById(R.id.loop_a_here).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                loopA = barAt(currentPosition());
+                if (loopB < loopA) loopB = loopA;
+                applyLoop(false);
+            }
+        });
+        findViewById(R.id.loop_b_here).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                loopB = barAt(currentPosition());
+                if (loopA > loopB) loopA = loopB;
+                applyLoop(false);
+            }
+        });
+        practiceOpts.setVisibility(View.GONE);
+    }
+
+    private double currentPosition() {
+        return player != null && player.isPlaying() ? player.position() : pausedAt;
+    }
+
+    private int barCount() {
+        if (tempo == null || notes.isEmpty()) return 1;
+        double end = 0;
+        for (Note n : notes) end = Math.max(end, n.offset);
+        return Math.max(1, (int) Math.ceil((end - tempo.origin) / tempo.barSec() - 1e-6));
+    }
+
+    private int barAt(double sec) {
+        if (tempo == null) return 1;
+        return Math.max(1, Math.min(barCount(), (int) Math.floor((sec - tempo.origin) / tempo.barSec()) + 1));
+    }
+
+    private double barStart(int bar) {
+        return tempo.origin + (bar - 1) * tempo.barSec();
+    }
+
+    private boolean loopActive() {
+        return tempo != null && !notes.isEmpty() && (loopBox.isChecked() || practiceBox.isChecked());
+    }
+
+    /** Part muted in practice mode ("you play"), or -1. */
+    private int mutedPart() {
+        if (!practiceBox.isChecked()) return -1;
+        int p = practiceMuteSpinner.getSelectedItemPosition();
+        return p <= 0 ? -1 : p - 1;
+    }
+
+    /** Parts that are audible: the checked parts minus the one you practise. */
+    private int playMask() {
+        int m = mutedPart();
+        return m < 0 ? partMask : partMask & ~(1 << m);
+    }
+
+    private void restartIfPlaying() {
+        if (player != null && player.isPlaying()) player.play(notes, playMask(), player.position());
+    }
+
+    /** Clamps the bar range and sends loop / practice settings to the player and views. */
+    private void applyLoop(boolean restart) {
+        int n = barCount();
+        loopA = Math.max(1, Math.min(n, loopA));
+        loopB = Math.max(loopA, Math.min(n, loopB));
+        loopAText.setText(String.valueOf(loopA));
+        loopBText.setText(String.valueOf(loopB));
+        boolean on = loopActive();
+        double a = tempo != null ? barStart(loopA) : 0, b = tempo != null ? barStart(loopB + 1) : 0;
+        roll.setLoop(on ? a : -1, b);
+        falling.setLoop(on ? a : -1, b);
+        sheet.setLoopMeasures(on ? loopA - 1 : -1, loopB - 1);
+        if (player != null) {
+            player.setLoop(on, a, b);
+            player.setPractice(on && practiceBox.isChecked(), (25 + 5 * practiceStartSeek.getProgress()) / 100.0,
+                    PRACTICE_STEPS[Math.max(0, practiceStepSpinner.getSelectedItemPosition())], speed,
+                    practiceCountIn.isChecked());
+        }
+        loopStatus.setText(on ? getString(R.string.loop_ready, loopA, loopB, b - a) : "");
+        if (restart) restartIfPlaying();
+    }
+
+    private void updateLoopStatus() {
+        if (!loopActive() || player == null || !player.isPlaying()) return;
+        loopStatus.setText(getString(R.string.loop_status, loopA, loopB, player.loops() + 1,
+                (int) Math.round(player.currentSpeed() * 100)));
+    }
+
     // ------------------------------------------------------------ metronome / speed
 
     private void setSpeed(double s) {
@@ -1201,10 +1379,14 @@ public final class MainActivity extends Activity {
         prefs.edit().putInt("speed_pct", (int) Math.round(speed * 100)).apply();
         if (player != null) player.setSpeed(speed);
         updateSpeedLabel();
+        if (loopBox != null) applyLoop(false);
     }
 
     private void updateSpeedLabel() {
         int pct = (int) Math.round(speed * 100);
+        if (player != null && player.isPlaying() && practiceBox != null && practiceBox.isChecked()) {
+            pct = (int) Math.round(player.currentSpeed() * 100);
+        }
         speedLabel.setText(tempo != null ? getString(R.string.speed_label, pct, (int) Math.round(tempo.bpm * speed))
                 : getString(R.string.speed_label_nobpm, pct));
     }
@@ -1248,7 +1430,9 @@ public final class MainActivity extends Activity {
         for (Note n : notes) end = Math.max(end, n.offset);
         if (pausedAt >= end) pausedAt = 0;
         syncPlayerTiming();
-        player.play(notes, partMask, pausedAt, countInBox.isChecked() && tempo != null ? 1 : 0);
+        applyLoop(false);
+        if (loopActive() && (pausedAt < barStart(loopA) || pausedAt >= barStart(loopB + 1))) pausedAt = barStart(loopA);
+        player.play(notes, playMask(), pausedAt, countInBox.isChecked() && tempo != null ? 1 : 0);
         playBtn.setText(R.string.pause);
         keyboard.postOnAnimation(frame);
     }
@@ -1256,7 +1440,7 @@ public final class MainActivity extends Activity {
     private void seek(double sec) {
         pausedAt = sec;
         if (player != null && player.isPlaying()) {
-            player.play(notes, partMask, sec);
+            player.play(notes, playMask(), sec);
         } else {
             showPosition(sec, false);
         }

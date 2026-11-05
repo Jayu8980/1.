@@ -47,6 +47,8 @@ public final class PianoRollView extends View {
     private final Rect clip = new Rect();
     private final GestureDetector gestures;
     private SeekListener seekListener;
+    private double loopA = -1, loopB = -1;
+    private final Paint loopPaint = new Paint();
 
     public PianoRollView(Context ctx, AttributeSet attrs) {
         super(ctx, attrs);
@@ -64,6 +66,7 @@ public final class PianoRollView extends View {
         textPaint.setColor(0xFF9AA0B4);
         textPaint.setTextSize(10 * d);
         chordPaint.setColor(0xFFFFE082);
+        loopPaint.setColor(0x30FF9800);
         chordPaint.setTextSize(11 * d);
         chordPaint.setFakeBoldText(true);
         gestures = new GestureDetector(ctx, new GestureDetector.SimpleOnGestureListener() {
@@ -91,6 +94,13 @@ public final class PianoRollView extends View {
         this.duration = duration;
         pxPerSec = duration > 0 ? (float) Math.min(basePxPerSec, MAX_WIDTH_PX / duration) : basePxPerSec;
         requestLayout();
+        invalidate();
+    }
+
+    /** Shades the loop range in seconds (a < 0 clears). */
+    public void setLoop(double a, double b) {
+        loopA = a;
+        loopB = b;
         invalidate();
     }
 
@@ -139,6 +149,7 @@ public final class PianoRollView extends View {
             }
         }
         double t0 = clip.left / pxPerSec, t1 = clip.right / pxPerSec;
+        if (loopA >= 0) canvas.drawRect(xFor(loopA), 0, xFor(loopB), h, loopPaint);
         if (tempo != null) {
             double beat = tempo.beatSec();
             long b0 = (long) Math.floor((t0 - tempo.origin) / beat), b1 = (long) Math.ceil((t1 - tempo.origin) / beat);

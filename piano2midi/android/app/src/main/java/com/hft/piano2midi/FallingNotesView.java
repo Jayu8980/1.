@@ -35,6 +35,8 @@ public final class FallingNotesView extends View {
     private double window = 3.0;
     /** Live mode: time flows upward, the newest notes appear at the keyboard. */
     private boolean live;
+    private double loopA = -1, loopB = -1;
+    private final Paint loopPaint = new Paint();
 
     public FallingNotesView(Context ctx, AttributeSet attrs) {
         super(ctx, attrs);
@@ -49,6 +51,7 @@ public final class FallingNotesView extends View {
         chordText.setTextSize(13 * density);
         chordText.setFakeBoldText(true);
         hit.setColor(0x33FFFFFF);
+        loopPaint.setColor(0xFFFF9800);
     }
 
     void setData(List<Note> notes, List<ChordRecognizer.Chord> chords, Tempo tempo) {
@@ -63,6 +66,13 @@ public final class FallingNotesView extends View {
     void setLive(boolean on) {
         live = on;
         window = on ? 6.0 : 3.0;
+        invalidate();
+    }
+
+    /** Marks loop start / end lines (a < 0 clears). */
+    void setLoop(double a, double b) {
+        loopA = a;
+        loopB = b;
         invalidate();
     }
 
@@ -101,6 +111,12 @@ public final class FallingNotesView extends View {
                 if (y < 0) break;
                 if (y > h) continue;
                 c.drawRect(0, y, w, y + (b % tempo.beatsPerBar == 0 ? 1.5f * density : 1), b % tempo.beatsPerBar == 0 ? bar : beat);
+            }
+        }
+        if (loopA >= 0 && !live) {
+            for (double t : new double[]{loopA, loopB}) {
+                float y = yFor(t, h);
+                if (y >= 0 && y <= h) c.drawRect(0, y - density, w, y + density, loopPaint);
             }
         }
         double t0 = live ? pos - window : pos - 0.05, t1 = live ? pos + 0.05 : pos + window;

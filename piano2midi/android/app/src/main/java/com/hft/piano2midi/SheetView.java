@@ -29,6 +29,8 @@ public final class SheetView extends View {
     private final Paint bmp = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final float gap;
     private float[] loc;
+    private int loopA = -1, loopB = -1;
+    private final Paint loopPaint = new Paint();
     private final LinkedHashMap<Integer, Bitmap> cache = new LinkedHashMap<Integer, Bitmap>(4, 0.75f, true);
 
     public SheetView(Context ctx, AttributeSet attrs) {
@@ -37,6 +39,7 @@ public final class SheetView extends View {
         gap = 10 * d;
         shadow.setColor(0x22000000);
         cursor.setColor(0x663F51B5);
+        loopPaint.setColor(0x2AFF9800);
         hint.setColor(0xFF8A8F9C);
         hint.setTextSize(13 * d);
         hint.setTextAlign(Paint.Align.CENTER);
@@ -48,6 +51,13 @@ public final class SheetView extends View {
         loc = null;
         clearCache();
         requestLayout();
+        invalidate();
+    }
+
+    /** Highlights measures [a, b] (0-based, inclusive); a < 0 clears. */
+    void setLoopMeasures(int a, int b) {
+        loopA = a;
+        loopB = b;
         invalidate();
     }
 
@@ -127,6 +137,13 @@ public final class SheetView extends View {
             if (top + ph < vTop || top > vBot) continue;
             c.drawRect(2, top + 2, w + 2, top + ph + 2, shadow);
             c.drawBitmap(pageBitmap(p, w, ph), 0, top, bmp);
+            if (loopA >= 0) {
+                for (int m = loopA; m <= loopB; m++) {
+                    float[] b = layout.measureBox(m);
+                    if (b == null || (int) b[0] != p) continue;
+                    c.drawRect(b[1] * s, top + b[3] * s, b[2] * s, top + b[4] * s, loopPaint);
+                }
+            }
             if (loc != null && (int) loc[0] == p) {
                 c.drawRect(loc[1] * s - 2, top + loc[2] * s, loc[1] * s + 2, top + loc[3] * s, cursor);
             }

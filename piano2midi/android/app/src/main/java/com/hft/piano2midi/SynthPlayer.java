@@ -103,6 +103,39 @@ final class SynthPlayer {
         });
     }
 
+    /** Loop [a, b) musical seconds; applied immediately. */
+    void setLoop(final boolean on, final double a, final double b) {
+        post(new Runnable() {
+            @Override
+            public void run() {
+                engine.setLoop(on, a, b);
+            }
+        });
+    }
+
+    void setPractice(final boolean on, final double start, final double step, final double target,
+                     final boolean countInEach) {
+        post(new Runnable() {
+            @Override
+            public void run() {
+                engine.setPractice(on, start, step, target, countInEach);
+            }
+        });
+    }
+
+    private volatile int loops;
+    private volatile double currentSpeed = 1.0;
+
+    /** Completed loop repeats since play started. */
+    int loops() {
+        return loops;
+    }
+
+    /** Speed the engine is playing at (changes during practice ramps). */
+    double currentSpeed() {
+        return currentSpeed;
+    }
+
     /** Playback speed (1.0 = original tempo); applied immediately, also while playing. */
     void setSpeed(final double s) {
         post(new Runnable() {
@@ -241,6 +274,8 @@ final class SynthPlayer {
                 while ((cmd = commands.poll()) != null) cmd.run();
                 boolean seqActive = engine.isPlaying();
                 double m = engine.render(l, r, BLOCK);
+                loops = engine.loops();
+                currentSpeed = engine.speed();
                 if (seqActive) {
                     synchronized (anchorFrame) {
                         int k = anchorCount % ANCHORS;
