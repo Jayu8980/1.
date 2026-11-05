@@ -71,7 +71,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:backgroundTint="#FFE53935"
+                    android:backgroundTint="@color/record"
                     android:text="@string/record"
                     android:textColor="#FFFFFFFF" />
 
@@ -91,7 +91,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="8dp"
                 android:max="100"
-                android:progressTint="#FFE53935"
+                android:progressTint="@color/record"
                 android:visibility="gone" />
 
             <TextView
@@ -171,7 +171,7 @@
                     android:id="@+id/sheet_scroll"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:background="#FFDADCE3"
+                    android:background="@color/sheet_bg"
                     android:nestedScrollingEnabled="true"
                     android:visibility="gone">
 
@@ -507,7 +507,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:textColor="#FFB26A00"
+                android:textColor="@color/wait_text"
                 android:textStyle="bold" />
 
             <TextView
@@ -531,7 +531,7 @@
                 <TextView
                     style="@style/RowLabel"
                     android:text="@string/part_melody"
-                    android:textColor="#FFE64A19" />
+                    android:textColor="@color/part_melody_text" />
 
                 <Spinner
                     android:id="@+id/inst_melody"
@@ -545,7 +545,7 @@
                 <TextView
                     style="@style/RowLabel"
                     android:text="@string/part_chords"
-                    android:textColor="#FF388E3C" />
+                    android:textColor="@color/part_chords_text" />
 
                 <Spinner
                     android:id="@+id/inst_chords"
@@ -559,7 +559,7 @@
                 <TextView
                     style="@style/RowLabel"
                     android:text="@string/part_bass"
-                    android:textColor="#FF1976D2" />
+                    android:textColor="@color/part_bass_text" />
 
                 <Spinner
                     android:id="@+id/inst_bass"

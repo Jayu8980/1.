@@ -52,6 +52,8 @@
     <string name="wait_waiting">Waiting for %1$s  ·  ✓ %2$d  ✗ %3$d</string>
     <string name="wait_score">Wait mode  ·  ✓ %1$d correct  ✗ %2$d wrong</string>
     <string name="wait_mic_permission">Microphone permission is needed to listen to your piano</string>
+    <string name="theme">Theme</string>
+    <string name="theme_after_task">The theme will change when the current task finishes</string>
     <string name="tab_falling">Falling notes</string>
     <string name="tab_roll">Piano roll</string>
     <string name="tab_sheet">Sheet</string>
@@ -117,6 +119,11 @@
         <item>Melody (muted)</item>
         <item>Chords (muted)</item>
         <item>Bass (muted)</item>
+    </string-array>
+    <string-array name="themes">
+        <item>System default</item>
+        <item>Light</item>
+        <item>Dark</item>
     </string-array>
     <string-array name="time_sigs">
         <item>4/4</item>

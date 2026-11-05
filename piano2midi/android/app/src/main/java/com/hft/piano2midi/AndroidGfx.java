@@ -17,8 +17,16 @@ final class AndroidGfx implements Gfx {
     private final Path path = new Path();
     private final char[] one = new char[1];
 
+    /** Dark mode: dark paper, light ink (screen only; PDFs always use black on white). */
+    private final boolean dark;
+
     AndroidGfx(Canvas c, Typeface musicFont) {
+        this(c, musicFont, false);
+    }
+
+    AndroidGfx(Canvas c, Typeface musicFont, boolean dark) {
         this.c = c;
+        this.dark = dark;
         stroke.setStyle(Paint.Style.STROKE);
         stroke.setStrokeCap(Paint.Cap.BUTT);
         fill.setStyle(Paint.Style.FILL);
@@ -28,10 +36,21 @@ final class AndroidGfx implements Gfx {
 
     @Override
     public void setColor(int argb) {
+        if (dark) argb = invert(argb);
         stroke.setColor(argb);
         fill.setColor(argb);
         music.setColor(argb);
         text.setColor(argb);
+    }
+
+    /** Maps ink colours for dark paper: black becomes light grey, greys keep their contrast. */
+    static int invert(int argb) {
+        int a = argb >>> 24;
+        int r = (argb >> 16) & 0xFF, g = (argb >> 8) & 0xFF, b = argb & 0xFF;
+        r = (int) (232 - r * 0.8f);
+        g = (int) (232 - g * 0.8f);
+        b = (int) (236 - b * 0.8f);
+        return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
     @Override

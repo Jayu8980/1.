@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Light palette (dark overrides in values-night/colors.xml). -->
+<resources>
+    <color name="primary">#3F51B5</color>          <!-- brand: buttons, highlights -->
+    <color name="primary_dark">#303F9F</color>     <!-- status bar -->
+    <color name="action_bar">#3F51B5</color>
+    <color name="accent">#FF7043</color>
+    <color name="card">#FFFFFFFF</color>
+    <color name="bg">#FFF2F3F7</color>
+    <color name="text_primary">#FF22242C</color>
+    <color name="text_secondary">#FF5F6370</color>
+    <color name="tab_off">#FFE3E5EC</color>
+    <color name="tab_off_text">#FF33363F</color>
+    <color name="tab_on">#FF3F51B5</color>
+    <color name="tab_on_text">#FFFFFFFF</color>
+    <color name="sheet_bg">#FFDADCE3</color>
+    <color name="wait_text">#FFB26A00</color>
+    <color name="record">#FFE53935</color>
+    <color name="part_melody_text">#FFE64A19</color>
+    <color name="part_chords_text">#FF388E3C</color>
+    <color name="part_bass_text">#FF1976D2</color>
+</resources>

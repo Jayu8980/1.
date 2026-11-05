@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dark palette. -->
+<resources>
+    <color name="primary">#FF8C9EFF</color>
+    <color name="primary_dark">#FF101116</color>
+    <color name="action_bar">#FF1B1C22</color>
+    <color name="accent">#FFFF8A65</color>
+    <color name="card">#FF1F2128</color>
+    <color name="bg">#FF121318</color>
+    <color name="text_primary">#FFECEDEF</color>
+    <color name="text_secondary">#FFA3A8B5</color>
+    <color name="tab_off">#FF2C2F38</color>
+    <color name="tab_off_text">#FFD5D8E0</color>
+    <color name="tab_on">#FF5C6BC0</color>
+    <color name="tab_on_text">#FFFFFFFF</color>
+    <color name="sheet_bg">#FF0D0E12</color>
+    <color name="wait_text">#FFFFB74D</color>
+    <color name="record">#FFEF5350</color>
+    <color name="part_melody_text">#FFFF8A65</color>
+    <color name="part_chords_text">#FF81C784</color>
+    <color name="part_bass_text">#FF64B5F6</color>
+</resources>

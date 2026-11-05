@@ -31,14 +31,17 @@ public final class SheetView extends View {
     private float[] loc;
     private int loopA = -1, loopB = -1;
     private final Paint loopPaint = new Paint();
+    private final boolean dark;
     private final LinkedHashMap<Integer, Bitmap> cache = new LinkedHashMap<Integer, Bitmap>(4, 0.75f, true);
 
     public SheetView(Context ctx, AttributeSet attrs) {
         super(ctx, attrs);
         float d = getResources().getDisplayMetrics().density;
         gap = 10 * d;
-        shadow.setColor(0x22000000);
-        cursor.setColor(0x663F51B5);
+        dark = (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        shadow.setColor(0x33000000);
+        cursor.setColor(0x668C9EFF);
         loopPaint.setColor(0x2AFF9800);
         hint.setColor(0xFF8A8F9C);
         hint.setTextSize(13 * d);
@@ -103,10 +106,10 @@ public final class SheetView extends View {
         if (b != null) return b;
         b = Bitmap.createBitmap(w, ph, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(b);
-        c.drawColor(0xFFFFFFFF);
+        c.drawColor(dark ? 0xFF1E1F24 : 0xFFFFFFFF);
         float s = w / layout.pageW;
         c.scale(s, s);
-        layout.drawPage(new AndroidGfx(c, music), p);
+        layout.drawPage(new AndroidGfx(c, music, dark), p);
         cache.put(p, b);
         if (cache.size() > CACHE_PAGES) {
             Iterator<Map.Entry<Integer, Bitmap>> it = cache.entrySet().iterator();

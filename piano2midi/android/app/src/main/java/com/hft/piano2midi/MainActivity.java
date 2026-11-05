@@ -479,8 +479,13 @@ public final class MainActivity extends Activity {
         selectTab(prefs.getInt("tab", 0));
         setResultButtonsEnabled(false);
         playBtn.setEnabled(false);
-        loadSoundFont(prefs.getBoolean("custom_sf2", false) ? new File(getFilesDir(), CUSTOM_SF2) : null);
-        handleIncomingIntent(getIntent());
+        Object retained = getLastNonConfigurationInstance();
+        if (retained instanceof Retained) {
+            restore((Retained) retained);
+        } else {
+            loadSoundFont(prefs.getBoolean("custom_sf2", false) ? new File(getFilesDir(), CUSTOM_SF2) : null);
+            handleIncomingIntent(getIntent());
+        }
     }
 
     private abstract static class SimpleItemListener implements AdapterView.OnItemSelectedListener {
@@ -512,8 +517,9 @@ public final class MainActivity extends Activity {
         for (int i = 0; i < tabs.length; i++) {
             boolean on = i == tab;
             tabViews[i].setVisibility(on ? View.VISIBLE : View.GONE);
-            tabs[i].setBackgroundTintList(android.content.res.ColorStateList.valueOf(on ? 0xFF3F51B5 : 0xFFE3E5EC));
-            tabs[i].setTextColor(on ? 0xFFFFFFFF : 0xFF33363F);
+            tabs[i].setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                    getColor(on ? R.color.tab_on : R.color.tab_off)));
+            tabs[i].setTextColor(getColor(on ? R.color.tab_on_text : R.color.tab_off_text));
         }
         prefs.edit().putInt("tab", tab).apply();
         if (tab == 2 && sheetDirty) rebuildSheet();
@@ -642,8 +648,8 @@ public final class MainActivity extends Activity {
             }
         });
         SoundFont.Preset[] chans = {presets[0], presets[1], presets[2], presets[0]};
-        if (player == null) {
-            player = new SynthPlayer(sf);
+        if (player == null) player = new SynthPlayer(sf);
+        {
             player.setOnFinished(new Runnable() {
                 @Override
                 public void run() {
@@ -700,6 +706,171 @@ public final class MainActivity extends Activity {
                 }
             }
         }, "sf2-import").start();
+    }
+
+    // ------------------------------------------------------------ theme
+
+    private static final int THEME_SYSTEM = 0, THEME_LIGHT = 1, THEME_DARK = 2;
+    private boolean pendingRecreate;
+    private Retained retainedForRecreate;
+
+    /** Applies the Light / Dark override before any resources are loaded. */
+    @Override
+    protected void attachBaseContext(android.content.Context base) {
+        int mode = base.getSharedPreferences("settings", MODE_PRIVATE).getInt("theme", THEME_SYSTEM);
+        if (mode != THEME_SYSTEM) {
+            android.content.res.Configuration c = new android.content.res.Configuration(base.getResources().getConfiguration());
+            c.uiMode = (c.uiMode & ~android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                    | (mode == THEME_DARK ? android.content.res.Configuration.UI_MODE_NIGHT_YES
+                    : android.content.res.Configuration.UI_MODE_NIGHT_NO);
+            base = base.createConfigurationContext(c);
+        }
+        super.attachBaseContext(base);
+    }
+
+    private boolean resourcesNight() {
+        return (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    /** System dark mode toggled while following the system theme: rebuild the UI in the new colours. */
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (prefs.getInt("theme", THEME_SYSTEM) != THEME_SYSTEM) return;
+        boolean sysNight = (newConfig.uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        if (sysNight != resourcesNight()) recreateKeepingState();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(android.view.Menu menu) {
+        menu.add(0, 1, 0, R.string.theme).setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM
+                | android.view.MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(android.view.MenuItem item) {
+        if (item.getItemId() != 1) return super.onOptionsItemSelected(item);
+        int cur = prefs.getInt("theme", THEME_SYSTEM);
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.theme)
+                .setSingleChoiceItems(R.array.themes, cur, new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface d, int which) {
+                        d.dismiss();
+                        if (which == prefs.getInt("theme", THEME_SYSTEM)) return;
+                        prefs.edit().putInt("theme", which).apply();
+                        recreateKeepingState();
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+        return true;
+    }
+
+    private void recreateKeepingState() {
+        if (worker != null || recorder != null) {
+            // don't interrupt a transcription or recording; switch when it is done
+            pendingRecreate = true;
+            Toast.makeText(this, R.string.theme_after_task, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        retainedForRecreate = capture();
+        recreate();
+    }
+
+    /** Everything a theme switch must carry over to the new activity instance. */
+    private static final class Retained {
+        Uri audioUri;
+        String audioName;
+        Transcriber.Result result;
+        double audioSeconds, bpmOverride, pausedAt;
+        float[] recordedPcm;
+        int recordedLen, recordedRate;
+        SoundFont font;
+        SynthPlayer player;
+        int onset, offset, frame, offsetMode, timeSig, exportPart, loopA, loopB, tab;
+        boolean[] parts = new boolean[3];
+        boolean loop, practice, wait;
+        String status;
+    }
+
+    private Retained capture() {
+        Retained r = new Retained();
+        r.audioUri = audioUri;
+        r.audioName = audioName;
+        r.result = result;
+        r.audioSeconds = audioSeconds;
+        r.bpmOverride = bpmOverride;
+        r.pausedAt = player != null && player.isPlaying() ? Math.max(0, player.position()) : pausedAt;
+        stopPlayback();
+        r.recordedPcm = recordedPcm;
+        r.recordedLen = recordedLen;
+        r.recordedRate = recordedRate;
+        r.font = font;
+        r.player = player;
+        r.onset = onsetSeek.getProgress();
+        r.offset = offsetSeek.getProgress();
+        r.frame = frameSeek.getProgress();
+        r.offsetMode = offsetModeSpinner.getSelectedItemPosition();
+        r.timeSig = timeSigSpinner.getSelectedItemPosition();
+        r.exportPart = exportSpinner.getSelectedItemPosition();
+        for (int i = 0; i < 3; i++) r.parts[i] = partBoxes[i].isChecked();
+        r.loop = loopBox.isChecked();
+        r.practice = practiceBox.isChecked();
+        r.wait = waitBox.isChecked();
+        r.loopA = loopA;
+        r.loopB = loopB;
+        r.tab = tab;
+        r.status = statusText.getText().toString();
+        return r;
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public Object onRetainNonConfigurationInstance() {
+        return retainedForRecreate != null ? retainedForRecreate : capture();
+    }
+
+    private void restore(Retained r) {
+        player = r.player;
+        audioUri = r.audioUri;
+        audioName = r.audioName;
+        bpmOverride = r.bpmOverride;
+        recordedPcm = r.recordedPcm;
+        recordedLen = r.recordedLen;
+        recordedRate = r.recordedRate;
+        onsetSeek.setProgress(r.onset);
+        offsetSeek.setProgress(r.offset);
+        frameSeek.setProgress(r.frame);
+        updateThresholdLabels();
+        offsetModeSpinner.setSelection(r.offsetMode, false);
+        timeSigSpinner.setSelection(r.timeSig, false);
+        exportSpinner.setSelection(r.exportPart, false);
+        for (int i = 0; i < 3; i++) partBoxes[i].setChecked(r.parts[i]);
+        loopBox.setChecked(r.loop);
+        practiceBox.setChecked(r.practice);
+        waitBox.setChecked(r.wait);
+        loopA = r.loopA;
+        loopB = r.loopB;
+        if (audioUri != null || recordedPcm != null) {
+            fileText.setText(audioName);
+            convertBtn.setEnabled(audioUri != null);
+        }
+        saveWavBtn.setVisibility(recordedPcm != null ? View.VISIBLE : View.GONE);
+        if (r.font != null) applySoundFont(r.font);
+        else loadSoundFont(prefs.getBoolean("custom_sf2", false) ? new File(getFilesDir(), CUSTOM_SF2) : null);
+        if (r.result != null) {
+            result = r.result;
+            audioSeconds = r.audioSeconds;
+            redecode();
+        }
+        pausedAt = r.pausedAt;
+        statusText.setText(r.status);
+        selectTab(r.tab);
+        showPosition(pausedAt, false);
     }
 
     // ------------------------------------------------------------ input
@@ -1010,6 +1181,15 @@ public final class MainActivity extends Activity {
 
     private void finishWorker() {
         worker = null;
+        if (pendingRecreate && recorder == null) {
+            pendingRecreate = false;
+            ui.post(new Runnable() {
+                @Override
+                public void run() {
+                    recreateKeepingState();
+                }
+            });
+        }
         recordBtn.setEnabled(true);
         pickBtn.setEnabled(true);
         convertBtn.setEnabled(audioUri != null);
@@ -1796,7 +1976,7 @@ public final class MainActivity extends Activity {
         cancelled = true;
         stopMic();
         if (midi != null) midi.close();
-        if (player != null) player.release();
+        if (player != null && !isChangingConfigurations()) player.release();
         super.onDestroy();
     }
 }
