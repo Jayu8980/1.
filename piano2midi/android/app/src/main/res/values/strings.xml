@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Piano2MIDI</string>
+    <string name="open_with">Convert to MIDI</string>
+    <string name="subtitle">Polyphonic piano transcription with hFT-Transformer, fully on-device.</string>
+    <string name="pick">Choose audio file</string>
+    <string name="no_file">No file selected (mp3, m4a, wav, flac, ogg… up to 10 minutes)</string>
+    <string name="convert">Convert to MIDI</string>
+    <string name="cancel">Cancel</string>
+    <string name="play">Play</string>
+    <string name="stop">Stop</string>
+    <string name="save">Save .mid</string>
+    <string name="share">Share</string>
+    <string name="about">About</string>
+    <string name="settings">Note detection</string>
+    <string name="onset_threshold">Onset threshold: %.2f</string>
+    <string name="offset_threshold">Offset threshold: %.2f</string>
+    <string name="frame_threshold">Frame threshold: %.2f</string>
+    <string name="offset_mode">Note end</string>
+    <string name="settings_hint">Changing these re-decodes the notes instantly; the model does not need to run again.</string>
+    <string name="status_ready">Ready. Tap “Convert to MIDI”.</string>
+    <string name="status_loading_model">Loading model…</string>
+    <string name="status_decoding">Decoding audio…</string>
+    <string name="status_resampling">Resampling to 16 kHz…</string>
+    <string name="status_features">Computing log-mel spectrogram…</string>
+    <string name="status_transcribing">Transcribing segment %1$d / %2$d (about %3$d s left)</string>
+    <string name="status_done">Done.</string>
+    <string name="status_cancelled">Cancelled.</string>
+    <string name="status_error">Error: %s</string>
+    <string name="err_empty">The file contains no audio samples</string>
+    <string name="err_oom">Out of memory: try a shorter recording</string>
+    <string name="stats">%1$d notes · %2$.1f s of audio</string>
+    <string name="elapsed">processed in %.1f s</string>
+    <string name="saved">MIDI file saved</string>
+    <string name="roll_empty">The piano roll appears here after conversion</string>
+    <string name="about_title">About Piano2MIDI</string>
+    <string name="about_text">Converts piano recordings to MIDI using the hFT-Transformer (Hierarchical Frequency-Time Transformer) by Sony, ISMIR 2023 (arXiv:2307.04305).\n\nAll processing happens on this device: audio → 16 kHz log-mel spectrogram → hFT-Transformer → onset/offset/frame/velocity → notes → MIDI.\n\nSource code: MIT License, © Sony Group Corporation.\nModel weights: trained on MAESTRO v3.0.0, CC BY-NC-SA 4.0 (non-commercial use only).\n\nBest results come from solo piano recordings.</string>
+    <string-array name="offset_modes">
+        <item>Shorter of offset / frame (default)</item>
+        <item>Longer of offset / frame</item>
+        <item>Offset head only</item>
+    </string-array>
+</resources>

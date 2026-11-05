@@ -66,3 +66,7 @@ See [docs/ACE_STUDIO_FEATURE_ANALYSIS.md](docs/ACE_STUDIO_FEATURE_ANALYSIS.md) f
 | `js/midi.js`, `js/wav.js`, `js/io.js` | File formats, save/load, autosave |
 | `js/state.js` | Project model, undo/redo, parameter curves |
 | `js/app.js` | Menus, commands, shortcuts, transport, layout |
+
+## Piano2MIDI (Android)
+
+[`piano2midi/`](piano2midi/README.md) contains an Android app that converts polyphonic piano audio to MIDI on the device, using the hFT-Transformer model.
