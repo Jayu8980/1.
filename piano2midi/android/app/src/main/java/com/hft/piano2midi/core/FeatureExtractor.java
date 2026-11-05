@@ -149,13 +149,13 @@ public final class FeatureExtractor {
     }
 
     /** Iterative radix-2 complex FFT. */
-    static final class Fft {
+    public static final class Fft {
         private final int n;
         private final int[] rev;
         private final double[] cos;
         private final double[] sin;
 
-        Fft(int n) {
+        public Fft(int n) {
             this.n = n;
             int bits = Integer.numberOfTrailingZeros(n);
             rev = new int[n];
@@ -170,7 +170,7 @@ public final class FeatureExtractor {
             }
         }
 
-        void transform(double[] re, double[] im) {
+        public void transform(double[] re, double[] im) {
             for (int i = 0; i < n; i++) {
                 int j = rev[i];
                 if (j > i) {

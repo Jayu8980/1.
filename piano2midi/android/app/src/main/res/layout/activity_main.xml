@@ -194,6 +194,67 @@
                     android:visibility="gone" />
             </LinearLayout>
 
+            <!-- ============================== engine ============================== -->
+            <LinearLayout style="@style/Card">
+
+                <TextView
+                    style="@style/CardTitle"
+                    android:drawableStart="@drawable/ic_tune"
+                    android:drawablePadding="14dp"
+                    android:drawableTint="@color/primary"
+                    android:gravity="center_vertical"
+                    android:text="@string/engine_title" />
+
+                <Spinner
+                    android:id="@+id/engine"
+                    style="@style/Field"
+                    android:layout_width="match_parent" />
+
+                <TextView
+                    android:id="@+id/engine_desc"
+                    style="@style/Hint"
+                    android:layout_marginTop="8dp"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/engine_params"
+                    style="@style/Label"
+                    android:layout_marginTop="6dp"
+                    android:textColor="@color/primary" />
+
+                <ProgressBar
+                    android:id="@+id/engine_progress"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="6dp"
+                    android:layout_marginTop="10dp"
+                    android:max="1000"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:id="@+id/engine_actions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/engine_download"
+                        style="@style/Btn.Tonal"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:drawableStart="@drawable/ic_download"
+                        android:text="@string/engine_download" />
+
+                    <Button
+                        android:id="@+id/engine_delete"
+                        style="@style/Btn.Text"
+                        android:layout_width="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="@string/engine_delete" />
+                </LinearLayout>
+            </LinearLayout>
+
                     <!-- summary of the last transcription -->
             <LinearLayout style="@style/Card">
 
@@ -1017,6 +1078,13 @@
                     style="@style/SectionBody">
 
                     <TextView
+                        android:id="@+id/detect_engine"
+                        style="@style/Label"
+                        android:layout_marginBottom="6dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:textColor="@color/primary" />
+
+                    <TextView
                         android:id="@+id/onset_label"
                         style="@style/Label" />
 
@@ -1055,6 +1123,7 @@
                         android:progress="50" />
 
                     <LinearLayout
+                        android:id="@+id/offset_mode_row"
                         style="@style/Row"
                         android:layout_marginTop="8dp">
 
@@ -1068,10 +1137,17 @@
                     </LinearLayout>
 
                     <TextView
+                        android:id="@+id/settings_hint"
                         style="@style/Hint"
                         android:layout_marginTop="8dp"
-                        android:layout_marginBottom="8dp"
                         android:text="@string/settings_hint" />
+
+                    <Button
+                        android:id="@+id/reset_params"
+                        style="@style/Btn.Text"
+                        android:layout_width="wrap_content"
+                        android:layout_marginBottom="4dp"
+                        android:text="@string/reset_params" />
                 </LinearLayout>
             </LinearLayout>
 
