@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Piano2MIDI</string>
     <string name="open_with">Convert to MIDI</string>
-    <string name="subtitle">On-device polyphonic piano → MIDI, sheet music and practice, with a choice of hFT-Transformer, Basic Pitch or MT3.</string>
+    <string name="subtitle">On-device polyphonic piano → MIDI, sheet music and practice, powered by hFT-Transformer.</string>
     <string name="pick">Open audio</string>
     <string name="no_file">No audio yet: record your piano or open a file</string>
     <string name="convert">Convert to MIDI</string>
@@ -108,7 +108,7 @@
     <string name="status_ready">Ready. Tap “Convert to MIDI”.</string>
     <string name="status_loading_model">Loading model…</string>
     <string name="status_decoding">Decoding audio…</string>
-    <string name="status_resampling">Resampling…</string>
+    <string name="status_resampling">Resampling to 16 kHz…</string>
     <string name="status_features">Computing log-mel spectrogram…</string>
     <string name="status_transcribing">Transcribing segment %1$d / %2$d (about %3$d s left)</string>
     <string name="status_done">Done.</string>
@@ -121,7 +121,7 @@
     <string name="saved">MIDI file saved</string>
     <string name="roll_empty">The piano roll appears here after conversion</string>
     <string name="about_title">About Piano2MIDI</string>
-    <string name="about_text">Converts piano recordings to MIDI using the hFT-Transformer (Hierarchical Frequency-Time Transformer) by Sony, ISMIR 2023 (arXiv:2307.04305).\n\nAll processing happens on this device: audio → 16 kHz log-mel spectrogram → hFT-Transformer → onset/offset/frame/velocity → notes → MIDI.\n\nSource code: MIT License, © Sony Group Corporation.\nModel weights: trained on MAESTRO v3.0.0, CC BY-NC-SA 4.0 (non-commercial use only).\n\nOther engines: Basic Pitch © Spotify AB (Apache License 2.0). MT3 code and checkpoints © Google LLC (Apache License 2.0), converted to ONNX and downloaded on demand.\n\nBest results come from solo piano recordings.\n\nThe transcription is split into melody (top line), chords (accompaniment) and bass (lowest line). Tempo, key and chords are detected automatically for the sheet music; adjust the tempo if bars look wrong.\n\nBuilt-in instruments: excerpt of FluidR3_GM by Frank Wen (MIT license). Music font: Bravura by Steinberg (SIL Open Font License).</string>
+    <string name="about_text">Converts piano recordings to MIDI using the hFT-Transformer (Hierarchical Frequency-Time Transformer) by Sony, ISMIR 2023 (arXiv:2307.04305).\n\nAll processing happens on this device: audio → 16 kHz log-mel spectrogram → hFT-Transformer → onset/offset/frame/velocity → notes → MIDI.\n\nSource code: MIT License, © Sony Group Corporation.\nModel weights: trained on MAESTRO v3.0.0, CC BY-NC-SA 4.0 (non-commercial use only).\n\nBest results come from solo piano recordings.\n\nThe transcription is split into melody (top line), chords (accompaniment) and bass (lowest line). Tempo, key and chords are detected automatically for the sheet music; adjust the tempo if bars look wrong.\n\nBuilt-in instruments: excerpt of FluidR3_GM by Frank Wen (MIT license). Music font: Bravura by Steinberg (SIL Open Font License).</string>
     <string-array name="export_parts">
         <item>All parts (melody, chords, bass)</item>
         <item>Selected parts (checkboxes above)</item>
@@ -155,50 +155,5 @@
         <item>Shorter of offset / frame (default)</item>
         <item>Longer of offset / frame</item>
         <item>Offset head only</item>
-    </string-array>
-    <string name="status_busy">Wait for the current transcription to finish</string>
-    <string name="engine_title">Transcription engine</string>
-    <string name="engine_download">Download model (%1$d MB)</string>
-    <string name="engine_downloading">Downloading… %1$d / %2$d MB</string>
-    <string name="engine_cancel_download">Cancel download</string>
-    <string name="engine_delete">Delete</string>
-    <string name="engine_ready">Model installed · %1$d MB</string>
-    <string name="engine_bundled">Built in · works offline</string>
-    <string name="engine_needs_download">Download this model to use it (Wi-Fi recommended).</string>
-    <string name="engine_dl_failed">Download failed: %1$s</string>
-    <string name="engine_dl_done">%1$s is ready</string>
-    <string name="engine_switched">Switched to %1$s · parameters set to its defaults</string>
-    <string name="engine_rerun">Re-transcribing with %1$s…</string>
-    <string name="engine_record_note">Live preview uses hFT-Transformer; %1$s runs when you stop.</string>
-    <string name="engine_record_fallback">%1$s is not downloaded; using hFT-Transformer for this recording.</string>
-    <string name="engine_label">Engine: %1$s</string>
-    <string name="status_engine">Transcribing with %1$s…</string>
-    <string name="status_engine_chunk">%1$s · window %2$d / %3$d (about %4$d s left)</string>
-    <string name="status_downloaded_first">Download %1$s first (Home → Transcription engine).</string>
-    <string name="min_note_length">Minimum note length: %1$d ms</string>
-    <string name="param_disabled">%1$s: set by the model</string>
-    <string name="settings_hint_bp">Basic Pitch: onset and frame thresholds plus minimum note length. Changes re-decode instantly.</string>
-    <string name="settings_hint_mt3">MT3 writes finished notes directly, so there are no thresholds to tune. Pick hFT-Transformer or Basic Pitch to adjust detection.</string>
-    <string name="reset_params">Reset to engine defaults</string>
-    <string name="params_hft">Onset %1$.2f · offset %2$.2f · frame %3$.2f · live streaming</string>
-    <string name="params_bp">Onset %1$.2f · frame %2$.2f · min note %3$d ms</string>
-    <string name="params_mt3">No thresholds: notes come straight from the model</string>
-    <string-array name="engines">
-        <item>hFT-Transformer · piano (best)</item>
-        <item>Basic Pitch · fast, any instrument</item>
-        <item>MT3 · piano</item>
-        <item>MT3 · multi-instrument</item>
-    </string-array>
-    <string-array name="engine_names">
-        <item>hFT-Transformer</item>
-        <item>Basic Pitch</item>
-        <item>MT3 piano</item>
-        <item>MT3 multi-instrument</item>
-    </string-array>
-    <string-array name="engine_descs">
-        <item>Sony hFT-Transformer (ISMIR 2023). Most accurate for solo piano, with velocity and live streaming while you record.</item>
-        <item>Spotify Basic Pitch (ICASSP 2022). Tiny and very fast, works on voice, guitar, strings and other pitched instruments. Less precise on dense piano.</item>
-        <item>Google MT3, piano checkpoint (ISMIR 2021). Sequence-to-sequence Transformer that writes notes and velocities directly. Slower; download 52 MB.</item>
-        <item>Google MT3, multi-instrument checkpoint (ICLR 2022). Transcribes mixed instruments into notes; velocities are fixed. Slower; download 52 MB.</item>
     </string-array>
 </resources>
