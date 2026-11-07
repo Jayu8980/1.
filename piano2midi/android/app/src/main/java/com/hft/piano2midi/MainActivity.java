@@ -67,6 +67,8 @@ public final class MainActivity extends Activity {
 
     private static final int REQ_PICK = 1, REQ_SAVE = 2, REQ_SF2 = 3, REQ_SAVE_WAV = 4, REQ_MIC = 5, REQ_MIC_LISTEN = 6;
     private static final String MODEL_ASSET = "hft_transformer.onnx";
+    private static final String MS_ASSET = "muscriptor.onnx";
+    private static final String MS_FRONTEND_ASSET = "ms_frontend.bin";
     private static final String SF2_ASSET = "instruments.sf2";
     private static final String CUSTOM_SF2 = "custom.sf2";
     /** Memory bound: PCM + features + frame outputs for 10 min fit comfortably in a large heap. */
@@ -1206,7 +1208,7 @@ public final class MainActivity extends Activity {
         engineDelete.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (worker != null || downloader != null || engine.downloads == null) return;
+                if (worker != null || downloader != null || downloadsOf(engine) == null) return;
                 new AlertDialog.Builder(MainActivity.this)
                         .setMessage(getString(R.string.engine_delete) + " " + engineName(engine) + "?")
                         .setPositiveButton(R.string.engine_delete, new android.content.DialogInterface.OnClickListener() {
@@ -1242,8 +1244,28 @@ public final class MainActivity extends Activity {
         return new File(new File(getFilesDir(), "models"), m.path);
     }
 
+    /** True when this APK carries the MuScriptor model as an asset (the 343 MB and Full builds). */
+    private Boolean msBundled;
+
+    private boolean msBundled() {
+        if (msBundled == null) {
+            boolean found = false;
+            try {
+                String[] list = getAssets().list("");
+                if (list != null) for (String n : list) if (MS_ASSET.equals(n)) found = true;
+            } catch (IOException ignored) { }
+            msBundled = found;
+        }
+        return msBundled;
+    }
+
+    /** Model files this engine still needs from the network, or null when it ships in the APK. */
+    private Engine.Model[] downloadsOf(Engine e) {
+        return e == Engine.MUSCRIPTOR && msBundled() ? null : e.downloads;
+    }
+
     private boolean engineReady(Engine e) {
-        if (e.downloads == null) return true;
+        if (downloadsOf(e) == null) return true;
         for (Engine.Model m : e.downloads) {
             File f = modelFile(m);
             if (!f.isFile() || f.length() != m.size) return false;
@@ -1303,11 +1325,11 @@ public final class MainActivity extends Activity {
         String desc = getResources().getStringArray(R.array.engine_descs)[engine.ordinal()];
         boolean ready = engineReady(engine);
         int mb = (int) Math.round(engine.downloadSize() / 1048576.0);
-        String avail = engine.downloads == null ? getString(R.string.engine_bundled)
+        String avail = downloadsOf(engine) == null ? getString(R.string.engine_bundled)
                 : ready ? getString(R.string.engine_ready, mb) : getString(R.string.engine_needs_download);
         engineDesc.setText(desc + "\n" + avail);
         boolean downloading = downloader != null;
-        findViewById(R.id.engine_actions).setVisibility(engine.downloads == null ? View.GONE : View.VISIBLE);
+        findViewById(R.id.engine_actions).setVisibility(downloadsOf(engine) == null ? View.GONE : View.VISIBLE);
         engineDownload.setVisibility(ready && !downloading ? View.GONE : View.VISIBLE);
         engineDownload.setEnabled(!downloading || !dlCancel);
         engineDownload.setText(downloading ? getString(R.string.engine_cancel_download)
@@ -1319,7 +1341,7 @@ public final class MainActivity extends Activity {
     }
 
     private void startDownload(final Engine e) {
-        if (e.downloads == null || downloader != null) return;
+        if (downloadsOf(e) == null || downloader != null) return;
         dlCancel = false;
         engineProgress.setProgress(0);
         final long total = e.downloadSize();
@@ -1575,8 +1597,15 @@ public final class MainActivity extends Activity {
         setStatus(getString(R.string.status_loading_model), b1);
         switch (eng) {
             case MUSCRIPTOR: {
-                Muscriptor m = new Muscriptor(modelFile(eng.downloads[0]).getAbsolutePath(),
-                        modelFile(eng.downloads[1]).getAbsolutePath(), threads);
+                Muscriptor m;
+                if (msBundled()) {
+                    setStatus(getString(R.string.status_installing_model), b1);
+                    m = new Muscriptor(ensureAsset(MS_ASSET).getAbsolutePath(),
+                            ensureAsset(MS_FRONTEND_ASSET).getAbsolutePath(), threads);
+                } else {
+                    m = new Muscriptor(modelFile(eng.downloads[0]).getAbsolutePath(),
+                            modelFile(eng.downloads[1]).getAbsolutePath(), threads);
+                }
                 try {
                     setStatus(getString(R.string.status_engine, name), b1);
                     return m.transcribe(wav, new ChunkProgress(name, b1));

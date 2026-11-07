@@ -19,9 +19,24 @@ CACHE="${CACHE_DIR:-$HERE/build/cache}"
 ORT_VERSION="${ORT_VERSION:-1.23.2}"
 MIN_SDK=26
 TARGET_SDK=34
-VERSION_CODE="${VERSION_CODE:-13}"
-VERSION_NAME="${VERSION_NAME:-2.2}"
+VERSION_CODE="${VERSION_CODE:-14}"
+VERSION_NAME="${VERSION_NAME:-2.3}"
 PKG=com.hft.piano2midi
+# MS_BUNDLE=int8 bundles MuScriptor (int8, joined from models/muscriptor-medium) into the APK;
+# MS_BUNDLE=fp32 builds the separate app "Piano2MIDI Full" (com.hft.piano2midi.full) with the
+# fp32 model from MS_MODEL (export_muscriptor_onnx.py --fp32). Default: no bundle; the app
+# downloads MuScriptor on demand.
+MS_BUNDLE="${MS_BUNDLE:-none}"
+APP_ID=$PKG
+APK_OUT="$HERE/build/piano2midi.apk"
+VARIANT_RES=""
+case "$MS_BUNDLE" in
+  none) ;;
+  int8) APK_OUT="$HERE/build/piano2midi-bundled.apk"; VARIANT_RES="$HERE/variants/bundled/res" ;;
+  fp32) APP_ID=$PKG.full; APK_OUT="$HERE/build/piano2midi-full.apk"; VARIANT_RES="$HERE/variants/full/res"
+        if [ ! -f "${MS_MODEL:-}" ]; then echo "MS_BUNDLE=fp32 needs MS_MODEL=/path/to/fp32/muscriptor.onnx" >&2; exit 1; fi ;;
+  *) echo "MS_BUNDLE must be none, int8 or fp32" >&2; exit 1 ;;
+esac
 ABIS="${ABIS:-arm64-v8a armeabi-v7a x86_64}"
 R8_VERSION="${R8_VERSION:-8.5.35}"
 
@@ -55,15 +70,31 @@ rm -rf "$OUT"
 mkdir -p "$OUT"/{res,gen,classes,ort,apk}
 unzip -q -o "$ORT_AAR" classes.jar 'jni/*' -d "$OUT/ort"
 
+echo "== assets"
+MS="$HERE/../models/muscriptor-medium"
+cp -r "$APP/assets" "$OUT/assets"
+if [ "$MS_BUNDLE" = int8 ]; then
+  cat "$MS"/muscriptor.onnx.?? > "$OUT/assets/muscriptor.onnx"
+elif [ "$MS_BUNDLE" = fp32 ]; then
+  cp "$MS_MODEL" "$OUT/assets/muscriptor.onnx"
+fi
+if [ "$MS_BUNDLE" != none ]; then cp "$MS/ms_frontend.bin" "$OUT/assets/ms_frontend.bin"; fi
+
 echo "== manifest"
 sed -e "s#<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">#<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\" package=\"$PKG\" android:versionCode=\"$VERSION_CODE\" android:versionName=\"$VERSION_NAME\">\n    <uses-sdk android:minSdkVersion=\"$MIN_SDK\" android:targetSdkVersion=\"$TARGET_SDK\" />#" \
-  "$APP/AndroidManifest.xml" > "$OUT/AndroidManifest.xml"
+  "$APP/AndroidManifest.xml" | sed -e "s#android:authorities=\"$PKG.files\"#android:authorities=\"$APP_ID.files\"#" > "$OUT/AndroidManifest.xml"
 
 echo "== resources (aapt2)"
 "$AAPT2" compile --dir "$APP/res" -o "$OUT/res/res.zip"
+OVERLAY=()
+if [ -n "$VARIANT_RES" ]; then
+  "$AAPT2" compile --dir "$VARIANT_RES" -o "$OUT/res/variant.zip"
+  OVERLAY=(-R "$OUT/res/variant.zip")
+fi
+if [ "$APP_ID" != "$PKG" ]; then OVERLAY+=(--rename-manifest-package "$APP_ID"); fi
 "$AAPT2" link -o "$OUT/base.apk" -I "$ANDROID_JAR" --manifest "$OUT/AndroidManifest.xml" \
   --min-sdk-version $MIN_SDK --target-sdk-version $TARGET_SDK \
-  --java "$OUT/gen" -A "$APP/assets" -0 onnx -0 sf2 --auto-add-overlay "$OUT/res/res.zip"
+  --java "$OUT/gen" -A "$OUT/assets" -0 onnx -0 sf2 -0 bin --auto-add-overlay "$OUT/res/res.zip" "${OVERLAY[@]}"
 
 echo "== javac"
 find "$APP/java" "$OUT/gen" -name '*.java' > "$OUT/sources.txt"
@@ -94,6 +125,6 @@ if [ ! -f "$KEYSTORE" ]; then
 fi
 "$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass pass:"${KS_PASS:-android}" --key-pass pass:"${KEY_PASS:-android}" \
   --ks-key-alias "${KEY_ALIAS:-androiddebugkey}" --min-sdk-version $MIN_SDK \
-  --out "$HERE/build/piano2midi.apk" "$OUT/aligned.apk"
-"$APKSIGNER" verify --min-sdk-version $MIN_SDK "$HERE/build/piano2midi.apk"
-echo "== done: $HERE/build/piano2midi.apk ($(du -h "$HERE/build/piano2midi.apk" | cut -f1))"
+  --out "$APK_OUT" "$OUT/aligned.apk"
+"$APKSIGNER" verify --min-sdk-version $MIN_SDK "$APK_OUT"
+echo "== done: $APK_OUT ($(du -h "$APK_OUT" | cut -f1))"

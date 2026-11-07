@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Overlay for the 343 MB build (MS_BUNDLE=int8 ./build-local.sh): MuScriptor int8 inside the APK. -->
+<resources>
+    <string-array name="engine_descs">
+        <item>Sony hFT-Transformer (ISMIR 2023). Accurate for solo piano, with velocity and live streaming while you record.</item>
+        <item>MuScriptor medium by Kyutai and Mirelo (2026). A 307M-parameter transformer that writes notes directly and also handles other instruments. Highest accuracy, but slow on a phone; velocities are fixed.</item>
+    </string-array>
+    <string name="status_installing_model">Preparing the model (the first run unpacks it, about 300 MB)…</string>
+</resources>

@@ -52,9 +52,16 @@ audio file ─► MediaCodec decode ─► mono ─► resample 16 kHz ─► lo
 
 - Runs on Android 8.0 through Android 16, on 64-bit ARM phones and tablets. The native libraries have 16 KB-aligned ELF segments.
 - hFT-Transformer is built in. MuScriptor medium is a one-time in-app download (294 MB, int8) from `models/muscriptor-medium/`, joined and checked with SHA-256: Home → Transcription engine → MuScriptor → Download model.
-- The 2.1 builds with MuScriptor bundled (343 MB, and a 1.27 GB fp32 "Full" build) remain in the
-  [piano2midi-v2.1 release](https://github.com/Jayu8980/1./releases/tag/piano2midi-v2.1), but some
-  phones reject APKs that large ("package appears to be invalid"). Use 2.2 there.
+- Two more arm64 APKs with MuScriptor **built in** (no download) are in the
+  [piano2midi-v2.3 release](https://github.com/Jayu8980/1./releases/tag/piano2midi-v2.3). Some phones reject APKs this large ("package appears to be invalid"); use 2.2 there.
+
+  | APK | Size | MuScriptor | App |
+  | --- | --- | --- | --- |
+  | [Piano2MIDI-2.3-android-arm64.apk](https://github.com/Jayu8980/1./releases/download/piano2midi-v2.3/Piano2MIDI-2.3-android-arm64.apk) | 343 MB | int8, bundled | Piano2MIDI (`com.hft.piano2midi`) |
+  | [Piano2MIDI-Full-2.3-android-arm64.apk](https://github.com/Jayu8980/1./releases/download/piano2midi-v2.3/Piano2MIDI-Full-2.3-android-arm64.apk) | 1.27 GB | full fp32, bundled | Piano2MIDI Full (`com.hft.piano2midi.full`), installs side by side; needs about 2.5 GB of free memory |
+
+  Build them with `MS_BUNDLE=int8 ./build-local.sh` and
+  `MS_BUNDLE=fp32 MS_MODEL=/path/to/fp32/muscriptor.onnx ./build-local.sh`. The app detects a bundled model and then skips the download.
 
 - Runs on Android 8.0 through Android 16, on 64-bit ARM phones and tablets.
 - Supports 16 KB memory pages: ONNX Runtime 1.23.2 native libraries with 16 KB-aligned ELF segments.

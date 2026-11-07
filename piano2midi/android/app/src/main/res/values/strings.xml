@@ -164,6 +164,7 @@
     <string name="engine_delete">Delete</string>
     <string name="engine_ready">Model installed · %1$d MB</string>
     <string name="engine_bundled">Built in · works offline</string>
+    <string name="status_installing_model">Preparing the model (the first run unpacks it)…</string>
     <string name="engine_needs_download">Download this model to use it (Wi-Fi recommended).</string>
     <string name="engine_dl_failed">Download failed: %1$s</string>
     <string name="engine_dl_done">%1$s is ready</string>
