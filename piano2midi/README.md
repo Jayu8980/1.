@@ -40,25 +40,21 @@ audio file ─► MediaCodec decode ─► mono ─► resample 16 kHz ─► lo
 - **Downloads:** **MIDI** or **PDF** for all parts, the selected parts, **melody only**, **chords only** or **bass line only**. MIDI files have one track per part, with the chosen instruments and a tempo map aligned to the detected bars. You can save anywhere or share to other apps.
 - **Transcription engines:** choose on the Home page. Selecting an engine sets its parameters, and an open transcription is re-run with the new engine.
   - *hFT-Transformer* (default, built in): piano, adjustable thresholds, live streaming while recording.
-  - *MuScriptor medium* (Kyutai and Mirelo): highest accuracy, multi-instrument, no thresholds. It is a 292 MB int8 ONNX model bundled in the APK; the build joins it from `models/muscriptor-medium/`. The first run unpacks it to app storage. It is slow on a phone and its velocities are fixed. The weights are CC BY-NC 4.0, non-commercial use only.
+  - *MuScriptor medium* (Kyutai and Mirelo): highest accuracy, multi-instrument, no thresholds. It is a 294 MB int8 ONNX one-time download inside the app. It is slow on a phone and its velocities are fixed. The weights are CC BY-NC 4.0, non-commercial use only.
 - **Detection settings:** adjustable onset, offset and frame thresholds and a note-end mode. Changing them re-decodes the notes instantly, without running the model again.
 
 ![Piano2MIDI 1.4: Home, Player, Practice, Export and Settings in light and dark mode](docs/screenshots.png)
 
 ## Download
 
-Two separate apps for Android 8.0 to 16 (arm64). Both can be installed side by side:
+**[Piano2MIDI 2.2 for Android 16 (arm64): Piano2MIDI-2.2-android-arm64.apk](https://github.com/Jayu8980/1./raw/ccr-0beb1834-f8votw/piano2midi/release/Piano2MIDI-2.2-android-arm64.apk)**
+(49 MB, SHA-256 in `release/Piano2MIDI-2.2-android-arm64.apk.sha256`)
 
-| APK | Size | MuScriptor model | Notes |
-| --- | --- | --- | --- |
-| **[Piano2MIDI-2.1-android-arm64.apk](https://github.com/Jayu8980/1./releases/download/piano2midi-v2.1/Piano2MIDI-2.1-android-arm64.apk)** | 343 MB | int8 (292 MB) | recommended; faster, uses less memory |
-| **[Piano2MIDI-Full-2.1-android-arm64.apk](https://github.com/Jayu8980/1./releases/download/piano2midi-v2.1/Piano2MIDI-Full-2.1-android-arm64.apk)** | 1.27 GB | full fp32 (1.22 GB, the original precision) | app "Piano2MIDI Full" (`com.hft.piano2midi.full`); needs about 2.5 GB of free memory and 2.5 GB of storage |
-
-SHA-256 hashes are in `release/*.sha256`. The APKs are over GitHub's 100 MB file limit, so
-the **Piano2MIDI APK** workflow publishes them as release assets from the parts in
-`release/parts/`. Build the Full variant with
-`VARIANT=full MS_MODEL=/path/to/fp32/muscriptor.onnx ./build-local.sh`, where the model comes from
-`tools/muscriptor/export_muscriptor_onnx.py --fp32`.
+- Runs on Android 8.0 through Android 16, on 64-bit ARM phones and tablets. The native libraries have 16 KB-aligned ELF segments.
+- hFT-Transformer is built in. MuScriptor medium is a one-time in-app download (294 MB, int8) from `models/muscriptor-medium/`, joined and checked with SHA-256: Home → Transcription engine → MuScriptor → Download model.
+- The 2.1 builds with MuScriptor bundled (343 MB, and a 1.27 GB fp32 "Full" build) remain in the
+  [piano2midi-v2.1 release](https://github.com/Jayu8980/1./releases/tag/piano2midi-v2.1), but some
+  phones reject APKs that large ("package appears to be invalid"). Use 2.2 there.
 
 - Runs on Android 8.0 through Android 16, on 64-bit ARM phones and tablets.
 - Supports 16 KB memory pages: ONNX Runtime 1.23.2 native libraries with 16 KB-aligned ELF segments.
@@ -93,7 +89,7 @@ MuScriptor medium on the same piece (the Java port was checked against the offic
 | official PyTorch, fp32 | 98 | 0.995 | 0.792 | 26.5 s |
 | ONNX fp32 | 98 | 0.995 | 0.802 | 25.0 s |
 | ONNX int8, standard app (Java) | 98 | 0.995 | 0.782 | 16.0 s |
-| ONNX fp32, Full app (Java) | 98 | 0.995 | 0.802 | 28.8 s |
+| ONNX fp32 (2.1 Full build, Java) | 98 | 0.995 | 0.802 | 28.8 s |
 
 Speed: on a 4-core x86 desktop CPU a 2.048 s window takes about 1.3–1.6 s, so roughly
 0.7× real time. Expect about 1–3× real time on recent phones and slower on older ones.

@@ -1,8 +1,8 @@
 # On-demand transcription models
 
-These files are bundled into the APK. `build-local.sh` and the Gradle task `joinMuscriptorModel`
-join the parts into `assets/muscriptor.onnx`, which has SHA-256
-`526840874517f8f4c5fca337385a55f5cff97e7c1b984fd870cb8a25bd6aaec2`.
+The app downloads these files the first time you select the MuScriptor engine. It joins the parts
+into `muscriptor.onnx`, which has SHA-256 `526840874517f8f4c5fca337385a55f5cff97e7c1b984fd870cb8a25bd6aaec2`.
+The sizes and hashes are listed in `android/app/src/main/java/com/hft/piano2midi/core/engine/Engine.java`.
 
 | Folder | Model | Files |
 |---|---|---|

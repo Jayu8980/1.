@@ -222,6 +222,37 @@
                     android:layout_marginTop="6dp"
                     android:textColor="@color/primary" />
 
+                <ProgressBar
+                    android:id="@+id/engine_progress"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="6dp"
+                    android:layout_marginTop="10dp"
+                    android:max="1000"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:id="@+id/engine_actions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/engine_download"
+                        style="@style/Btn.Tonal"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:drawableStart="@drawable/ic_download"
+                        android:text="@string/engine_download" />
+
+                    <Button
+                        android:id="@+id/engine_delete"
+                        style="@style/Btn.Text"
+                        android:layout_width="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="@string/engine_delete" />
+                </LinearLayout>
             </LinearLayout>
 
                     <!-- summary of the last transcription -->
