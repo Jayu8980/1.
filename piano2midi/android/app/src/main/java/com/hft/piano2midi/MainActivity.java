@@ -2334,7 +2334,7 @@ public final class MainActivity extends Activity {
             } finally {
                 os.close();
             }
-            Uri uri = FileShareProvider.uriFor(f.getName());
+            Uri uri = FileShareProvider.uriFor(this, f.getName());
             Intent i = new Intent(Intent.ACTION_SEND);
             i.setType(format == FMT_PDF ? "application/pdf" : "audio/midi");
             i.putExtra(Intent.EXTRA_STREAM, uri);

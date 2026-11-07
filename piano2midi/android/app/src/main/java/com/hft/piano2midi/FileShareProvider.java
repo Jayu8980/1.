@@ -14,10 +14,13 @@ import java.io.FileNotFoundException;
 /** Read-only provider exposing files from cache/share/ so MIDI files can be shared to other apps. */
 public final class FileShareProvider extends ContentProvider {
 
-    static final String AUTHORITY = "com.hft.piano2midi.files";
+    /** "<applicationId>.files", so the standard and Full builds can be installed side by side. */
+    static String authority(android.content.Context ctx) {
+        return ctx.getPackageName() + ".files";
+    }
 
-    static Uri uriFor(String name) {
-        return Uri.parse("content://" + AUTHORITY + "/" + Uri.encode(name));
+    static Uri uriFor(android.content.Context ctx, String name) {
+        return Uri.parse("content://" + authority(ctx) + "/" + Uri.encode(name));
     }
 
     static File shareDir(android.content.Context ctx) {

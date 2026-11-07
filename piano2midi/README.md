@@ -47,10 +47,18 @@ audio file ─► MediaCodec decode ─► mono ─► resample 16 kHz ─► lo
 
 ## Download
 
-**[Piano2MIDI 2.1 for Android (arm64): Piano2MIDI-2.1-android-arm64.apk](https://github.com/Jayu8980/1./releases/download/piano2midi-v2.1/Piano2MIDI-2.1-android-arm64.apk)**
-(343 MB, both engines built in; SHA-256 in `release/Piano2MIDI-2.1-android-arm64.apk.sha256`).
-The APK is over GitHub's 100 MB file limit, so it is published as a release asset by the
-**Piano2MIDI APK** workflow from the parts in `release/parts/`.
+Two separate apps for Android 8.0 to 16 (arm64). Both can be installed side by side:
+
+| APK | Size | MuScriptor model | Notes |
+| --- | --- | --- | --- |
+| **[Piano2MIDI-2.1-android-arm64.apk](https://github.com/Jayu8980/1./releases/download/piano2midi-v2.1/Piano2MIDI-2.1-android-arm64.apk)** | 343 MB | int8 (292 MB) | recommended; faster, uses less memory |
+| **[Piano2MIDI-Full-2.1-android-arm64.apk](https://github.com/Jayu8980/1./releases/download/piano2midi-v2.1/Piano2MIDI-Full-2.1-android-arm64.apk)** | 1.27 GB | full fp32 (1.22 GB, the original precision) | app "Piano2MIDI Full" (`com.hft.piano2midi.full`); needs about 2.5 GB of free memory and 2.5 GB of storage |
+
+SHA-256 hashes are in `release/*.sha256`. The APKs are over GitHub's 100 MB file limit, so
+the **Piano2MIDI APK** workflow publishes them as release assets from the parts in
+`release/parts/`. Build the Full variant with
+`VARIANT=full MS_MODEL=/path/to/fp32/muscriptor.onnx ./build-local.sh`, where the model comes from
+`tools/muscriptor/export_muscriptor_onnx.py --fp32`.
 
 - Runs on Android 8.0 through Android 16, on 64-bit ARM phones and tablets.
 - Supports 16 KB memory pages: ONNX Runtime 1.23.2 native libraries with 16 KB-aligned ELF segments.
@@ -84,7 +92,8 @@ MuScriptor medium on the same piece (the Java port was checked against the offic
 | --- | --- | --- | --- | --- |
 | official PyTorch, fp32 | 98 | 0.995 | 0.792 | 26.5 s |
 | ONNX fp32 | 98 | 0.995 | 0.802 | 25.0 s |
-| ONNX int8, app (Java) | 98 | 0.995 | 0.782 | 16.0 s |
+| ONNX int8, standard app (Java) | 98 | 0.995 | 0.782 | 16.0 s |
+| ONNX fp32, Full app (Java) | 98 | 0.995 | 0.802 | 28.8 s |
 
 Speed: on a 4-core x86 desktop CPU a 2.048 s window takes about 1.3–1.6 s, so roughly
 0.7× real time. Expect about 1–3× real time on recent phones and slower on older ones.

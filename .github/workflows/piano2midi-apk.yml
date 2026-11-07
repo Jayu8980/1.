@@ -34,7 +34,7 @@ jobs:
           path: piano2midi/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
-  # The signed arm64 APK (343 MB, with MuScriptor bundled) is too big for a repository file,
+  # The signed arm64 APKs (343 MB standard, 1.27 GB Full) are too big for repository files,
   # so it is committed in parts under piano2midi/release/parts and published here as a
   # release asset. It keeps the signing key of the earlier releases, so it installs as an update.
   publish:
@@ -47,20 +47,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Join and verify the APK
+      - name: Join and verify the APKs
         run: |
-          APK=Piano2MIDI-$VERSION-android-arm64.apk
-          cat piano2midi/release/parts/$APK.?? > $APK
-          sha256sum -c piano2midi/release/$APK.sha256
+          for APK in Piano2MIDI-$VERSION-android-arm64.apk Piano2MIDI-Full-$VERSION-android-arm64.apk; do
+            if ls piano2midi/release/parts/$APK.?? >/dev/null 2>&1; then
+              cat piano2midi/release/parts/$APK.?? > $APK
+              sha256sum -c piano2midi/release/$APK.sha256
+            fi
+          done
 
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG=piano2midi-v$VERSION
-          APK=Piano2MIDI-$VERSION-android-arm64.apk
+          STD=Piano2MIDI-$VERSION-android-arm64.apk
+          FULL=Piano2MIDI-Full-$VERSION-android-arm64.apk
+          NOTES="Android 8.0 to 16, arm64. Two separate apps:
+          - $STD (343 MB): hFT-Transformer + MuScriptor medium (int8). SHA-256 $(cut -d' ' -f1 piano2midi/release/$STD.sha256)
+          - $FULL (1.27 GB): Piano2MIDI Full, MuScriptor medium in full fp32 precision; installs next to the standard app. SHA-256 $(cut -d' ' -f1 piano2midi/release/$FULL.sha256 2>/dev/null)
+          MuScriptor weights: CC BY-NC 4.0 (non-commercial use only)."
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --target "$GITHUB_SHA" --title "Piano2MIDI $VERSION" \
-              --notes "Android 8.0 to 16, arm64. hFT-Transformer and MuScriptor medium engines, both built in (no download needed). SHA-256: $(cut -d' ' -f1 piano2midi/release/$APK.sha256). MuScriptor weights: CC BY-NC 4.0 (non-commercial use only)."
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "Piano2MIDI $VERSION" --notes "$NOTES"
+          else
+            gh release edit "$TAG" --notes "$NOTES"
           fi
-          gh release upload "$TAG" "$APK" --clobber
+          for APK in $STD $FULL; do
+            if [ -f "$APK" ]; then gh release upload "$TAG" "$APK" --clobber; fi
+          done

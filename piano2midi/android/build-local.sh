@@ -22,6 +22,16 @@ TARGET_SDK=34
 VERSION_CODE="${VERSION_CODE:-12}"
 VERSION_NAME="${VERSION_NAME:-2.1}"
 PKG=com.hft.piano2midi
+# VARIANT=full builds "Piano2MIDI Full": MuScriptor in fp32 from MS_MODEL (an exported
+# muscriptor.onnx, export_muscriptor_onnx.py --fp32), separate application id so both install.
+VARIANT="${VARIANT:-standard}"
+APP_ID=$PKG
+APK_OUT="$HERE/build/piano2midi.apk"
+if [ "$VARIANT" = full ]; then
+  APP_ID=$PKG.full
+  APK_OUT="$HERE/build/piano2midi-full.apk"
+  if [ ! -f "${MS_MODEL:-}" ]; then echo "VARIANT=full needs MS_MODEL=/path/to/fp32/muscriptor.onnx" >&2; exit 1; fi
+fi
 ABIS="${ABIS:-arm64-v8a armeabi-v7a x86_64}"
 R8_VERSION="${R8_VERSION:-8.5.35}"
 
@@ -62,18 +72,27 @@ if ! ls "$MS"/muscriptor.onnx.?? >/dev/null 2>&1; then
   exit 1
 fi
 cp -r "$APP/assets" "$OUT/assets"
-cat "$MS"/muscriptor.onnx.?? > "$OUT/assets/muscriptor.onnx"
+if [ "$VARIANT" = full ]; then
+  cp "$MS_MODEL" "$OUT/assets/muscriptor.onnx"
+else
+  cat "$MS"/muscriptor.onnx.?? > "$OUT/assets/muscriptor.onnx"
+fi
 cp "$MS/ms_frontend.bin" "$OUT/assets/ms_frontend.bin"
 
 echo "== manifest"
 sed -e "s#<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">#<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\" package=\"$PKG\" android:versionCode=\"$VERSION_CODE\" android:versionName=\"$VERSION_NAME\">\n    <uses-sdk android:minSdkVersion=\"$MIN_SDK\" android:targetSdkVersion=\"$TARGET_SDK\" />#" \
-  "$APP/AndroidManifest.xml" > "$OUT/AndroidManifest.xml"
+  "$APP/AndroidManifest.xml" | sed -e "s#android:authorities=\"$PKG.files\"#android:authorities=\"$APP_ID.files\"#" > "$OUT/AndroidManifest.xml"
 
 echo "== resources (aapt2)"
 "$AAPT2" compile --dir "$APP/res" -o "$OUT/res/res.zip"
+OVERLAY=()
+if [ "$VARIANT" = full ]; then
+  "$AAPT2" compile --dir "$HERE/variants/full/res" -o "$OUT/res/full.zip"
+  OVERLAY=(-R "$OUT/res/full.zip" --rename-manifest-package "$APP_ID")
+fi
 "$AAPT2" link -o "$OUT/base.apk" -I "$ANDROID_JAR" --manifest "$OUT/AndroidManifest.xml" \
   --min-sdk-version $MIN_SDK --target-sdk-version $TARGET_SDK \
-  --java "$OUT/gen" -A "$OUT/assets" -0 onnx -0 sf2 -0 bin --auto-add-overlay "$OUT/res/res.zip"
+  --java "$OUT/gen" -A "$OUT/assets" -0 onnx -0 sf2 -0 bin --auto-add-overlay "$OUT/res/res.zip" "${OVERLAY[@]}"
 
 echo "== javac"
 find "$APP/java" "$OUT/gen" -name '*.java' > "$OUT/sources.txt"
@@ -104,6 +123,6 @@ if [ ! -f "$KEYSTORE" ]; then
 fi
 "$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass pass:"${KS_PASS:-android}" --key-pass pass:"${KEY_PASS:-android}" \
   --ks-key-alias "${KEY_ALIAS:-androiddebugkey}" --min-sdk-version $MIN_SDK \
-  --out "$HERE/build/piano2midi.apk" "$OUT/aligned.apk"
-"$APKSIGNER" verify --min-sdk-version $MIN_SDK "$HERE/build/piano2midi.apk"
-echo "== done: $HERE/build/piano2midi.apk ($(du -h "$HERE/build/piano2midi.apk" | cut -f1))"
+  --out "$APK_OUT" "$OUT/aligned.apk"
+"$APKSIGNER" verify --min-sdk-version $MIN_SDK "$APK_OUT"
+echo "== done: $APK_OUT ($(du -h "$APK_OUT" | cut -f1))"
