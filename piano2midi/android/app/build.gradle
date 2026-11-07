@@ -10,10 +10,11 @@ android {
         applicationId 'com.hft.piano2midi'
         minSdk 26
         targetSdk 34
-        versionCode 11
-        versionName '2.0'
+        versionCode 12
+        versionName '2.1'
         ndk {
-            abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64'
+            // -Pabis=arm64-v8a builds a single-ABI APK
+            abiFilters.addAll((project.findProperty('abis') ?: 'arm64-v8a,armeabi-v7a,x86_64').toString().split(','))
         }
     }
 
@@ -33,7 +34,12 @@ android {
 
     androidResources {
         // keep the model stored so it can be memory-mapped / copied quickly
-        noCompress 'onnx', 'sf2'
+        noCompress 'onnx', 'sf2', 'bin'
+    }
+
+    // the MuScriptor model is stored in parts under piano2midi/models (GitHub's 100 MB file limit)
+    sourceSets {
+        main.assets.srcDirs += "$buildDir/generated/muscriptor-assets"
     }
 
     packagingOptions {
@@ -42,6 +48,21 @@ android {
         }
     }
 }
+
+def msDir = file("$rootDir/../models/muscriptor-medium")
+def msOut = file("$buildDir/generated/muscriptor-assets")
+tasks.register('joinMuscriptorModel') {
+    inputs.dir msDir
+    outputs.dir msOut
+    doLast {
+        msOut.mkdirs()
+        def parts = msDir.listFiles().findAll { it.name ==~ /muscriptor\.onnx\.\d\d/ }.sort { it.name }
+        if (parts.isEmpty()) throw new GradleException("missing $msDir/muscriptor.onnx.NN")
+        new File(msOut, 'muscriptor.onnx').withOutputStream { os -> parts.each { p -> p.withInputStream { os << it } } }
+        copy { from new File(msDir, 'ms_frontend.bin'); into msOut }
+    }
+}
+preBuild.dependsOn 'joinMuscriptorModel'
 
 dependencies {
     implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.23.2'

@@ -40,15 +40,17 @@ audio file ─► MediaCodec decode ─► mono ─► resample 16 kHz ─► lo
 - **Downloads:** **MIDI** or **PDF** for all parts, the selected parts, **melody only**, **chords only** or **bass line only**. MIDI files have one track per part, with the chosen instruments and a tempo map aligned to the detected bars. You can save anywhere or share to other apps.
 - **Transcription engines:** choose on the Home page. Selecting an engine sets its parameters, and an open transcription is re-run with the new engine.
   - *hFT-Transformer* (default, built in): piano, adjustable thresholds, live streaming while recording.
-  - *MuScriptor medium* (Kyutai and Mirelo): highest accuracy, multi-instrument, no thresholds. It is a 294 MB int8 ONNX download from `models/`, checked with SHA-256. It is slow on a phone and its velocities are fixed. The weights are CC BY-NC 4.0, non-commercial use only.
+  - *MuScriptor medium* (Kyutai and Mirelo): highest accuracy, multi-instrument, no thresholds. It is a 292 MB int8 ONNX model bundled in the APK; the build joins it from `models/muscriptor-medium/`. The first run unpacks it to app storage. It is slow on a phone and its velocities are fixed. The weights are CC BY-NC 4.0, non-commercial use only.
 - **Detection settings:** adjustable onset, offset and frame thresholds and a note-end mode. Changing them re-decodes the notes instantly, without running the model again.
 
 ![Piano2MIDI 1.4: Home, Player, Practice, Export and Settings in light and dark mode](docs/screenshots.png)
 
 ## Download
 
-**[Piano2MIDI 2.0 for Android (arm64): Piano2MIDI-2.0-android-arm64.apk](https://github.com/Jayu8980/1./raw/ccr-0beb1834-f8votw/piano2midi/release/Piano2MIDI-2.0-android-arm64.apk)**
-(49 MB, SHA-256 in `release/Piano2MIDI-2.0-android-arm64.apk.sha256`)
+**[Piano2MIDI 2.1 for Android (arm64): Piano2MIDI-2.1-android-arm64.apk](https://github.com/Jayu8980/1./releases/download/piano2midi-v2.1/Piano2MIDI-2.1-android-arm64.apk)**
+(343 MB, both engines built in; SHA-256 in `release/Piano2MIDI-2.1-android-arm64.apk.sha256`).
+The APK is over GitHub's 100 MB file limit, so it is published as a release asset by the
+**Piano2MIDI APK** workflow from the parts in `release/parts/`.
 
 - Runs on Android 8.0 through Android 16, on 64-bit ARM phones and tablets.
 - Supports 16 KB memory pages: ONNX Runtime 1.23.2 native libraries with 16 KB-aligned ELF segments.

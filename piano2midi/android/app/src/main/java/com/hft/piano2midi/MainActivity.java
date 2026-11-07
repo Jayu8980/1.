@@ -67,6 +67,8 @@ public final class MainActivity extends Activity {
 
     private static final int REQ_PICK = 1, REQ_SAVE = 2, REQ_SF2 = 3, REQ_SAVE_WAV = 4, REQ_MIC = 5, REQ_MIC_LISTEN = 6;
     private static final String MODEL_ASSET = "hft_transformer.onnx";
+    private static final String MS_ASSET = "muscriptor.onnx";
+    private static final String MS_FRONTEND_ASSET = "ms_frontend.bin";
     private static final String SF2_ASSET = "instruments.sf2";
     private static final String CUSTOM_SF2 = "custom.sf2";
     /** Memory bound: PCM + features + frame outputs for 10 min fit comfortably in a large heap. */
@@ -107,10 +109,6 @@ public final class MainActivity extends Activity {
     private Engine engine = Engine.HFT;
     private Spinner engineSpinner;
     private TextView engineDesc, engineParams, detectEngine, settingsHint;
-    private ProgressBar engineProgress;
-    private Button engineDownload, engineDelete;
-    private volatile Thread downloader;
-    private volatile boolean dlCancel;
     private List<Note> notes = Collections.emptyList();
     private double audioSeconds;
     private double maxNoteDur;
@@ -1178,9 +1176,6 @@ public final class MainActivity extends Activity {
         engineSpinner = (Spinner) findViewById(R.id.engine);
         engineDesc = (TextView) findViewById(R.id.engine_desc);
         engineParams = (TextView) findViewById(R.id.engine_params);
-        engineProgress = (ProgressBar) findViewById(R.id.engine_progress);
-        engineDownload = (Button) findViewById(R.id.engine_download);
-        engineDelete = (Button) findViewById(R.id.engine_delete);
         detectEngine = (TextView) findViewById(R.id.detect_engine);
         settingsHint = (TextView) findViewById(R.id.settings_hint);
         engine = Engine.byId(prefs.getString("engine", Engine.HFT.id));
@@ -1190,37 +1185,6 @@ public final class MainActivity extends Activity {
             @Override
             void onSelected(int position) {
                 selectEngine(Engine.values()[position]);
-            }
-        });
-        engineDownload.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (downloader != null) {
-                    dlCancel = true;
-                    engineDownload.setEnabled(false);
-                } else {
-                    startDownload(engine);
-                }
-            }
-        });
-        engineDelete.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (worker != null || downloader != null || engine.downloads == null) return;
-                new AlertDialog.Builder(MainActivity.this)
-                        .setMessage(getString(R.string.engine_delete) + " " + engineName(engine) + "?")
-                        .setPositiveButton(R.string.engine_delete, new android.content.DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(android.content.DialogInterface d, int which) {
-                                for (Engine.Model m : engine.downloads) {
-                                    File f = modelFile(m);
-                                    if (f.exists() && !f.delete()) f.deleteOnExit();
-                                }
-                                updateEngineUi();
-                            }
-                        })
-                        .setNegativeButton(android.R.string.cancel, null)
-                        .show();
             }
         });
         findViewById(R.id.reset_params).setOnClickListener(new View.OnClickListener() {
@@ -1238,19 +1202,6 @@ public final class MainActivity extends Activity {
         return getResources().getStringArray(R.array.engine_names)[e.ordinal()];
     }
 
-    private File modelFile(Engine.Model m) {
-        return new File(new File(getFilesDir(), "models"), m.path);
-    }
-
-    private boolean engineReady(Engine e) {
-        if (e.downloads == null) return true;
-        for (Engine.Model m : e.downloads) {
-            File f = modelFile(m);
-            if (!f.isFile() || f.length() != m.size) return false;
-        }
-        return true;
-    }
-
     /** Switches engine: every parameter jumps to that engine's defaults, then re-runs if needed. */
     private void selectEngine(Engine e) {
         if (e == engine) return;
@@ -1265,7 +1216,7 @@ public final class MainActivity extends Activity {
         applyEngineDefaults();
         updateEngineUi();
         Toast.makeText(this, getString(R.string.engine_switched, engineName(e)), Toast.LENGTH_SHORT).show();
-        if (result != null && resultEngine != e && hasSource() && engineReady(e)) {
+        if (result != null && resultEngine != e && hasSource()) {
             statusText.setText(getString(R.string.engine_rerun, engineName(e)));
             startTranscription();
         } else {
@@ -1301,133 +1252,9 @@ public final class MainActivity extends Activity {
         settingsHint.setText(engine == Engine.HFT ? R.string.settings_hint : R.string.settings_hint_ms);
 
         String desc = getResources().getStringArray(R.array.engine_descs)[engine.ordinal()];
-        boolean ready = engineReady(engine);
-        int mb = (int) Math.round(engine.downloadSize() / 1048576.0);
-        String avail = engine.downloads == null ? getString(R.string.engine_bundled)
-                : ready ? getString(R.string.engine_ready, mb) : getString(R.string.engine_needs_download);
-        engineDesc.setText(desc + "\n" + avail);
-        boolean downloading = downloader != null;
-        findViewById(R.id.engine_actions).setVisibility(engine.downloads == null ? View.GONE : View.VISIBLE);
-        engineDownload.setVisibility(ready && !downloading ? View.GONE : View.VISIBLE);
-        engineDownload.setEnabled(!downloading || !dlCancel);
-        engineDownload.setText(downloading ? getString(R.string.engine_cancel_download)
-                : getString(R.string.engine_download, mb));
-        engineDelete.setVisibility(ready && !downloading ? View.VISIBLE : View.GONE);
-        engineDelete.setEnabled(worker == null);
-        engineProgress.setVisibility(downloading ? View.VISIBLE : View.GONE);
+        desc += "\n" + getString(R.string.engine_bundled);
+        engineDesc.setText(desc);
         updateThresholdLabels();
-    }
-
-    private void startDownload(final Engine e) {
-        if (e.downloads == null || downloader != null) return;
-        dlCancel = false;
-        engineProgress.setProgress(0);
-        final long total = e.downloadSize();
-        downloader = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                String error = null;
-                try {
-                    long done = 0;
-                    for (Engine.Model m : e.downloads) {
-                        File f = modelFile(m);
-                        if (f.isFile() && f.length() == m.size) {
-                            done += m.size;
-                            continue;
-                        }
-                        done = download(m, f, done, total);
-                    }
-                } catch (InterruptedException ie) {
-                    error = "";
-                } catch (Throwable t) {
-                    error = t.getMessage() != null ? t.getMessage() : t.toString();
-                }
-                final String err = error;
-                ui.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        downloader = null;
-                        dlCancel = false;
-                        if (isDestroyed()) return;
-                        updateEngineUi();
-                        if (err == null) {
-                            Toast.makeText(MainActivity.this, getString(R.string.engine_dl_done, engineName(e)),
-                                    Toast.LENGTH_SHORT).show();
-                            if (engine == e && result != null && resultEngine != e && hasSource() && worker == null
-                                    && recorder == null) {
-                                startTranscription();
-                            }
-                        } else if (!err.isEmpty()) {
-                            Toast.makeText(MainActivity.this, getString(R.string.engine_dl_failed, err),
-                                    Toast.LENGTH_LONG).show();
-                        }
-                    }
-                });
-            }
-        }, "model-download");
-        updateEngineUi();
-        downloader.start();
-    }
-
-    /** Downloads one model file to {@code dst}, verifying size and SHA-256. Returns the new byte count. */
-    private long download(Engine.Model m, File dst, long done, final long total) throws Exception {
-        File dir = dst.getParentFile();
-        if (dir != null && !dir.isDirectory() && !dir.mkdirs()) throw new IOException("cannot create " + dir);
-        File tmp = new File(dst.getPath() + ".part");
-        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
-        OutputStream out = new FileOutputStream(tmp);
-        long got = 0, lastPost = 0;
-        try {
-            byte[] buf = new byte[1 << 16];
-            for (int part = 0; part < m.parts; part++) {
-                java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(m.partUrl(part)).openConnection();
-                c.setInstanceFollowRedirects(true);
-                c.setConnectTimeout(20000);
-                c.setReadTimeout(30000);
-                try {
-                    int code = c.getResponseCode();
-                    if (code != 200) throw new IOException("HTTP " + code);
-                    InputStream in = c.getInputStream();
-                    try {
-                        int n;
-                        while ((n = in.read(buf)) > 0) {
-                            if (dlCancel) throw new InterruptedException();
-                            md.update(buf, 0, n);
-                            out.write(buf, 0, n);
-                            got += n;
-                            if (got - lastPost > (1 << 20)) {
-                                lastPost = got;
-                                final long now = done + got;
-                                ui.post(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        if (engineProgress == null) return;
-                                        engineProgress.setProgress((int) (1000 * now / Math.max(1, total)));
-                                        engineDesc.setText(getString(R.string.engine_downloading,
-                                                (int) (now / 1048576), (int) Math.round(total / 1048576.0)));
-                                    }
-                                });
-                            }
-                        }
-                    } finally {
-                        in.close();
-                    }
-                } finally {
-                    c.disconnect();
-                }
-            }
-        } finally {
-            out.close();
-            if (tmp.exists() && got != m.size) tmp.delete();
-        }
-        StringBuilder hex = new StringBuilder();
-        for (byte b : md.digest()) hex.append(String.format(Locale.US, "%02x", b & 0xFF));
-        if (got != m.size || !hex.toString().equals(m.sha256)) {
-            tmp.delete();
-            throw new IOException("checksum mismatch for " + m.path);
-        }
-        if (!tmp.renameTo(dst)) throw new IOException("could not install " + m.path);
-        return done + got;
     }
 
     private boolean hasSource() {
@@ -1437,11 +1264,6 @@ public final class MainActivity extends Activity {
     private void startTranscription() {
         if (!hasSource()) return;
         final Engine eng = engine;
-        if (!engineReady(eng)) {
-            statusText.setText(getString(R.string.status_downloaded_first, engineName(eng)));
-            showPage(PAGE_HOME, true);
-            return;
-        }
         stopPlayback();
         cancelled = false;
         result = null;
@@ -1575,8 +1397,9 @@ public final class MainActivity extends Activity {
         setStatus(getString(R.string.status_loading_model), b1);
         switch (eng) {
             case MUSCRIPTOR: {
-                Muscriptor m = new Muscriptor(modelFile(eng.downloads[0]).getAbsolutePath(),
-                        modelFile(eng.downloads[1]).getAbsolutePath(), threads);
+                setStatus(getString(R.string.status_installing_model), b1);
+                Muscriptor m = new Muscriptor(ensureAsset(MS_ASSET).getAbsolutePath(),
+                        ensureAsset(MS_FRONTEND_ASSET).getAbsolutePath(), threads);
                 try {
                     setStatus(getString(R.string.status_engine, name), b1);
                     return m.transcribe(wav, new ChunkProgress(name, b1));
@@ -1665,10 +1488,8 @@ public final class MainActivity extends Activity {
         cancelled = false;
         result = null;
         audioUri = null; // "Convert" now re-transcribes this recording
-        final Engine recEng = engineReady(engine) ? engine : Engine.HFT;
-        if (recEng != engine) {
-            Toast.makeText(this, getString(R.string.engine_record_fallback, engineName(engine)), Toast.LENGTH_LONG).show();
-        } else if (!recEng.live) {
+        final Engine recEng = engine;
+        if (!recEng.live) {
             Toast.makeText(this, getString(R.string.engine_record_note, engineName(recEng)), Toast.LENGTH_LONG).show();
         }
         notes = Collections.emptyList();
@@ -2541,7 +2362,6 @@ public final class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         cancelled = true;
-        dlCancel = true;
         stopMic();
         if (midi != null) midi.close();
         if (player != null && !isChangingConfigurations()) player.release();

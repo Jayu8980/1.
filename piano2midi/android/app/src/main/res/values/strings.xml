@@ -121,7 +121,7 @@
     <string name="saved">MIDI file saved</string>
     <string name="roll_empty">The piano roll appears here after conversion</string>
     <string name="about_title">About Piano2MIDI</string>
-    <string name="about_text">Converts piano recordings to MIDI using the hFT-Transformer (Hierarchical Frequency-Time Transformer) by Sony, ISMIR 2023 (arXiv:2307.04305).\n\nAll processing happens on this device: audio → 16 kHz log-mel spectrogram → hFT-Transformer → onset/offset/frame/velocity → notes → MIDI.\n\nSource code: MIT License, © Sony Group Corporation.\nModel weights: trained on MAESTRO v3.0.0, CC BY-NC-SA 4.0 (non-commercial use only).\n\nMuScriptor engine: code © Kyutai and Mirelo (MIT License); medium model weights CC BY-NC 4.0 (non-commercial use only), converted to int8 ONNX and downloaded on demand.\n\nBest results come from solo piano recordings.\n\nThe transcription is split into melody (top line), chords (accompaniment) and bass (lowest line). Tempo, key and chords are detected automatically for the sheet music; adjust the tempo if bars look wrong.\n\nBuilt-in instruments: excerpt of FluidR3_GM by Frank Wen (MIT license). Music font: Bravura by Steinberg (SIL Open Font License).</string>
+    <string name="about_text">Converts piano recordings to MIDI using the hFT-Transformer (Hierarchical Frequency-Time Transformer) by Sony, ISMIR 2023 (arXiv:2307.04305).\n\nAll processing happens on this device: audio → 16 kHz log-mel spectrogram → hFT-Transformer → onset/offset/frame/velocity → notes → MIDI.\n\nSource code: MIT License, © Sony Group Corporation.\nModel weights: trained on MAESTRO v3.0.0, CC BY-NC-SA 4.0 (non-commercial use only).\n\nMuScriptor engine: code © Kyutai and Mirelo (MIT License); medium model weights CC BY-NC 4.0 (non-commercial use only), converted to int8 ONNX and bundled in the app.\n\nBest results come from solo piano recordings.\n\nThe transcription is split into melody (top line), chords (accompaniment) and bass (lowest line). Tempo, key and chords are detected automatically for the sheet music; adjust the tempo if bars look wrong.\n\nBuilt-in instruments: excerpt of FluidR3_GM by Frank Wen (MIT license). Music font: Bravura by Steinberg (SIL Open Font License).</string>
     <string-array name="export_parts">
         <item>All parts (melody, chords, bass)</item>
         <item>Selected parts (checkboxes above)</item>
@@ -158,23 +158,14 @@
     </string-array>
     <string name="status_busy">Wait for the current transcription to finish</string>
     <string name="engine_title">Transcription engine</string>
-    <string name="engine_download">Download model (%1$d MB)</string>
-    <string name="engine_downloading">Downloading… %1$d / %2$d MB</string>
-    <string name="engine_cancel_download">Cancel download</string>
-    <string name="engine_delete">Delete</string>
-    <string name="engine_ready">Model installed · %1$d MB</string>
     <string name="engine_bundled">Built in · works offline</string>
-    <string name="engine_needs_download">Download this model to use it (Wi-Fi recommended).</string>
-    <string name="engine_dl_failed">Download failed: %1$s</string>
-    <string name="engine_dl_done">%1$s is ready</string>
+    <string name="status_installing_model">Preparing the model (the first run unpacks it, about 300 MB)…</string>
     <string name="engine_switched">Switched to %1$s · parameters set to its defaults</string>
     <string name="engine_rerun">Re-transcribing with %1$s…</string>
     <string name="engine_record_note">Live preview uses hFT-Transformer; %1$s runs when you stop.</string>
-    <string name="engine_record_fallback">%1$s is not downloaded; using hFT-Transformer for this recording.</string>
     <string name="engine_label">Engine: %1$s</string>
     <string name="status_engine">Transcribing with %1$s…</string>
     <string name="status_engine_chunk">%1$s · window %2$d / %3$d (about %4$d s left)</string>
-    <string name="status_downloaded_first">Download %1$s first (Home → Transcription engine).</string>
     <string name="param_disabled">%1$s: set by the model</string>
     <string name="settings_hint_ms">MuScriptor writes finished notes directly, so there are no thresholds to tune. Pick hFT-Transformer to adjust detection.</string>
     <string name="reset_params">Reset to engine defaults</string>
@@ -190,6 +181,6 @@
     </string-array>
     <string-array name="engine_descs">
         <item>Sony hFT-Transformer (ISMIR 2023). Accurate for solo piano, with velocity and live streaming while you record.</item>
-        <item>MuScriptor medium by Kyutai and Mirelo (2026). A 307M-parameter transformer that writes notes directly and also handles other instruments. Highest accuracy, but slow on a phone; velocities are fixed. Download 294 MB.</item>
+        <item>MuScriptor medium by Kyutai and Mirelo (2026). A 307M-parameter transformer that writes notes directly and also handles other instruments. Highest accuracy, but slow on a phone; velocities are fixed.</item>
     </string-array>
 </resources>
