@@ -36,6 +36,10 @@ import com.hft.piano2midi.core.NoteDecoder;
 import com.hft.piano2midi.core.OnnxModel;
 import com.hft.piano2midi.core.Resampler;
 import com.hft.piano2midi.core.Transcriber;
+import com.hft.piano2midi.core.engine.Engine;
+import com.hft.piano2midi.core.engine.EngineOutput;
+import com.hft.piano2midi.core.engine.HftOutput;
+import com.hft.piano2midi.core.engine.Muscriptor;
 import com.hft.piano2midi.core.music.ChordRecognizer;
 import com.hft.piano2midi.core.music.Key;
 import com.hft.piano2midi.core.music.Part;
@@ -54,6 +58,7 @@ import java.io.OutputStream;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -96,7 +101,16 @@ public final class MainActivity extends Activity {
     private String audioName = "transcription";
     private volatile boolean cancelled;
     private Thread worker;
-    private Transcriber.Result result;
+    private EngineOutput result;
+    /** Engine that produced {@link #result}; the sliders always describe {@link #engine}. */
+    private Engine resultEngine = Engine.HFT;
+    private Engine engine = Engine.HFT;
+    private Spinner engineSpinner;
+    private TextView engineDesc, engineParams, detectEngine, settingsHint;
+    private ProgressBar engineProgress;
+    private Button engineDownload, engineDelete;
+    private volatile Thread downloader;
+    private volatile boolean dlCancel;
     private List<Note> notes = Collections.emptyList();
     private double audioSeconds;
     private double maxNoteDur;
@@ -361,6 +375,7 @@ public final class MainActivity extends Activity {
         onsetSeek.setOnSeekBarChangeListener(seekListener);
         offsetSeek.setOnSeekBarChangeListener(seekListener);
         frameSeek.setOnSeekBarChangeListener(seekListener);
+        setupEngine();
         updateThresholdLabels();
 
         tempoSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -862,7 +877,8 @@ public final class MainActivity extends Activity {
     private static final class Retained {
         Uri audioUri;
         String audioName;
-        Transcriber.Result result;
+        EngineOutput result;
+        Engine resultEngine;
         double audioSeconds, bpmOverride, pausedAt;
         float[] recordedPcm;
         int recordedLen, recordedRate;
@@ -879,6 +895,7 @@ public final class MainActivity extends Activity {
         r.audioUri = audioUri;
         r.audioName = audioName;
         r.result = result;
+        r.resultEngine = resultEngine;
         r.audioSeconds = audioSeconds;
         r.bpmOverride = bpmOverride;
         r.pausedAt = player != null && player.isPlaying() ? Math.max(0, player.position()) : pausedAt;
@@ -934,13 +951,14 @@ public final class MainActivity extends Activity {
         loopB = r.loopB;
         if (audioUri != null || recordedPcm != null) {
             fileText.setText(audioName);
-            convertBtn.setEnabled(audioUri != null);
+            convertBtn.setEnabled(hasSource());
         }
         saveWavBtn.setVisibility(recordedPcm != null ? View.VISIBLE : View.GONE);
         if (r.font != null) applySoundFont(r.font);
         else loadSoundFont(prefs.getBoolean("custom_sf2", false) ? new File(getFilesDir(), CUSTOM_SF2) : null);
         if (r.result != null) {
             result = r.result;
+            resultEngine = r.resultEngine;
             audioSeconds = r.audioSeconds;
             redecode();
         }
@@ -1016,6 +1034,20 @@ public final class MainActivity extends Activity {
         onsetLabel.setText(getString(R.string.onset_threshold, thr(onsetSeek)));
         offsetLabel.setText(getString(R.string.offset_threshold, thr(offsetSeek)));
         frameLabel.setText(getString(R.string.frame_threshold, thr(frameSeek)));
+        if (engineParams == null) return;
+        switch (engine) {
+            case HFT:
+                engineParams.setText(getString(R.string.params_hft, thr(onsetSeek), thr(offsetSeek), thr(frameSeek)));
+                break;
+            default:
+                engineParams.setText(R.string.params_ms);
+        }
+    }
+
+    /** Decoding parameters (p1, p2, p3) for {@code e}: the sliders for the selected engine, else its defaults. */
+    private double[] params(Engine e) {
+        if (e != engine) return new double[]{e.p1, e.p2, e.p3};
+        return new double[]{thr(onsetSeek), thr(offsetSeek), thr(frameSeek)};
     }
 
     private NoteDecoder.OffsetMode offsetMode() {
@@ -1029,8 +1061,8 @@ public final class MainActivity extends Activity {
     private void redecode() {
         if (result == null || worker != null) return;
         stopPlayback();
-        notes = NoteDecoder.decode(result, Math.max(0.01, thr(onsetSeek)), Math.max(0.01, thr(offsetSeek)),
-                Math.max(0.01, thr(frameSeek)), offsetMode(), true);
+        double[] p = params(resultEngine);
+        notes = result.decode(p[0], p[1], p[2], resultEngine == engine ? offsetModeSpinner.getSelectedItemPosition() : 0);
         PartSplitter.split(notes);
         maxNoteDur = 0;
         for (Note n : notes) maxNoteDur = Math.max(maxNoteDur, n.offset - n.onset);
@@ -1140,8 +1172,276 @@ public final class MainActivity extends Activity {
         });
     }
 
+    // ------------------------------------------------------------ engines
+
+    private void setupEngine() {
+        engineSpinner = (Spinner) findViewById(R.id.engine);
+        engineDesc = (TextView) findViewById(R.id.engine_desc);
+        engineParams = (TextView) findViewById(R.id.engine_params);
+        engineProgress = (ProgressBar) findViewById(R.id.engine_progress);
+        engineDownload = (Button) findViewById(R.id.engine_download);
+        engineDelete = (Button) findViewById(R.id.engine_delete);
+        detectEngine = (TextView) findViewById(R.id.detect_engine);
+        settingsHint = (TextView) findViewById(R.id.settings_hint);
+        engine = Engine.byId(prefs.getString("engine", Engine.HFT.id));
+        setupSpinner(engineSpinner, R.array.engines);
+        engineSpinner.setSelection(engine.ordinal(), false);
+        engineSpinner.setOnItemSelectedListener(new SimpleItemListener() {
+            @Override
+            void onSelected(int position) {
+                selectEngine(Engine.values()[position]);
+            }
+        });
+        engineDownload.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (downloader != null) {
+                    dlCancel = true;
+                    engineDownload.setEnabled(false);
+                } else {
+                    startDownload(engine);
+                }
+            }
+        });
+        engineDelete.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (worker != null || downloader != null || engine.downloads == null) return;
+                new AlertDialog.Builder(MainActivity.this)
+                        .setMessage(getString(R.string.engine_delete) + " " + engineName(engine) + "?")
+                        .setPositiveButton(R.string.engine_delete, new android.content.DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(android.content.DialogInterface d, int which) {
+                                for (Engine.Model m : engine.downloads) {
+                                    File f = modelFile(m);
+                                    if (f.exists() && !f.delete()) f.deleteOnExit();
+                                }
+                                updateEngineUi();
+                            }
+                        })
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show();
+            }
+        });
+        findViewById(R.id.reset_params).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                applyEngineDefaults();
+                redecode();
+            }
+        });
+        applyEngineDefaults();
+        updateEngineUi();
+    }
+
+    private String engineName(Engine e) {
+        return getResources().getStringArray(R.array.engine_names)[e.ordinal()];
+    }
+
+    private File modelFile(Engine.Model m) {
+        return new File(new File(getFilesDir(), "models"), m.path);
+    }
+
+    private boolean engineReady(Engine e) {
+        if (e.downloads == null) return true;
+        for (Engine.Model m : e.downloads) {
+            File f = modelFile(m);
+            if (!f.isFile() || f.length() != m.size) return false;
+        }
+        return true;
+    }
+
+    /** Switches engine: every parameter jumps to that engine's defaults, then re-runs if needed. */
+    private void selectEngine(Engine e) {
+        if (e == engine) return;
+        if (worker != null || recorder != null) {
+            engineSpinner.setSelection(engine.ordinal(), false);
+            Toast.makeText(this, R.string.status_busy, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        engine = e;
+        if (engineSpinner.getSelectedItemPosition() != e.ordinal()) engineSpinner.setSelection(e.ordinal(), false);
+        prefs.edit().putString("engine", e.id).apply();
+        applyEngineDefaults();
+        updateEngineUi();
+        Toast.makeText(this, getString(R.string.engine_switched, engineName(e)), Toast.LENGTH_SHORT).show();
+        if (result != null && resultEngine != e && hasSource() && engineReady(e)) {
+            statusText.setText(getString(R.string.engine_rerun, engineName(e)));
+            startTranscription();
+        } else {
+            redecode();
+        }
+    }
+
+    /** Sets the sliders and note-end mode to the selected engine's defaults. */
+    private void applyEngineDefaults() {
+        switch (engine) {
+            case HFT:
+                onsetSeek.setProgress((int) Math.round(engine.p1 * 100));
+                offsetSeek.setProgress((int) Math.round(engine.p2 * 100));
+                frameSeek.setProgress((int) Math.round(engine.p3 * 100));
+                break;
+            default:
+                break; // MuScriptor: no thresholds
+        }
+        if (offsetModeSpinner.getSelectedItemPosition() != 0) offsetModeSpinner.setSelection(0, false);
+        updateThresholdLabels();
+    }
+
+    private void updateEngineUi() {
+        String name = engineName(engine);
+        boolean thresholds = engine.hasThresholds();
+        int vis = thresholds ? View.VISIBLE : View.GONE;
+        for (View v : new View[]{onsetLabel, onsetSeek, offsetLabel, offsetSeek, frameLabel, frameSeek,
+                findViewById(R.id.reset_params)}) {
+            v.setVisibility(vis);
+        }
+        findViewById(R.id.offset_mode_row).setVisibility(engine == Engine.HFT ? View.VISIBLE : View.GONE);
+        detectEngine.setText(getString(R.string.engine_label, name));
+        settingsHint.setText(engine == Engine.HFT ? R.string.settings_hint : R.string.settings_hint_ms);
+
+        String desc = getResources().getStringArray(R.array.engine_descs)[engine.ordinal()];
+        boolean ready = engineReady(engine);
+        int mb = (int) Math.round(engine.downloadSize() / 1048576.0);
+        String avail = engine.downloads == null ? getString(R.string.engine_bundled)
+                : ready ? getString(R.string.engine_ready, mb) : getString(R.string.engine_needs_download);
+        engineDesc.setText(desc + "\n" + avail);
+        boolean downloading = downloader != null;
+        findViewById(R.id.engine_actions).setVisibility(engine.downloads == null ? View.GONE : View.VISIBLE);
+        engineDownload.setVisibility(ready && !downloading ? View.GONE : View.VISIBLE);
+        engineDownload.setEnabled(!downloading || !dlCancel);
+        engineDownload.setText(downloading ? getString(R.string.engine_cancel_download)
+                : getString(R.string.engine_download, mb));
+        engineDelete.setVisibility(ready && !downloading ? View.VISIBLE : View.GONE);
+        engineDelete.setEnabled(worker == null);
+        engineProgress.setVisibility(downloading ? View.VISIBLE : View.GONE);
+        updateThresholdLabels();
+    }
+
+    private void startDownload(final Engine e) {
+        if (e.downloads == null || downloader != null) return;
+        dlCancel = false;
+        engineProgress.setProgress(0);
+        final long total = e.downloadSize();
+        downloader = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String error = null;
+                try {
+                    long done = 0;
+                    for (Engine.Model m : e.downloads) {
+                        File f = modelFile(m);
+                        if (f.isFile() && f.length() == m.size) {
+                            done += m.size;
+                            continue;
+                        }
+                        done = download(m, f, done, total);
+                    }
+                } catch (InterruptedException ie) {
+                    error = "";
+                } catch (Throwable t) {
+                    error = t.getMessage() != null ? t.getMessage() : t.toString();
+                }
+                final String err = error;
+                ui.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        downloader = null;
+                        dlCancel = false;
+                        if (isDestroyed()) return;
+                        updateEngineUi();
+                        if (err == null) {
+                            Toast.makeText(MainActivity.this, getString(R.string.engine_dl_done, engineName(e)),
+                                    Toast.LENGTH_SHORT).show();
+                            if (engine == e && result != null && resultEngine != e && hasSource() && worker == null
+                                    && recorder == null) {
+                                startTranscription();
+                            }
+                        } else if (!err.isEmpty()) {
+                            Toast.makeText(MainActivity.this, getString(R.string.engine_dl_failed, err),
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    }
+                });
+            }
+        }, "model-download");
+        updateEngineUi();
+        downloader.start();
+    }
+
+    /** Downloads one model file to {@code dst}, verifying size and SHA-256. Returns the new byte count. */
+    private long download(Engine.Model m, File dst, long done, final long total) throws Exception {
+        File dir = dst.getParentFile();
+        if (dir != null && !dir.isDirectory() && !dir.mkdirs()) throw new IOException("cannot create " + dir);
+        File tmp = new File(dst.getPath() + ".part");
+        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+        OutputStream out = new FileOutputStream(tmp);
+        long got = 0, lastPost = 0;
+        try {
+            byte[] buf = new byte[1 << 16];
+            for (int part = 0; part < m.parts; part++) {
+                java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(m.partUrl(part)).openConnection();
+                c.setInstanceFollowRedirects(true);
+                c.setConnectTimeout(20000);
+                c.setReadTimeout(30000);
+                try {
+                    int code = c.getResponseCode();
+                    if (code != 200) throw new IOException("HTTP " + code);
+                    InputStream in = c.getInputStream();
+                    try {
+                        int n;
+                        while ((n = in.read(buf)) > 0) {
+                            if (dlCancel) throw new InterruptedException();
+                            md.update(buf, 0, n);
+                            out.write(buf, 0, n);
+                            got += n;
+                            if (got - lastPost > (1 << 20)) {
+                                lastPost = got;
+                                final long now = done + got;
+                                ui.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (engineProgress == null) return;
+                                        engineProgress.setProgress((int) (1000 * now / Math.max(1, total)));
+                                        engineDesc.setText(getString(R.string.engine_downloading,
+                                                (int) (now / 1048576), (int) Math.round(total / 1048576.0)));
+                                    }
+                                });
+                            }
+                        }
+                    } finally {
+                        in.close();
+                    }
+                } finally {
+                    c.disconnect();
+                }
+            }
+        } finally {
+            out.close();
+            if (tmp.exists() && got != m.size) tmp.delete();
+        }
+        StringBuilder hex = new StringBuilder();
+        for (byte b : md.digest()) hex.append(String.format(Locale.US, "%02x", b & 0xFF));
+        if (got != m.size || !hex.toString().equals(m.sha256)) {
+            tmp.delete();
+            throw new IOException("checksum mismatch for " + m.path);
+        }
+        if (!tmp.renameTo(dst)) throw new IOException("could not install " + m.path);
+        return done + got;
+    }
+
+    private boolean hasSource() {
+        return audioUri != null || (recordedPcm != null && recordedLen > 0);
+    }
+
     private void startTranscription() {
-        if (audioUri == null) return;
+        if (!hasSource()) return;
+        final Engine eng = engine;
+        if (!engineReady(eng)) {
+            statusText.setText(getString(R.string.status_downloaded_first, engineName(eng)));
+            showPage(PAGE_HOME, true);
+            return;
+        }
         stopPlayback();
         cancelled = false;
         result = null;
@@ -1157,18 +1457,19 @@ public final class MainActivity extends Activity {
         progress.setMax(1000);
         progress.setProgress(0);
         progress.setVisibility(View.VISIBLE);
+        updateEngineUi();
 
         final Uri uri = audioUri;
+        final float[] recPcm = recordedPcm;
+        final int recLen = recordedLen, recRate = recordedRate;
         worker = new Thread(new Runnable() {
             @Override
             public void run() {
                 final long t0 = SystemClock.elapsedRealtime();
                 try {
-                    setStatus(getString(R.string.status_loading_model), 0);
-                    File modelFile = ensureAsset(MODEL_ASSET);
-                    int threads = Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors()));
-                    OnnxModel model = new OnnxModel(modelFile.getAbsolutePath(), threads);
-                    try {
+                    float[] samples;
+                    int rate;
+                    if (uri != null) {
                         setStatus(getString(R.string.status_decoding), 0);
                         AudioDecoder.Pcm pcm = AudioDecoder.decode(MainActivity.this, uri, MAX_SECONDS,
                                 new AudioDecoder.Progress() {
@@ -1182,58 +1483,28 @@ public final class MainActivity extends Activity {
                                         return cancelled;
                                     }
                                 });
-                        if (pcm.samples.length == 0) throw new IOException(getString(R.string.err_empty));
-                        setStatus(getString(R.string.status_resampling), 80);
-                        float[] wav = Resampler.resample(pcm.samples, pcm.sampleRate, FeatureExtractor.SAMPLE_RATE,
-                                new FeatureExtractor.Progress() {
-                                    @Override
-                                    public void onProgress(float f) {
-                                        setStatus(getString(R.string.status_resampling), 80 + (int) (f * 40));
-                                    }
-                                });
-                        pcm = null; // let the decoded full-rate PCM be collected
-                        if (cancelled) throw new InterruptedException();
-                        final double seconds = wav.length / (double) FeatureExtractor.SAMPLE_RATE;
-                        setStatus(getString(R.string.status_features), 120);
-                        float[][] feat = new FeatureExtractor().logMel(wav, new FeatureExtractor.Progress() {
-                            @Override
-                            public void onProgress(float f) {
-                                setStatus(getString(R.string.status_features), 120 + (int) (f * 60));
-                            }
-                        });
-                        wav = null;
-                        if (cancelled) throw new InterruptedException();
-                        final long tModel = SystemClock.elapsedRealtime();
-                        final Transcriber.Result r = Transcriber.transcribe(feat, model, new Transcriber.Progress() {
-                            @Override
-                            public void onChunk(int done, int total) {
-                                long el = SystemClock.elapsedRealtime() - tModel;
-                                long eta = done > 0 ? el * (total - done) / done / 1000 : 0;
-                                setStatus(getString(R.string.status_transcribing, done, total, eta),
-                                        180 + (int) (820L * done / total));
-                            }
-
-                            @Override
-                            public boolean isCancelled() {
-                                return cancelled;
-                            }
-                        });
-                        final long elapsed = SystemClock.elapsedRealtime() - t0;
-                        ui.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                result = r;
-                                audioSeconds = seconds;
-                                finishWorker();
-                                redecode();
-                                updateStats(elapsed);
-                                statusText.setText(R.string.status_done);
-                                showPage(PAGE_PLAY, true);
-                            }
-                        });
-                    } finally {
-                        model.close();
+                        samples = pcm.samples;
+                        rate = pcm.sampleRate;
+                    } else {
+                        samples = Arrays.copyOf(recPcm, recLen);
+                        rate = recRate;
                     }
+                    if (samples.length == 0) throw new IOException(getString(R.string.err_empty));
+                    final EngineOutput r = runEngine(eng, samples, rate, 80);
+                    final long elapsed = SystemClock.elapsedRealtime() - t0;
+                    ui.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            result = r;
+                            resultEngine = eng;
+                            audioSeconds = r.seconds();
+                            finishWorker();
+                            redecode();
+                            updateStats(elapsed);
+                            statusText.setText(R.string.status_done);
+                            showPage(PAGE_PLAY, true);
+                        }
+                    });
                 } catch (final InterruptedException e) {
                     ui.post(new Runnable() {
                         @Override
@@ -1258,6 +1529,83 @@ public final class MainActivity extends Activity {
         worker.start();
     }
 
+    /** Per-window progress for any engine (the three Progress interfaces have the same shape). */
+    private final class ChunkProgress implements Transcriber.Progress, Muscriptor.Progress {
+        private final String name;
+        private final int base;
+        private final long start = SystemClock.elapsedRealtime();
+
+        ChunkProgress(String name, int base) {
+            this.name = name;
+            this.base = base;
+        }
+
+        @Override
+        public void onChunk(int done, int total) {
+            long el = SystemClock.elapsedRealtime() - start;
+            long eta = done > 0 ? el * (total - done) / done / 1000 : 0;
+            setStatus(getString(R.string.status_engine_chunk, name, done, total, eta),
+                    base + (int) ((1000L - base) * done / total));
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return cancelled;
+        }
+    }
+
+    /**
+     * Runs {@code eng} on mono PCM (worker thread). Progress goes from {@code base} to 1000 permille.
+     */
+    private EngineOutput runEngine(Engine eng, float[] samples, int rate, final int base) throws Exception {
+        final String name = engineName(eng);
+        setStatus(getString(R.string.status_resampling), base);
+        final int span = 1000 - base;
+        float[] wav = Resampler.resample(samples, rate, eng.sampleRate, new FeatureExtractor.Progress() {
+            @Override
+            public void onProgress(float f) {
+                setStatus(getString(R.string.status_resampling), base + (int) (f * span * 0.05f));
+            }
+        });
+        samples = null;
+        if (cancelled) throw new InterruptedException();
+        final double seconds = wav.length / (double) eng.sampleRate;
+        final int b1 = base + (int) (span * 0.05f);
+        int threads = Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors()));
+        setStatus(getString(R.string.status_loading_model), b1);
+        switch (eng) {
+            case MUSCRIPTOR: {
+                Muscriptor m = new Muscriptor(modelFile(eng.downloads[0]).getAbsolutePath(),
+                        modelFile(eng.downloads[1]).getAbsolutePath(), threads);
+                try {
+                    setStatus(getString(R.string.status_engine, name), b1);
+                    return m.transcribe(wav, new ChunkProgress(name, b1));
+                } finally {
+                    m.close();
+                }
+            }
+            default: {
+                OnnxModel model = new OnnxModel(ensureAsset(MODEL_ASSET).getAbsolutePath(), threads);
+                try {
+                    final int fspan = (int) (span * 0.07f);
+                    setStatus(getString(R.string.status_features), b1);
+                    float[][] feat = new FeatureExtractor().logMel(wav, new FeatureExtractor.Progress() {
+                        @Override
+                        public void onProgress(float f) {
+                            setStatus(getString(R.string.status_features), b1 + (int) (f * fspan));
+                        }
+                    });
+                    wav = null;
+                    if (cancelled) throw new InterruptedException();
+                    Transcriber.Result r = Transcriber.transcribe(feat, model, new ChunkProgress(name, b1 + fspan));
+                    return new HftOutput(r, seconds);
+                } finally {
+                    model.close();
+                }
+            }
+        }
+    }
+
     private void finishWorker() {
         worker = null;
         if (pendingRecreate && recorder == null) {
@@ -1271,9 +1619,10 @@ public final class MainActivity extends Activity {
         }
         recordBtn.setEnabled(true);
         pickBtn.setEnabled(true);
-        convertBtn.setEnabled(audioUri != null);
+        convertBtn.setEnabled(hasSource());
         convertBtn.setText(R.string.convert);
         progress.setVisibility(View.GONE);
+        updateEngineUi();
     }
 
     // ------------------------------------------------------------ microphone
@@ -1315,6 +1664,13 @@ public final class MainActivity extends Activity {
         recorder = rec;
         cancelled = false;
         result = null;
+        audioUri = null; // "Convert" now re-transcribes this recording
+        final Engine recEng = engineReady(engine) ? engine : Engine.HFT;
+        if (recEng != engine) {
+            Toast.makeText(this, getString(R.string.engine_record_fallback, engineName(engine)), Toast.LENGTH_LONG).show();
+        } else if (!recEng.live) {
+            Toast.makeText(this, getString(R.string.engine_record_note, engineName(recEng)), Toast.LENGTH_LONG).show();
+        }
         notes = Collections.emptyList();
         pausedAt = 0;
         liveHead = 0;
@@ -1377,9 +1733,29 @@ public final class MainActivity extends Activity {
                             publishLive(lt);
                         }
                         if (cancelled) throw new InterruptedException();
-                        final Transcriber.Result r = lt.result();
-                        final double seconds = lt.samples16k() / (double) FeatureExtractor.SAMPLE_RATE;
                         final int rate = rec.sampleRate();
+                        final EngineOutput r;
+                        if (recEng == Engine.HFT || len == 0) {
+                            r = new HftOutput(lt.result(), lt.samples16k() / (double) FeatureExtractor.SAMPLE_RATE);
+                        } else {
+                            ui.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    // keep the take even if the user cancels the second pass
+                                    recordedPcm = pcm;
+                                    recordedLen = len;
+                                    recordedRate = rate;
+                                    saveWavBtn.setVisibility(View.VISIBLE);
+                                    progress.setMax(1000);
+                                    progress.setProgress(0);
+                                    progress.setVisibility(View.VISIBLE);
+                                    convertBtn.setText(R.string.cancel);
+                                    convertBtn.setEnabled(true);
+                                }
+                            });
+                            r = runEngine(recEng, Arrays.copyOf(pcm, len), rate, 0);
+                        }
+                        final double seconds = r.seconds();
                         final long elapsed = SystemClock.elapsedRealtime() - t0;
                         ui.post(new Runnable() {
                             @Override
@@ -1390,6 +1766,7 @@ public final class MainActivity extends Activity {
                                 recordedRate = rate;
                                 saveWavBtn.setVisibility(len > 0 ? View.VISIBLE : View.GONE);
                                 result = r;
+                                resultEngine = recEng;
                                 audioSeconds = seconds;
                                 finishWorker();
                                 redecode();
@@ -1426,8 +1803,9 @@ public final class MainActivity extends Activity {
     /** Decodes the partial result on the worker thread and shows it. */
     private void publishLive(LiveTranscriber lt) {
         Transcriber.Result partial = lt.result();
-        final List<Note> ns = NoteDecoder.decode(partial, Math.max(0.01, thr(onsetSeek)),
-                Math.max(0.01, thr(offsetSeek)), Math.max(0.01, thr(frameSeek)), NoteDecoder.OffsetMode.SHORTER, true);
+        double[] p = params(Engine.HFT); // the live preview always runs hFT-Transformer
+        final List<Note> ns = NoteDecoder.decode(partial, Math.max(0.01, p[0]),
+                Math.max(0.01, p[1]), Math.max(0.01, p[2]), NoteDecoder.OffsetMode.SHORTER, true);
         PartSplitter.split(ns);
         final double head = lt.transcribedSeconds();
         ui.post(new Runnable() {
@@ -2163,6 +2541,7 @@ public final class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         cancelled = true;
+        dlCancel = true;
         stopMic();
         if (midi != null) midi.close();
         if (player != null && !isChangingConfigurations()) player.release();
