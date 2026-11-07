@@ -42,6 +42,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    # one publisher at a time: parallel runs overwriting the same asset make the upload fail
+    concurrency:
+      group: piano2midi-release
+      cancel-in-progress: false
     env:
       VERSION: '2.1'
     steps:
