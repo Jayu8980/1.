@@ -38,14 +38,17 @@ audio file ─► MediaCodec decode ─► mono ─► resample 16 kHz ─► lo
   - *Sheet*: piano sheet music with a playback cursor.
 - **Piano sheet:** tempo, beat phase, downbeat, key (Krumhansl) and chords are detected automatically. Notes are quantized to 16ths and engraved on a grand staff (or a single staff for one part) with key signature, accidentals, beams, ties, rests, chord symbols and **8va / 8vb** octave brackets for very high or very low passages, using the Bravura music font. System spacing adapts to high or low notes. Tempo and time signature (4/4, 3/4, 2/4) can be adjusted.
 - **Downloads:** **MIDI** or **PDF** for all parts, the selected parts, **melody only**, **chords only** or **bass line only**. MIDI files have one track per part, with the chosen instruments and a tempo map aligned to the detected bars. You can save anywhere or share to other apps.
+- **Transcription engines:** choose on the Home page. Selecting an engine sets its parameters, and an open transcription is re-run with the new engine.
+  - *hFT-Transformer* (default, built in): piano, adjustable thresholds, live streaming while recording.
+  - *MuScriptor medium* (Kyutai and Mirelo): highest accuracy, multi-instrument, no thresholds. It is a 294 MB int8 ONNX download from `models/`, checked with SHA-256. It is slow on a phone and its velocities are fixed. The weights are CC BY-NC 4.0, non-commercial use only.
 - **Detection settings:** adjustable onset, offset and frame thresholds and a note-end mode. Changing them re-decodes the notes instantly, without running the model again.
 
 ![Piano2MIDI 1.4: Home, Player, Practice, Export and Settings in light and dark mode](docs/screenshots.png)
 
 ## Download
 
-**[Piano2MIDI 1.9 for Android (arm64): Piano2MIDI-1.9-android-arm64.apk](https://github.com/Jayu8980/1./raw/ccr-0beb1834-f8votw/piano2midi/release/Piano2MIDI-1.9-android-arm64.apk)**
-(49 MB, SHA-256 in `release/Piano2MIDI-1.9-android-arm64.apk.sha256`)
+**[Piano2MIDI 2.0 for Android (arm64): Piano2MIDI-2.0-android-arm64.apk](https://github.com/Jayu8980/1./raw/ccr-0beb1834-f8votw/piano2midi/release/Piano2MIDI-2.0-android-arm64.apk)**
+(49 MB, SHA-256 in `release/Piano2MIDI-2.0-android-arm64.apk.sha256`)
 
 - Runs on Android 8.0 through Android 16, on 64-bit ARM phones and tablets.
 - Supports 16 KB memory pages: ONNX Runtime 1.23.2 native libraries with 16 KB-aligned ELF segments.
@@ -72,6 +75,14 @@ torchaudio features, PyTorch model) on a FluidSynth-rendered polyphonic test pie
 | Java log-mel vs torchaudio | max abs diff 7e-4 where there is signal (log domain) |
 | Java notes vs Python `mpe2note` | identical: 95 notes, Δt ≤ 0.05 ms, same velocities |
 | vs. ground-truth MIDI (mir_eval) | onset P/R/F1 0.989 / 0.949 / **0.969**, onset+offset F1 0.825 |
+
+MuScriptor medium on the same piece (the Java port was checked against the official Python code):
+
+| version | notes | onset F1 | onset+offset F1 | time for 32 s of audio (4-core desktop CPU) |
+| --- | --- | --- | --- | --- |
+| official PyTorch, fp32 | 98 | 0.995 | 0.792 | 26.5 s |
+| ONNX fp32 | 98 | 0.995 | 0.802 | 25.0 s |
+| ONNX int8, app (Java) | 98 | 0.995 | 0.782 | 16.0 s |
 
 Speed: on a 4-core x86 desktop CPU a 2.048 s window takes about 1.3–1.6 s, so roughly
 0.7× real time. Expect about 1–3× real time on recent phones and slower on older ones.
