@@ -51,6 +51,8 @@ Then open http://localhost:8080. It can also be hosted as-is on GitHub Pages or 
 
 See [docs/ACE_STUDIO_FEATURE_ANALYSIS.md](docs/ACE_STUDIO_FEATURE_ANALYSIS.md) for the ACE Studio feature comparison, gap analysis and roadmap.
 
+See [docs/youtube-agent/PREPLANNING.md](docs/youtube-agent/PREPLANNING.md) for the YouTube content agent plan, with its [system prompt](docs/youtube-agent/SYSTEM_PROMPT.md) and [task prompts](docs/youtube-agent/TASK_PROMPTS.md).
+
 ## Project layout
 
 | File | Purpose |
