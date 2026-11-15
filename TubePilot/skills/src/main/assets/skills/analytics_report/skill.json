@@ -1,0 +1,101 @@
+{
+  "id": "analytics_report",
+  "name": "Analytics Report",
+  "version": "1.0.0",
+  "description": "Analyse the last week's views, CTR, retention and subscribers, write the weekly report and extract lessons for memory.",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "days": {
+        "type": "integer",
+        "description": "Window in days, default 7"
+      }
+    }
+  },
+  "outputs": {
+    "type": "object",
+    "properties": {
+      "headline": {
+        "type": "string"
+      },
+      "topVideos": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "underperformers": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "lessons": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string"
+            },
+            "category": {
+              "type": "string",
+              "enum": [
+                "HOOK",
+                "TITLE",
+                "THUMBNAIL",
+                "RETENTION",
+                "TOPIC",
+                "POSTING_TIME",
+                "COMMUNITY",
+                "FORMAT",
+                "OTHER"
+              ]
+            },
+            "evidence": {
+              "type": "string"
+            },
+            "confidence": {
+              "type": "number",
+              "description": "0-1"
+            }
+          },
+          "required": [
+            "text",
+            "category",
+            "evidence",
+            "confidence"
+          ]
+        }
+      },
+      "nextWeekFocus": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "markdown": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "headline",
+      "lessons",
+      "markdown"
+    ]
+  },
+  "permissions": [
+    "LLM",
+    "YOUTUBE_READ",
+    "MEMORY_READ",
+    "MEMORY_WRITE"
+  ],
+  "agents": [
+    "ANALYTICS"
+  ],
+  "defaultEnabled": true,
+  "executor": "analytics_report",
+  "promptFile": "prompt.md",
+  "author": "TubePilot",
+  "tags": []
+}

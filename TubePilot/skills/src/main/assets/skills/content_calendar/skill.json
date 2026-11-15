@@ -1,0 +1,129 @@
+{
+  "id": "content_calendar",
+  "name": "Content Calendar",
+  "version": "1.0.0",
+  "description": "Plan the week's publishing slots from the posting frequency and assign the best ideas to them.",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "weekStartMs": {
+        "type": "integer"
+      },
+      "ideas": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "angle": {
+              "type": "string"
+            },
+            "keywords": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "SHORT",
+                "LONG"
+              ]
+            },
+            "pillar": {
+              "type": "string"
+            },
+            "demandScore": {
+              "type": "number",
+              "description": "0-10"
+            },
+            "competitionScore": {
+              "type": "number",
+              "description": "0-10, higher = harder"
+            },
+            "nicheFitScore": {
+              "type": "number",
+              "description": "0-10"
+            },
+            "rationale": {
+              "type": "string"
+            },
+            "sources": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "title",
+            "format",
+            "demandScore",
+            "competitionScore",
+            "nicheFitScore"
+          ]
+        }
+      },
+      "shortsPerWeek": {
+        "type": "integer"
+      },
+      "longFormPerWeek": {
+        "type": "integer"
+      },
+      "timezone": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "weekStartMs",
+      "ideas"
+    ]
+  },
+  "outputs": {
+    "type": "object",
+    "properties": {
+      "theme": {
+        "type": "string"
+      },
+      "assignments": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "slot": {
+              "type": "integer"
+            },
+            "ideaTitle": {
+              "type": "string"
+            },
+            "angle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "slot",
+            "ideaTitle"
+          ]
+        }
+      }
+    },
+    "required": [
+      "assignments"
+    ]
+  },
+  "permissions": [
+    "LLM",
+    "MEMORY_READ"
+  ],
+  "agents": [
+    "ORCHESTRATOR"
+  ],
+  "defaultEnabled": true,
+  "executor": "content_calendar",
+  "promptFile": "prompt.md",
+  "author": "TubePilot",
+  "tags": []
+}

@@ -1,0 +1,84 @@
+{
+  "id": "keyword_research",
+  "name": "Keyword Research",
+  "version": "1.0.0",
+  "description": "Expand a seed topic into search keywords with intent and difficulty, grounded in YouTube search results.",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "seed": {
+        "type": "string",
+        "description": "Seed topic or keyword"
+      },
+      "language": {
+        "type": "string",
+        "enum": [
+          "ENGLISH",
+          "HINDI",
+          "HINGLISH"
+        ]
+      },
+      "maxKeywords": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "seed"
+    ]
+  },
+  "outputs": {
+    "type": "object",
+    "properties": {
+      "keywords": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "keyword": {
+              "type": "string"
+            },
+            "intent": {
+              "type": "string",
+              "enum": [
+                "informational",
+                "how_to",
+                "comparison",
+                "entertainment",
+                "news",
+                "transactional"
+              ]
+            },
+            "difficulty": {
+              "type": "number",
+              "description": "0-10"
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "keyword",
+            "intent",
+            "difficulty"
+          ]
+        }
+      }
+    },
+    "required": [
+      "keywords"
+    ]
+  },
+  "permissions": [
+    "LLM",
+    "YOUTUBE_READ"
+  ],
+  "agents": [
+    "TREND_RESEARCHER",
+    "SEO_SPECIALIST"
+  ],
+  "defaultEnabled": true,
+  "executor": "keyword_research",
+  "promptFile": "prompt.md",
+  "author": "TubePilot",
+  "tags": []
+}

@@ -1,0 +1,67 @@
+{
+  "id": "thumbnail_maker",
+  "name": "Thumbnail Maker",
+  "version": "1.0.0",
+  "description": "Design 2-3 thumbnail variants: a generated background plus a bold 2-4 word headline in the brand style.",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "projectId": {
+        "type": "string"
+      },
+      "title": {
+        "type": "string"
+      },
+      "count": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "projectId"
+    ]
+  },
+  "outputs": {
+    "type": "object",
+    "properties": {
+      "variants": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "headline": {
+              "type": "string",
+              "description": "2-4 words"
+            },
+            "imagePrompt": {
+              "type": "string"
+            },
+            "concept": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "headline",
+            "imagePrompt"
+          ]
+        }
+      }
+    },
+    "required": [
+      "variants"
+    ]
+  },
+  "permissions": [
+    "LLM",
+    "NETWORK",
+    "MEDIA_RENDER",
+    "STORAGE"
+  ],
+  "agents": [
+    "THUMBNAIL_DESIGNER"
+  ],
+  "defaultEnabled": true,
+  "executor": "thumbnail_maker",
+  "promptFile": "prompt.md",
+  "author": "TubePilot",
+  "tags": []
+}

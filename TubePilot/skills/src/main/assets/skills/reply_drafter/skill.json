@@ -1,0 +1,83 @@
+{
+  "id": "reply_drafter",
+  "name": "Reply Drafter",
+  "version": "1.0.0",
+  "description": "Draft friendly, on-brand replies to viewer comments; anything needing judgement is marked for the creator.",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "comments": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            },
+            "category": {
+              "type": "string"
+            },
+            "videoTitle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "text"
+          ]
+        }
+      }
+    },
+    "required": [
+      "comments"
+    ]
+  },
+  "outputs": {
+    "type": "object",
+    "properties": {
+      "replies": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "reply": {
+              "type": "string"
+            },
+            "needsHuman": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "reply",
+            "needsHuman"
+          ]
+        }
+      }
+    },
+    "required": [
+      "replies"
+    ]
+  },
+  "permissions": [
+    "LLM",
+    "MEMORY_READ"
+  ],
+  "agents": [
+    "COMMUNITY_MANAGER"
+  ],
+  "defaultEnabled": true,
+  "executor": "reply_drafter",
+  "promptFile": "prompt.md",
+  "author": "TubePilot",
+  "tags": []
+}

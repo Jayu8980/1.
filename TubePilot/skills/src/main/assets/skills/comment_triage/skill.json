@@ -1,0 +1,87 @@
+{
+  "id": "comment_triage",
+  "name": "Comment Triage",
+  "version": "1.0.0",
+  "description": "Sort comments into question, praise, feedback, spam, toxic or sensitive so replies and moderation go to the right place.",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "comments": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            },
+            "author": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "text"
+          ]
+        }
+      }
+    },
+    "required": [
+      "comments"
+    ]
+  },
+  "outputs": {
+    "type": "object",
+    "properties": {
+      "results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "category": {
+              "type": "string",
+              "enum": [
+                "QUESTION",
+                "PRAISE",
+                "FEEDBACK",
+                "SPAM",
+                "TOXIC",
+                "SENSITIVE",
+                "OTHER"
+              ]
+            },
+            "sensitive": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "category"
+          ]
+        }
+      }
+    },
+    "required": [
+      "results"
+    ]
+  },
+  "permissions": [
+    "LLM"
+  ],
+  "agents": [
+    "COMMUNITY_MANAGER"
+  ],
+  "defaultEnabled": true,
+  "executor": "comment_triage",
+  "promptFile": "prompt.md",
+  "author": "TubePilot",
+  "tags": []
+}

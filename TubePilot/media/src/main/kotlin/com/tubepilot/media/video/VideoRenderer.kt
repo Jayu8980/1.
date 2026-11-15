@@ -81,7 +81,7 @@ data class RenderSpec(
  * Output goes to a temporary file that is renamed on success, so a killed job never leaves a
  * truncated video that a resumed job would mistake for a finished one.
  */
-@UnstableApi
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @Singleton
 class VideoRenderer @Inject constructor(@ApplicationContext private val context: Context) {
 

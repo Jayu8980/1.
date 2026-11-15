@@ -1,0 +1,89 @@
+{
+  "id": "hook_generator",
+  "name": "Hook Generator",
+  "version": "1.0.0",
+  "description": "Write scroll-stopping opening hooks in several proven patterns, informed by what worked on this channel.",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "topic": {
+        "type": "string"
+      },
+      "angle": {
+        "type": "string"
+      },
+      "format": {
+        "type": "string",
+        "enum": [
+          "SHORT",
+          "LONG"
+        ]
+      },
+      "language": {
+        "type": "string",
+        "enum": [
+          "ENGLISH",
+          "HINDI",
+          "HINGLISH"
+        ]
+      },
+      "count": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "topic",
+      "format"
+    ]
+  },
+  "outputs": {
+    "type": "object",
+    "properties": {
+      "hooks": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string"
+            },
+            "pattern": {
+              "type": "string",
+              "enum": [
+                "question",
+                "bold_claim",
+                "number",
+                "story",
+                "contrarian",
+                "curiosity_gap",
+                "pain_point"
+              ]
+            },
+            "why": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text",
+            "pattern"
+          ]
+        }
+      }
+    },
+    "required": [
+      "hooks"
+    ]
+  },
+  "permissions": [
+    "LLM",
+    "MEMORY_READ"
+  ],
+  "agents": [
+    "SCRIPTWRITER"
+  ],
+  "defaultEnabled": true,
+  "executor": "hook_generator",
+  "promptFile": "prompt.md",
+  "author": "TubePilot",
+  "tags": []
+}

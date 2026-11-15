@@ -1,0 +1,109 @@
+{
+  "id": "repurpose_content",
+  "name": "Repurpose Content",
+  "version": "1.0.0",
+  "description": "Turn a finished video into Shorts ideas, a community post and social captions.",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "projectId": {
+        "type": "string"
+      },
+      "scriptText": {
+        "type": "string"
+      }
+    }
+  },
+  "outputs": {
+    "type": "object",
+    "properties": {
+      "shortIdeas": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "angle": {
+              "type": "string"
+            },
+            "keywords": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "SHORT",
+                "LONG"
+              ]
+            },
+            "pillar": {
+              "type": "string"
+            },
+            "demandScore": {
+              "type": "number",
+              "description": "0-10"
+            },
+            "competitionScore": {
+              "type": "number",
+              "description": "0-10, higher = harder"
+            },
+            "nicheFitScore": {
+              "type": "number",
+              "description": "0-10"
+            },
+            "rationale": {
+              "type": "string"
+            },
+            "sources": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "title",
+            "format",
+            "demandScore",
+            "competitionScore",
+            "nicheFitScore"
+          ]
+        }
+      },
+      "communityPost": {
+        "type": "string"
+      },
+      "socialPosts": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "blogSummary": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "shortIdeas",
+      "communityPost"
+    ]
+  },
+  "permissions": [
+    "LLM",
+    "MEMORY_READ"
+  ],
+  "agents": [
+    "SCRIPTWRITER",
+    "ORCHESTRATOR"
+  ],
+  "defaultEnabled": true,
+  "executor": "repurpose_content",
+  "promptFile": "prompt.md",
+  "author": "TubePilot",
+  "tags": []
+}

@@ -1,0 +1,55 @@
+{
+  "id": "subtitle_generator",
+  "name": "Subtitle Generator",
+  "version": "1.0.0",
+  "description": "Create a frame-accurate SRT from the voiceover timings, optionally translated into a second language.",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "projectId": {
+        "type": "string"
+      },
+      "translateTo": {
+        "type": "string",
+        "description": "Optional ISO language code, e.g. hi or en"
+      }
+    },
+    "required": [
+      "projectId"
+    ]
+  },
+  "outputs": {
+    "type": "object",
+    "properties": {
+      "srtPath": {
+        "type": "string"
+      },
+      "language": {
+        "type": "string"
+      },
+      "cueCount": {
+        "type": "integer"
+      },
+      "translatedSrtPath": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "srtPath",
+      "cueCount"
+    ]
+  },
+  "permissions": [
+    "LLM",
+    "STORAGE"
+  ],
+  "agents": [
+    "VIDEO_EDITOR",
+    "UPLOAD_SCHEDULER"
+  ],
+  "defaultEnabled": true,
+  "executor": "subtitle_generator",
+  "promptFile": "prompt.md",
+  "author": "TubePilot",
+  "tags": []
+}

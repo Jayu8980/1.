@@ -1,0 +1,105 @@
+{
+  "id": "script_writer",
+  "name": "Script Writer",
+  "version": "1.0.0",
+  "description": "Write a complete scene-by-scene script (hook, body, CTA) in the channel voice and language, with visual direction for each scene.",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string"
+      },
+      "brief": {
+        "type": "object",
+        "properties": {},
+        "description": "Research brief JSON"
+      },
+      "hook": {
+        "type": "string",
+        "description": "Chosen hook"
+      },
+      "format": {
+        "type": "string",
+        "enum": [
+          "SHORT",
+          "LONG"
+        ]
+      },
+      "language": {
+        "type": "string",
+        "enum": [
+          "ENGLISH",
+          "HINDI",
+          "HINGLISH"
+        ]
+      },
+      "targetDurationSec": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "title",
+      "format",
+      "language"
+    ]
+  },
+  "outputs": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string"
+      },
+      "hook": {
+        "type": "string"
+      },
+      "scenes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "narration": {
+              "type": "string"
+            },
+            "visualPrompt": {
+              "type": "string"
+            },
+            "onScreenText": {
+              "type": "string"
+            },
+            "brollQuery": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "narration",
+            "visualPrompt"
+          ]
+        }
+      },
+      "cta": {
+        "type": "string"
+      },
+      "realisticSyntheticContent": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "title",
+      "hook",
+      "scenes",
+      "cta"
+    ]
+  },
+  "permissions": [
+    "LLM",
+    "MEMORY_READ"
+  ],
+  "agents": [
+    "SCRIPTWRITER"
+  ],
+  "defaultEnabled": true,
+  "executor": "script_writer",
+  "promptFile": "prompt.md",
+  "author": "TubePilot",
+  "tags": []
+}

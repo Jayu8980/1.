@@ -1,0 +1,85 @@
+{
+  "id": "policy_check",
+  "name": "Policy Check",
+  "version": "1.0.0",
+  "description": "Review a video before publishing for copyright risk, Community Guidelines issues, repetitive content and AI-disclosure needs. Can block publishing.",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "projectId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "projectId"
+    ]
+  },
+  "outputs": {
+    "type": "object",
+    "properties": {
+      "issues": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "category": {
+              "type": "string",
+              "enum": [
+                "COPYRIGHT",
+                "COMMUNITY_GUIDELINES",
+                "REPETITIVE_CONTENT",
+                "AI_DISCLOSURE",
+                "BANNED_TOPIC",
+                "MISLEADING_METADATA",
+                "MADE_FOR_KIDS",
+                "OTHER"
+              ]
+            },
+            "severity": {
+              "type": "string",
+              "enum": [
+                "INFO",
+                "WARNING",
+                "BLOCKER"
+              ]
+            },
+            "detail": {
+              "type": "string"
+            },
+            "fix": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "category",
+            "severity",
+            "detail"
+          ]
+        }
+      },
+      "requiresAiDisclosure": {
+        "type": "boolean"
+      },
+      "summary": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "issues",
+      "summary"
+    ]
+  },
+  "permissions": [
+    "LLM",
+    "MEMORY_READ",
+    "STORAGE"
+  ],
+  "agents": [
+    "COMPLIANCE"
+  ],
+  "defaultEnabled": true,
+  "executor": "policy_check",
+  "promptFile": "prompt.md",
+  "author": "TubePilot",
+  "tags": []
+}

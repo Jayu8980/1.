@@ -1,0 +1,118 @@
+{
+  "id": "trend_scan",
+  "name": "Trend Scan",
+  "version": "1.0.0",
+  "description": "Find fresh video topics from channel analytics, YouTube search demand and the competitor channels you list, scored by demand, competition and niche fit.",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "seedKeywords": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Seed keywords or pillars"
+      },
+      "competitorChannelIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "lookbackDays": {
+        "type": "integer"
+      },
+      "maxIdeas": {
+        "type": "integer"
+      },
+      "format": {
+        "type": "string",
+        "enum": [
+          "SHORT",
+          "LONG",
+          "ANY"
+        ]
+      }
+    }
+  },
+  "outputs": {
+    "type": "object",
+    "properties": {
+      "ideas": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "angle": {
+              "type": "string"
+            },
+            "keywords": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "SHORT",
+                "LONG"
+              ]
+            },
+            "pillar": {
+              "type": "string"
+            },
+            "demandScore": {
+              "type": "number",
+              "description": "0-10"
+            },
+            "competitionScore": {
+              "type": "number",
+              "description": "0-10, higher = harder"
+            },
+            "nicheFitScore": {
+              "type": "number",
+              "description": "0-10"
+            },
+            "rationale": {
+              "type": "string"
+            },
+            "sources": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "title",
+            "format",
+            "demandScore",
+            "competitionScore",
+            "nicheFitScore"
+          ]
+        }
+      }
+    },
+    "required": [
+      "ideas"
+    ]
+  },
+  "permissions": [
+    "LLM",
+    "YOUTUBE_READ",
+    "MEMORY_READ"
+  ],
+  "agents": [
+    "TREND_RESEARCHER",
+    "ORCHESTRATOR"
+  ],
+  "defaultEnabled": true,
+  "executor": "trend_scan",
+  "promptFile": "prompt.md",
+  "author": "TubePilot",
+  "tags": []
+}

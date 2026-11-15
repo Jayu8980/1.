@@ -1,0 +1,87 @@
+{
+  "id": "title_ab_test",
+  "name": "Title A/B Test",
+  "version": "1.0.0",
+  "description": "Generate title variants and rank them by predicted click-through, ready for an A/B rotation after publishing.",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "topic": {
+        "type": "string"
+      },
+      "keywords": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "summary": {
+        "type": "string",
+        "description": "What the video delivers"
+      },
+      "format": {
+        "type": "string",
+        "enum": [
+          "SHORT",
+          "LONG"
+        ]
+      },
+      "language": {
+        "type": "string",
+        "enum": [
+          "ENGLISH",
+          "HINDI",
+          "HINGLISH"
+        ]
+      },
+      "count": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "topic"
+    ]
+  },
+  "outputs": {
+    "type": "object",
+    "properties": {
+      "variants": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "predictedCtrScore": {
+              "type": "number",
+              "description": "0-10"
+            },
+            "rationale": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "predictedCtrScore"
+          ]
+        }
+      }
+    },
+    "required": [
+      "variants"
+    ]
+  },
+  "permissions": [
+    "LLM",
+    "MEMORY_READ"
+  ],
+  "agents": [
+    "SEO_SPECIALIST"
+  ],
+  "defaultEnabled": true,
+  "executor": "title_ab_test",
+  "promptFile": "prompt.md",
+  "author": "TubePilot",
+  "tags": []
+}

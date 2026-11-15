@@ -1,0 +1,58 @@
+{
+  "id": "shorts_cutter",
+  "name": "Shorts Cutter",
+  "version": "1.0.0",
+  "description": "Find the strongest self-contained moments of a long-form video and render them as vertical Shorts with fresh captions.",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "projectId": {
+        "type": "string"
+      },
+      "maxShorts": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "projectId"
+    ]
+  },
+  "outputs": {
+    "type": "object",
+    "properties": {
+      "shorts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "videoPath": {
+              "type": "string"
+            },
+            "durationMs": {
+              "type": "integer"
+            },
+            "label": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "required": [
+      "shorts"
+    ]
+  },
+  "permissions": [
+    "LLM",
+    "MEDIA_RENDER",
+    "STORAGE"
+  ],
+  "agents": [
+    "VIDEO_EDITOR"
+  ],
+  "defaultEnabled": true,
+  "executor": "shorts_cutter",
+  "promptFile": "prompt.md",
+  "author": "TubePilot",
+  "tags": []
+}
