@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "verifiedOn": "2026-11-15",
+  "source": "https://developers.google.com/youtube/v3/determine_quota_cost",
+  "note": "videos.insert and search.list each have their own daily call bucket; all other methods share the standard unit bucket. Quota resets at midnight Pacific Time. Check your project's limits in Google Cloud Console > APIs & Services > YouTube Data API v3 > Quotas and edit these values in Settings if they differ.",
+  "buckets": [
+    { "id": "default", "label": "Standard units", "dailyLimit": 10000 },
+    { "id": "videos_insert", "label": "Video uploads (videos.insert calls)", "dailyLimit": 100 },
+    { "id": "search", "label": "Searches (search.list calls)", "dailyLimit": 100 }
+  ],
+  "methods": {
+    "videos.insert": { "bucket": "videos_insert", "cost": 1 },
+    "search.list": { "bucket": "search", "cost": 1 },
+    "videos.list": { "bucket": "default", "cost": 1 },
+    "videos.update": { "bucket": "default", "cost": 50 },
+    "thumbnails.set": { "bucket": "default", "cost": 50 },
+    "captions.insert": { "bucket": "default", "cost": 400 },
+    "captions.list": { "bucket": "default", "cost": 50 },
+    "channels.list": { "bucket": "default", "cost": 1 },
+    "playlists.list": { "bucket": "default", "cost": 1 },
+    "playlists.insert": { "bucket": "default", "cost": 50 },
+    "playlistItems.list": { "bucket": "default", "cost": 1 },
+    "playlistItems.insert": { "bucket": "default", "cost": 50 },
+    "commentThreads.list": { "bucket": "default", "cost": 1 },
+    "commentThreads.insert": { "bucket": "default", "cost": 50 },
+    "comments.insert": { "bucket": "default", "cost": 50 },
+    "comments.setModerationStatus": { "bucket": "default", "cost": 50 }
+  }
+}
