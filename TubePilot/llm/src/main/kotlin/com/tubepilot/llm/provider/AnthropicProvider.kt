@@ -70,6 +70,8 @@ class AnthropicProvider @Inject constructor(
     override val id = LlmProviderId.ANTHROPIC
 
     private val lock = Mutex()
+    /** Test hook: points the SDK at a mock server. Null uses the SDK's default endpoint. */
+    internal var baseUrl: String? = null
     private var cachedKey: String? = null
     private var cachedClient: AnthropicClient? = null
 
@@ -82,6 +84,7 @@ class AnthropicProvider @Inject constructor(
         cachedClient?.close()
         AnthropicOkHttpClient.builder()
             .apiKey(key)
+            .apply { baseUrl?.let { baseUrl(it) } }
             // The gateway owns retries with backoff and budget checks, so keep SDK retries low.
             .maxRetries(1)
             .timeout(Duration.ofMinutes(10))

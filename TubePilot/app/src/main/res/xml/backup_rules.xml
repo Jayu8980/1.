@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Secrets are bound to this device's Keystore and must never be backed up. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="tubepilot_secrets.xml" />
+    <exclude domain="file" path="projects/" />
+    <exclude domain="file" path="models/" />
+</full-backup-content>

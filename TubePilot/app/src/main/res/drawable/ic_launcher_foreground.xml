@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Rounded play screen -->
+    <path
+        android:fillColor="#16161D"
+        android:pathData="M30,36h48a8,8 0,0 1,8 8v20a8,8 0,0 1,-8 8h-48a8,8 0,0 1,-8 -8v-20a8,8 0,0 1,8 -8z" />
+    <!-- Play triangle shaped like a paper plane (pilot) -->
+    <path
+        android:fillColor="#FFD400"
+        android:pathData="M47,44L66,54L47,64L50,54Z" />
+</vector>

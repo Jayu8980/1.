@@ -1,5 +1,7 @@
 # VoxForge Studio
 
+> This repository also contains **[TubePilot](TubePilot/README.md)**, an Android app in which a team of AI agents runs a YouTube channel (`TubePilot/`).
+
 A full-featured **singing voice synthesis studio** that runs entirely in the browser — in the spirit of AI vocal tools like ACE Studio. Draw a melody, type lyrics, pick a virtual singer and shape the performance. No build step, no server-side processing, no account.
 
 ## Features

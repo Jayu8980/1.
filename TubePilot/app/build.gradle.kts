@@ -31,6 +31,11 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
+    // The UI ships in English; Hindi is kept for system strings of bundled libraries.
+    androidResources {
+        localeFilters += listOf("en", "hi")
+    }
+
     signingConfigs {
         if (keystoreProps.getProperty("storeFile") != null) {
             create("release") {
@@ -85,6 +90,11 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        freeCompilerArgs.addAll(
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+            "-opt-in=androidx.compose.foundation.layout.ExperimentalLayoutApi",
+            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+        )
     }
 }
 

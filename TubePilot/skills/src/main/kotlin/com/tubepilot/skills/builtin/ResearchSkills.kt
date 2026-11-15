@@ -228,20 +228,31 @@ object CalendarPlanner {
         modelChoices: Map<Int, Pair<String, String>>,
     ): List<CalendarEntry> {
         val remaining = ideas.sortedByDescending { it.totalScore }.toMutableList()
-        return slots.mapIndexed { index, (start, format) ->
-            val choice = modelChoices[index]
-            val picked = choice?.let { (title, _) -> remaining.firstOrNull { it.title.equals(title, ignoreCase = true) && it.format == format } }
+        val picked = arrayOfNulls<TopicIdea>(slots.size)
+        // Pass 1: the model's choice when it matches the slot format, else the best idea of that format.
+        slots.forEachIndexed { index, (_, format) ->
+            val choice = modelChoices[index]?.first
+            val idea = choice?.let { title -> remaining.firstOrNull { it.title.equals(title, ignoreCase = true) && it.format == format } }
                 ?: remaining.firstOrNull { it.format == format }
-                ?: remaining.firstOrNull()
-            picked?.let { remaining.remove(it) }
+            if (idea != null) {
+                picked[index] = idea
+                remaining.remove(idea)
+            }
+        }
+        // Pass 2: leftover ideas fill slots that had no idea of the right format (the writer adapts it).
+        slots.indices.filter { picked[it] == null }.forEach { index ->
+            remaining.removeFirstOrNull()?.let { picked[index] = it.copy(format = slots[index].second) }
+        }
+        return slots.mapIndexed { index, (start, format) ->
+            val idea = picked[index]
             CalendarEntry(
                 id = UUID.randomUUID().toString(),
                 slotStart = start,
                 format = format,
-                topic = picked?.title ?: "Open slot: choose a topic",
-                angle = choice?.second?.takeIf { it.isNotBlank() } ?: picked?.angle.orEmpty(),
-                pillar = picked?.pillar.orEmpty(),
-                keywords = picked?.keywords.orEmpty(),
+                topic = idea?.title ?: "Open slot: choose a topic",
+                angle = modelChoices[index]?.second?.takeIf { it.isNotBlank() } ?: idea?.angle.orEmpty(),
+                pillar = idea?.pillar.orEmpty(),
+                keywords = idea?.keywords.orEmpty(),
             )
         }
     }

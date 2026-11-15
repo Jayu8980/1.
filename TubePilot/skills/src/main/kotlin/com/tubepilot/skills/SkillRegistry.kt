@@ -106,7 +106,8 @@ class SkillRegistry @Inject constructor(
     }
 
     suspend fun setEnabled(skillId: String, role: AgentRole, enabled: Boolean) {
-        val skill = get(skillId) ?: return
+        ensureLoaded()
+        val skill = get(skillId) ?: throw IllegalArgumentException("Unknown skill '$skillId'")
         require(role in skill.manifest.agents) { "${skill.manifest.name} cannot be used by ${role.displayName}" }
         state.setEnabled(skillId, role, enabled)
         audit.record("SkillRegistry", "skill.toggle", "${skill.id} ${if (enabled) "enabled" else "disabled"} for ${role.displayName}", level = AuditLevel.INFO)
@@ -136,6 +137,7 @@ class SkillRegistry @Inject constructor(
     }
 
     suspend fun remove(skillId: String) {
+        ensureLoaded()
         val skill = get(skillId) ?: return
         require(!skill.builtIn) { "Built-in skills can be disabled but not removed" }
         state.deleteImported(skillId)

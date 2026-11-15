@@ -30,4 +30,5 @@ include(
     ":skills",
     ":agents",
     ":pipeline",
+    ":testing",
 )
