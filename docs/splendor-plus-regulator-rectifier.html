@@ -1,0 +1,666 @@
+<meta charset="utf-8">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Splendor Plus Smart Regulator Rectifier</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=Saira+Condensed:wght@600;700&display=swap">
+<style>
+/* Layout: an engineering drawing set. Title block on top, then three numbered sheets (circuit, board, thermal), then tables. */
+:root{
+  --bg:#eef1ec; --sheet:#fbfcf9; --fg:#16211b; --muted:#5b6a61; --line:#c5cfc7;
+  --accent:#b4621b; --mask:#1c5a3d;
+  --w-ac:#4b5560; --w-bat:#c5392f; --w-lamp:#b98900; --w-sig:#1f6fb5; --w-gnd:#16211b;
+  --alu:#d5dadb; --potting:#dfe3da; --hot:#d2452f;
+  --display:"Saira Condensed","Arial Narrow",sans-serif;
+  --body:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e1512; --sheet:#151e1a; --fg:#dde7e0; --muted:#93a399; --line:#2e3c35;
+  --accent:#e39a54; --mask:#1c5a3d;
+  --w-ac:#b9c2cb; --w-bat:#f0685d; --w-lamp:#edc54a; --w-sig:#6cb4f0; --w-gnd:#dde7e0;
+  --alu:#59636a; --potting:#26302b; --hot:#ff7a62; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0e1512; --sheet:#151e1a; --fg:#dde7e0; --muted:#93a399; --line:#2e3c35;
+  --accent:#e39a54; --mask:#1c5a3d;
+  --w-ac:#b9c2cb; --w-bat:#f0685d; --w-lamp:#edc54a; --w-sig:#6cb4f0; --w-gnd:#dde7e0;
+  --alu:#59636a; --potting:#26302b; --hot:#ff7a62; color-scheme:dark }
+
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55;
+  padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:36px}
+h1,h2{font-family:var(--display);font-weight:700;line-height:1.05;margin:0;text-wrap:balance}
+h1{font-size:clamp(34px,6vw,58px);letter-spacing:.005em;text-transform:uppercase}
+h2{font-size:28px;text-transform:uppercase;letter-spacing:.02em}
+h3{font-size:15px;font-weight:600;margin:0}
+p{margin:0;max-width:68ch}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.muted{color:var(--muted)}
+
+/* title block */
+.titleblock{display:grid;grid-template-columns:minmax(0,1fr) auto;border:1.5px solid var(--fg);background:var(--sheet)}
+.titleblock .main{padding:22px 24px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.tb{display:grid;grid-template-columns:auto auto;border-left:1.5px solid var(--fg);font-family:var(--mono);font-size:12px;align-content:stretch}
+.tb div{padding:7px 12px;border-bottom:1px solid var(--line)}
+.tb div:nth-child(odd){color:var(--muted);letter-spacing:.08em;border-right:1px solid var(--line)}
+.tb div:nth-last-child(-n+2){border-bottom:0}
+@media (max-width:760px){.titleblock{grid-template-columns:1fr}.tb{border-left:0;border-top:1.5px solid var(--fg)}}
+
+.specs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));border:1px solid var(--line);background:var(--sheet)}
+.specs div{padding:14px 18px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);margin:0 -1px -1px 0}
+.specs b{display:block;font-family:var(--display);font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+.specs span{font-size:12.5px;color:var(--muted)}
+
+section{display:flex;flex-direction:column;gap:14px}
+.sheethead{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;border-bottom:1.5px solid var(--fg);padding-bottom:6px}
+.sheethead .eyebrow{margin-left:auto}
+.draw{overflow-x:auto;border:1px solid var(--line);background:var(--sheet)}
+.draw svg{display:block;width:100%;min-width:980px;height:auto}
+.draw.small svg{min-width:680px;max-width:860px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:26px;height:0;border-top:3px solid var(--c);vertical-align:middle;margin-right:7px}
+.legend i.dash{border-top-style:dashed}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px 36px}
+.cols>div{display:flex;flex-direction:column;gap:8px;min-width:0}
+ol.stages{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0;border:1px solid var(--line);background:var(--sheet);counter-reset:st}
+ol.stages li{padding:14px 16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);margin:0 -1px -1px 0;font-size:13.5px;counter-increment:st}
+ol.stages li::before{content:counter(st);font-family:var(--mono);font-size:11px;color:var(--accent);display:block}
+ol.stages b{display:block;font-size:15px}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--line);background:var(--sheet)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400}
+tr:last-child td{border-bottom:0}
+td:first-child{font-family:var(--mono);font-weight:600;white-space:nowrap}
+.note{border-left:3px solid var(--accent);padding:4px 0 4px 16px;display:flex;flex-direction:column;gap:8px}
+
+/* schematic */
+.sch .ac{--c:var(--w-ac)} .sch .bat{--c:var(--w-bat)} .sch .lamp{--c:var(--w-lamp)} .sch .sig{--c:var(--w-sig)} .sch .gnd{--c:var(--w-gnd)}
+.sch .w{fill:none;stroke:var(--c);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}
+.sch .w.sig{stroke-width:1.5}
+.sch .part{fill:var(--sheet);stroke:var(--c);stroke-width:2}
+.sch .dot{fill:var(--c)}
+.sch .term{fill:var(--sheet);stroke:var(--c);stroke-width:3.5}
+.sch .ic{fill:var(--sheet);stroke:var(--fg);stroke-width:1.6}
+.sch .mcu{stroke-width:2.4}
+svg text{font-family:var(--mono)}
+.sch .ref{font-size:11.5px;font-weight:600;fill:var(--fg)}
+.sch .big{font-size:15px}
+.sch .val{font-size:10.5px;fill:var(--muted)}
+.sch .pin{font-size:9.5px;fill:var(--w-sig)}
+.sch .zone{font-size:10.5px;letter-spacing:.14em;fill:var(--accent)}
+
+/* board + thermal (the board is drawn in its own fixed solder-mask colours) */
+.alu{fill:var(--alu);stroke:var(--muted);stroke-width:1}
+.mask{fill:var(--mask)}
+.logic{fill:#ffffff;fill-opacity:.07}
+.gap{fill:none;stroke:#0b2a1c;stroke-width:5;stroke-dasharray:14 7}
+.pw{fill:none;stroke-width:12;stroke-linecap:round;stroke-linejoin:round}
+.pw.ac{stroke:#e9e7db}.pw.bat{stroke:#e8635a}.pw.lamp{stroke:#ecc440}.pw.gnd{stroke:#86d6a6}
+.sg{fill:none;stroke:#a5e6c0;stroke-width:2.4;stroke-linejoin:round}
+.bot{fill:none;stroke:#7cc0f2;stroke-width:3;stroke-dasharray:7 5}
+.botp{fill:none;stroke:#7cc0f2;stroke-width:9;stroke-dasharray:10 5}
+.fp{fill:#0b2a1c;fill-opacity:.55;stroke:#f3f2e6;stroke-width:1.3}
+.fp.conn{fill-opacity:.8}
+.silk{font-size:11px;fill:#f3f2e6;font-weight:600}
+.silk.dim{font-size:9.5px;font-weight:400;fill-opacity:.8;letter-spacing:.06em}
+.pad,.padsq,.via{fill:#dcb65c}
+.via{stroke:#0b2a1c;stroke-width:1.5}
+.padt{font-size:14px;font-weight:600;fill:#2b2206}
+.hole{fill:var(--sheet)}
+.tab{fill:#b7bdc0;stroke:#6d7478;stroke-width:1}
+.pkg{fill:#22262a}
+.pkgt{font-size:12px;font-weight:600;fill:#eceeea}
+.lead{fill:#c9cdd1}
+.out{font-size:11px;fill:var(--muted)}
+.out.b{fill:var(--fg);font-weight:600}
+.dimline{fill:none;stroke:var(--muted);stroke-width:1}
+.potting{fill:var(--potting)}
+.tpad{fill:var(--accent)}
+.die{fill:var(--hot)}
+.heat{fill:none;stroke:var(--hot);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.leader{fill:none;stroke:var(--muted);stroke-width:1}
+</style>
+
+<div class="wrap">
+
+<header class="titleblock">
+  <div class="main">
+    <div class="eyebrow">Hero Honda Splendor Plus · 2001-pattern 12 V magneto system</div>
+    <h1>Smart Regulator Rectifier</h1>
+    <p>A microcontroller-controlled replacement for the stock 4-pin regulator rectifier. It keeps the original plug and the half-wave layout of the bike, and adds measured, temperature-compensated charging, true-RMS headlamp regulation, a hardware over-voltage cut-out and a proper thermal path.</p>
+  </div>
+  <div class="tb">
+    <div>DRG NO</div><div>SPL-RR-01</div>
+    <div>REV</div><div>A · concept</div>
+    <div>SHEETS</div><div>3</div>
+    <div>SYSTEM</div><div>12 V · neg. earth</div>
+    <div>PLUG</div><div>4-pin W / Y / R / G</div>
+    <div>DATE</div><div>2026-11-16</div>
+  </div>
+</header>
+
+<div class="specs">
+  <div><b>14.40 V</b><span>charge voltage at 25 °C, ±0.5 %, compensated −18 mV/°C</span></div>
+  <div><b>13.2 V RMS</b><span>AC headlamp voltage, measured as true RMS</span></div>
+  <div><b>15.2 V</b><span>hardware over-voltage cut-out, independent of firmware</span></div>
+  <div><b>≈ 6 W</b><span>worst-case heat, junctions near 110 °C in 70 °C air</span></div>
+  <div><b>&lt; 0.1 mA</b><span>battery drain with the engine off</span></div>
+</div>
+
+<section>
+  <div class="sheethead"><h2>Circuit diagram</h2><span class="eyebrow">Sheet 1 of 3</span></div>
+  <p>The stator winding is earthed at one end, so each tap can only be used on one half of the AC wave. SCR1 passes positive half-cycles from the white wire to the battery and simply stays off when the battery is full, so the charging coil is never shorted. SCR2 trims the headlamp voltage by shunting part of each negative half-cycle on the yellow wire. Both gates are fired through opto-isolators by the microcontroller.</p>
+  <div class="draw"><svg class="sch" viewBox="0 0 1200 775" role="img" aria-label="Circuit diagram of the smart regulator rectifier">
+<text class="zone" x="40" y="28" text-anchor="start">CHARGE PATH · SERIES SCR, POSITIVE HALF-CYCLE</text>
+<text class="zone" x="700" y="692" text-anchor="start">LAMP REGULATOR · SHUNT SCR, NEGATIVE HALF-CYCLE</text>
+<text class="zone" x="40" y="300" text-anchor="start">CONTROL</text>
+<text class="ref" x="40" y="78" text-anchor="start">J1-2 · W (white)</text>
+<text class="val" x="40" y="93" text-anchor="start">stator charge tap, AC</text>
+<polyline class="w ac" points="78,120 338,120"/>
+<polyline class="w ac" points="150,120 150,142"/>
+<polyline class="w gnd" points="150,174 150,196"/>
+<polygon class="part ac" points="141,142 159,142 150,158"/>
+<polygon class="part gnd" points="141,174 159,174 150,158"/>
+<polyline class="w ac" points="138,154 141,158 159,158 162,162"/>
+<polyline class="w gnd" points="139,196 161,196"/>
+<polyline class="w gnd" points="143,201 157,201"/>
+<polyline class="w gnd" points="147,206 153,206"/>
+<text class="ref" x="164" y="158" text-anchor="start">TVS1</text>
+<text class="val" x="164" y="171" text-anchor="start">130 V</text>
+<polyline class="w ac" points="230,120 230,250"/>
+<rect class="part sig" x="223" y="250" width="14" height="40"/>
+<polyline class="w sig" points="230,290 230,420 540,420"/>
+<text class="ref" x="217" y="268" text-anchor="end">R3</text>
+<text class="val" x="217" y="281" text-anchor="end">220 k</text>
+<text class="val" x="250" y="412" text-anchor="start">ZC-W · zero-cross, rpm</text>
+<polygon class="part ac" points="338,108 338,132 362,120"/>
+<polyline class="w bat" points="362,107 362,133"/>
+<polyline class="w sig" points="362,129 385,152 385,230"/>
+<text class="ref" x="350" y="100" text-anchor="middle">SCR1</text>
+<polyline class="w ac" points="300,120 300,160"/>
+<rect class="part ac" x="293" y="160" width="14" height="40"/>
+<polyline class="w ac" points="300,200 300,230"/>
+<text class="ref" x="288" y="178" text-anchor="end">R1</text>
+<text class="val" x="288" y="191" text-anchor="end">180 Ω</text>
+<polyline class="w ac" points="300,120 300,70 330,70"/>
+<rect class="part ac" x="330" y="63" width="40" height="14"/>
+<polyline class="w ac" points="370,70 397,70"/>
+<polyline class="w ac" points="397,59 397,81"/>
+<polyline class="w bat" points="405,59 405,81"/>
+<polyline class="w bat" points="405,70 440,70 440,120"/>
+<text class="val" x="350" y="52" text-anchor="middle">R2 100 Ω</text>
+<text class="val" x="414" y="52" text-anchor="middle">C1 100 nF</text>
+<polyline class="w bat" points="362,120 480,120"/>
+<rect class="part bat" x="480" y="113" width="60" height="14"/>
+<polyline class="w bat" points="540,120 660,120"/>
+<rect class="part bat" x="660" y="113" width="50" height="14" rx="7"/>
+<polyline class="w bat" points="660,120 710,120"/>
+<polyline class="w bat" points="710,120 1132,120"/>
+<text class="ref" x="510" y="104" text-anchor="middle">RS1 10 mΩ</text>
+<text class="ref" x="685" y="104" text-anchor="middle">F1 10 A</text>
+<polyline class="w sig" points="470,120 470,175"/>
+<polyline class="w sig" points="550,120 550,175"/>
+<rect class="ic" x="455" y="175" width="110" height="50" rx="3"/>
+<text class="ref" x="510" y="198" text-anchor="middle">U5 INA180</text>
+<text class="val" x="510" y="212" text-anchor="middle">×50 current amp</text>
+<polyline class="w sig" points="510,225 510,262 600,262 600,300"/>
+<polyline class="w bat" points="620,120 620,156"/>
+<polyline class="w bat" points="606,156 634,156"/>
+<polyline class="w gnd" points="606,164 634,164"/>
+<polyline class="w gnd" points="620,164 620,196"/>
+<polyline class="w gnd" points="609,196 631,196"/>
+<polyline class="w gnd" points="613,201 627,201"/>
+<polyline class="w gnd" points="617,206 623,206"/>
+<text class="ref" x="642" y="158" text-anchor="start">C2 2200 µF</text>
+<text class="val" x="642" y="171" text-anchor="start">35 V, 105 °C</text>
+<polyline class="w bat" points="760,120 760,170"/>
+<rect class="part sig" x="753" y="170" width="14" height="40"/>
+<polyline class="w sig" points="760,210 760,300"/>
+<text class="ref" x="774" y="187" text-anchor="start">R5/R6</text>
+<text class="val" x="774" y="200" text-anchor="start">0.1 % divider</text>
+<polyline class="w bat" points="945,120 945,156"/>
+<polygon class="part bat" points="935,156 955,156 945,174"/>
+<polyline class="w bat" points="935,174 955,174"/>
+<polyline class="w bat" points="945,174 945,220"/>
+<text class="ref" x="962" y="162" text-anchor="start">D1</text>
+<text class="val" x="962" y="175" text-anchor="start">reverse block</text>
+<rect class="ic" x="880" y="220" width="130" height="50" rx="3"/>
+<text class="ref" x="945" y="243" text-anchor="middle">U1 LM2936-5.0</text>
+<text class="val" x="945" y="257" text-anchor="middle">LDO · 40 V · 15 µA</text>
+<polyline class="w sig" points="945,270 945,330"/>
+<text class="val" x="953" y="305" text-anchor="start">+5 V</text>
+<polyline class="w bat" points="1080,120 1080,142"/>
+<polyline class="w gnd" points="1080,174 1080,196"/>
+<polygon class="part bat" points="1071,142 1089,142 1080,158"/>
+<polygon class="part gnd" points="1071,174 1089,174 1080,158"/>
+<polyline class="w bat" points="1068,154 1071,158 1089,158 1092,162"/>
+<polyline class="w gnd" points="1069,196 1091,196"/>
+<polyline class="w gnd" points="1073,201 1087,201"/>
+<polyline class="w gnd" points="1077,206 1083,206"/>
+<text class="ref" x="1094" y="158" text-anchor="start">TVS2</text>
+<text class="val" x="1094" y="171" text-anchor="start">SMCJ16A</text>
+<text class="ref" x="1165" y="78" text-anchor="end">J1-1 · R (red)</text>
+<text class="val" x="1165" y="93" text-anchor="end">battery +, DC loads</text>
+<rect class="ic" x="880" y="330" width="130" height="48" rx="3"/>
+<text class="ref" x="945" y="352" text-anchor="middle">U3 LM4040</text>
+<text class="val" x="945" y="366" text-anchor="middle">2.500 V · 0.1 % ref</text>
+<polyline class="w sig" points="800,354 880,354"/>
+<rect class="ic" x="880" y="392" width="130" height="44" rx="3"/>
+<text class="ref" x="945" y="412" text-anchor="middle">LED1</text>
+<text class="val" x="945" y="426" text-anchor="middle">status / fault code</text>
+<polyline class="w sig" points="800,414 880,414"/>
+<rect class="ic" x="880" y="450" width="130" height="44" rx="3"/>
+<text class="ref" x="945" y="470" text-anchor="middle">J2</text>
+<text class="val" x="945" y="484" text-anchor="middle">UART diagnostics</text>
+<polyline class="w sig" points="800,472 880,472"/>
+<rect class="ic mcu" x="540" y="300" width="260" height="220" rx="3"/>
+<text class="ref big" x="700" y="350" text-anchor="middle">U2 ATtiny1616</text>
+<text class="val" x="700" y="372" text-anchor="middle">10-bit ADC, ×64 oversampling</text>
+<text class="val" x="700" y="388" text-anchor="middle">PI charge loop + RMS lamp loop</text>
+<text class="val" x="700" y="404" text-anchor="middle">watchdog · brown-out · sleep</text>
+<text class="pin" x="548" y="359" text-anchor="start">CHG-TRIG</text>
+<text class="pin" x="548" y="424" text-anchor="start">ZC-W</text>
+<text class="pin" x="548" y="464" text-anchor="start">ZC-Y / VRMS</text>
+<text class="pin" x="600" y="316" text-anchor="middle">I-SENSE</text>
+<text class="pin" x="760" y="316" text-anchor="middle">VBAT</text>
+<text class="pin" x="600" y="512" text-anchor="middle">LAMP-TRIG</text>
+<text class="pin" x="680" y="512" text-anchor="middle">T-HS</text>
+<text class="pin" x="770" y="512" text-anchor="middle">T-BAT</text>
+<text class="pin" x="792" y="358" text-anchor="end">VREF</text>
+<text class="pin" x="792" y="418" text-anchor="end">LED</text>
+<text class="pin" x="792" y="476" text-anchor="end">TX/RX</text>
+<rect class="ic" x="285" y="230" width="160" height="50" rx="3"/>
+<text class="ref" x="365" y="253" text-anchor="middle">U4 MOC3023</text>
+<text class="val" x="365" y="267" text-anchor="middle">opto gate driver</text>
+<rect class="ic" x="300" y="330" width="140" height="50" rx="3"/>
+<text class="ref" x="370" y="353" text-anchor="middle">U7 TPS3700 + Q3</text>
+<text class="val" x="370" y="367" text-anchor="middle">OVP inhibit · 15.2 V</text>
+<polyline class="w sig" points="370,330 370,280"/>
+<polyline class="w sig" points="540,355 440,355"/>
+<text class="ref" x="40" y="598" text-anchor="start">J1-3 · Y (yellow)</text>
+<text class="val" x="40" y="613" text-anchor="start">lighting tap + AC headlamp</text>
+<polyline class="w lamp" points="78,640 330,640 330,668"/>
+<polyline class="w lamp" points="150,640 150,664"/>
+<polyline class="w gnd" points="150,696 150,720"/>
+<polygon class="part lamp" points="141,664 159,664 150,680"/>
+<polygon class="part gnd" points="141,696 159,696 150,680"/>
+<polyline class="w lamp" points="138,676 141,680 159,680 162,684"/>
+<text class="ref" x="164" y="678" text-anchor="start">TVS3</text>
+<text class="val" x="164" y="691" text-anchor="start">130 V</text>
+<polyline class="w lamp" points="230,640 230,570"/>
+<rect class="part sig" x="223" y="530" width="14" height="40"/>
+<polyline class="w sig" points="230,530 230,460 540,460"/>
+<text class="ref" x="217" y="548" text-anchor="end">R4</text>
+<text class="val" x="217" y="561" text-anchor="end">220 k</text>
+<text class="val" x="250" y="452" text-anchor="start">ZC-Y · lamp voltage, 2.5 V bias</text>
+<polyline class="w lamp" points="317,668 343,668"/>
+<polygon class="part gnd" points="318,692 342,692 330,668"/>
+<polyline class="w gnd" points="330,692 330,720"/>
+<polyline class="w sig" points="339,672 354,660 450,660"/>
+<text class="ref" x="308" y="684" text-anchor="end">SCR2</text>
+<polyline class="w gnd" points="380,720 380,702"/>
+<polygon class="part gnd" points="371,702 389,702 380,686"/>
+<polyline class="w sig" points="368,690 371,686 389,686 392,682"/>
+<polyline class="w sig" points="380,686 380,660"/>
+<text class="ref" x="396" y="698" text-anchor="start">DZ1</text>
+<text class="val" x="396" y="711" text-anchor="start">22 V</text>
+<rect class="ic" x="450" y="650" width="140" height="50" rx="3"/>
+<text class="ref" x="520" y="673" text-anchor="middle">U6 MOC3023</text>
+<text class="val" x="520" y="687" text-anchor="middle">opto gate driver</text>
+<polyline class="w gnd" points="590,675 630,675 630,683"/>
+<rect class="part gnd" x="623" y="683" width="14" height="28"/>
+<polyline class="w gnd" points="630,711 630,720"/>
+<text class="val" x="644" y="708" text-anchor="start">R7 180 Ω</text>
+<polyline class="w sig" points="600,520 600,585 520,585 520,650"/>
+<polyline class="w sig" points="680,520 680,560"/>
+<rect class="ic" x="625" y="560" width="110" height="46" rx="3"/>
+<text class="ref" x="680" y="581" text-anchor="middle">NTC1 10 k</text>
+<text class="val" x="680" y="595" text-anchor="middle">on heat sink</text>
+<polyline class="w sig" points="770,520 770,560"/>
+<rect class="ic" x="755" y="560" width="150" height="46" rx="3"/>
+<text class="ref" x="830" y="581" text-anchor="middle">NTC2 (via J2)</text>
+<text class="val" x="830" y="595" text-anchor="middle">battery temp, optional</text>
+<polyline class="w gnd" points="150,720 1132,720"/>
+<text class="ref" x="1165" y="745" text-anchor="end">J1-4 · G (green)</text>
+<text class="val" x="1165" y="760" text-anchor="end">frame ground, battery −</text>
+<circle class="dot ac" cx="150" cy="120" r="3.4"/>
+<circle class="dot ac" cx="230" cy="120" r="3.4"/>
+<circle class="dot ac" cx="300" cy="120" r="3.4"/>
+<circle class="dot bat" cx="440" cy="120" r="3.4"/>
+<circle class="dot bat" cx="470" cy="120" r="3.4"/>
+<circle class="dot bat" cx="550" cy="120" r="3.4"/>
+<circle class="dot bat" cx="620" cy="120" r="3.4"/>
+<circle class="dot bat" cx="760" cy="120" r="3.4"/>
+<circle class="dot bat" cx="945" cy="120" r="3.4"/>
+<circle class="dot bat" cx="1080" cy="120" r="3.4"/>
+<circle class="dot lamp" cx="150" cy="640" r="3.4"/>
+<circle class="dot lamp" cx="230" cy="640" r="3.4"/>
+<circle class="dot sig" cx="380" cy="660" r="3.4"/>
+<circle class="dot gnd" cx="330" cy="720" r="3.4"/>
+<circle class="dot gnd" cx="380" cy="720" r="3.4"/>
+<circle class="dot gnd" cx="630" cy="720" r="3.4"/>
+<circle class="term ac" cx="70" cy="120" r="8"/>
+<circle class="term bat" cx="1140" cy="120" r="8"/>
+<circle class="term lamp" cx="70" cy="640" r="8"/>
+<circle class="term gnd" cx="1140" cy="720" r="8"/>
+  </svg></div>
+  <div class="legend">
+    <span><i style="--c:var(--w-ac)"></i>Stator AC, charge tap (white)</span>
+    <span><i style="--c:var(--w-bat)"></i>Battery DC (red)</span>
+    <span><i style="--c:var(--w-lamp)"></i>Lighting AC (yellow)</span>
+    <span><i style="--c:var(--w-sig)"></i>Sense and control signals</span>
+    <span><i style="--c:var(--w-gnd)"></i>Ground (green)</span>
+  </div>
+</section>
+
+<section>
+  <div class="sheethead"><h2>Smart control</h2><span class="eyebrow">Firmware behaviour</span></div>
+  <ol class="stages">
+    <li><b>Wake</b>The MCU sleeps until it sees zero-crossings on the white wire. It then powers the reference and the current amplifier and checks battery voltage and both temperatures.</li>
+    <li><b>Soft start</b>For the first two seconds SCR1 fires on one cycle in four, so a cold engine at idle is not loaded with full charging current.</li>
+    <li><b>Bulk</b>SCR1 fires on every positive half-cycle. Current is read through RS1 and capped at 5 A by skipping cycles.</li>
+    <li><b>Absorption</b>A PI loop holds 14.40 V, shifted by −18 mV per °C of battery temperature, by choosing how many cycles to pass.</li>
+    <li><b>Float</b>When current stays under 0.3 A for ten minutes the target drops to 13.6 V, which stops a small battery from gassing on long rides.</li>
+  </ol>
+  <div class="cols">
+    <div><h3>Headlamp loop</h3><p>The yellow wire is sampled about twenty times per cycle and the true RMS value is computed every cycle. The MCU moves the firing point of SCR2 inside the negative half-cycle until the lamp sees 13.2 V RMS, at idle and at full revs alike. Bulbs stop dimming at idle and stop blowing at high speed.</p></div>
+    <div><h3>Where the accuracy comes from</h3><p>Battery voltage is taken by a separate Kelvin trace from the red pin through a 0.1 % divider and measured against a 0.1 % 2.500 V reference. Sixty-four samples are averaged per reading, giving about 4 mV resolution. The stock regulator relies on a zener that drifts by several hundred millivolts with heat.</p></div>
+    <div><h3>Diagnostics</h3><p>LED1 blinks a code for each fault: over-voltage, over-temperature, open battery, blown fuse, no stator output. The J2 header streams voltage, current, rpm and temperatures over UART for tuning.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="sheethead"><h2>Board layout</h2><span class="eyebrow">Sheet 2 of 3 · top view</span></div>
+  <p>The power devices sit on the top edge and bolt to the case wall. Stator AC, which can spike past 100 V with a lamp blown, stays in the upper left. The logic lives behind a milled slot in the lower right, and only the two opto-isolators and the 220 kΩ sense resistors bridge it.</p>
+  <div class="draw"><svg viewBox="0 0 1040 730" role="img" aria-label="Board layout, top view">
+<rect class="alu" x="60" y="62" width="920" height="34"/>
+<rect class="alu" x="64" y="22" width="12" height="40"/>
+<rect class="alu" x="94" y="22" width="12" height="40"/>
+<rect class="alu" x="124" y="22" width="12" height="40"/>
+<rect class="alu" x="154" y="22" width="12" height="40"/>
+<rect class="alu" x="184" y="22" width="12" height="40"/>
+<rect class="alu" x="214" y="22" width="12" height="40"/>
+<rect class="alu" x="244" y="22" width="12" height="40"/>
+<rect class="alu" x="274" y="22" width="12" height="40"/>
+<rect class="alu" x="304" y="22" width="12" height="40"/>
+<rect class="alu" x="334" y="22" width="12" height="40"/>
+<rect class="alu" x="364" y="22" width="12" height="40"/>
+<rect class="alu" x="394" y="22" width="12" height="40"/>
+<rect class="alu" x="424" y="22" width="12" height="40"/>
+<rect class="alu" x="454" y="22" width="12" height="40"/>
+<rect class="alu" x="484" y="22" width="12" height="40"/>
+<rect class="alu" x="514" y="22" width="12" height="40"/>
+<rect class="alu" x="544" y="22" width="12" height="40"/>
+<rect class="alu" x="574" y="22" width="12" height="40"/>
+<rect class="alu" x="604" y="22" width="12" height="40"/>
+<rect class="alu" x="634" y="22" width="12" height="40"/>
+<rect class="alu" x="664" y="22" width="12" height="40"/>
+<rect class="alu" x="694" y="22" width="12" height="40"/>
+<rect class="alu" x="724" y="22" width="12" height="40"/>
+<rect class="alu" x="754" y="22" width="12" height="40"/>
+<rect class="alu" x="784" y="22" width="12" height="40"/>
+<rect class="alu" x="814" y="22" width="12" height="40"/>
+<rect class="alu" x="844" y="22" width="12" height="40"/>
+<rect class="alu" x="874" y="22" width="12" height="40"/>
+<rect class="alu" x="904" y="22" width="12" height="40"/>
+<rect class="alu" x="934" y="22" width="12" height="40"/>
+<rect class="alu" x="964" y="22" width="12" height="40"/>
+<text class="out" x="520" y="14" text-anchor="middle">Finned aluminium case wall = heat sink · both SCR tabs clamp to it through an insulating thermal pad</text>
+<rect class="mask" x="60" y="110" width="920" height="560" rx="10"/>
+<path class="logic" d="M470 370 H970 V660 H470 Z"/>
+<path class="gap" d="M470 668 V370 H978"/>
+<text class="silk dim" x="968" y="362" text-anchor="end">3 mm CREEPAGE SLOT</text>
+<circle class="pad" cx="92" cy="142" r="16"/><circle class="hole" cx="92" cy="142" r="9"/>
+<circle class="pad" cx="948" cy="142" r="16"/><circle class="hole" cx="948" cy="142" r="9"/>
+<circle class="pad" cx="92" cy="638" r="16"/><circle class="hole" cx="92" cy="638" r="9"/>
+<circle class="pad" cx="948" cy="638" r="16"/><circle class="hole" cx="948" cy="638" r="9"/>
+<polyline class="bot" points="147,292 147,620 500,620"/>
+<polyline class="bot" points="300,300 300,590 690,590"/>
+<polyline class="botp" points="440,410 440,265"/>
+<polyline class="pw ac" points="95,340 390,340 390,212"/>
+<polyline class="pw bat" points="365,212 365,240 230,240 230,270 95,270"/>
+<polyline class="pw bat" points="250,201 250,240"/>
+<polyline class="pw bat" points="147,250 147,292"/>
+<polyline class="pw lamp" points="95,410 440,410"/>
+<polyline class="pw lamp" points="440,265 585,265 585,212"/>
+<polyline class="pw gnd" points="610,212 610,240"/>
+<polyline class="sg" points="415,212 415,300 505,300 505,340"/>
+<polyline class="sg" points="390,320 525,320 525,340"/>
+<polyline class="sg" points="345,240 345,285 390,285"/>
+<polyline class="sg" points="475,320 475,555 660,555 660,540"/>
+<polyline class="sg" points="560,265 560,450 655,450 655,470"/>
+<polyline class="sg" points="635,212 635,300 670,300 670,340"/>
+<polyline class="sg" points="635,270 760,270"/>
+<polyline class="sg" points="690,340 690,315 760,315"/>
+<polyline class="sg" points="515,400 515,415"/>
+<polyline class="sg" points="515,440 515,500 640,500"/>
+<polyline class="sg" points="670,400 670,470"/>
+<polyline class="sg" points="815,146 815,495 710,495"/>
+<polyline class="sg" points="710,520 895,520 895,458"/>
+<polyline class="sg" points="700,540 700,572 840,572 840,612"/>
+<polyline class="sg" points="690,590 690,540"/>
+<polyline class="sg" points="500,620 560,620"/>
+<polyline class="sg" points="300,290 300,300"/>
+<polyline class="sg" points="250,420 250,410"/>
+<polyline class="sg" points="215,350 215,340"/>
+<rect class="fp conn" x="62" y="232" width="66" height="296" rx="4"/>
+<rect class="padsq" x="77" y="252" width="36" height="36" rx="5"/>
+<text class="padt" x="95" y="275" text-anchor="middle">R</text>
+<rect class="padsq" x="77" y="322" width="36" height="36" rx="5"/>
+<text class="padt" x="95" y="345" text-anchor="middle">W</text>
+<rect class="padsq" x="77" y="392" width="36" height="36" rx="5"/>
+<text class="padt" x="95" y="415" text-anchor="middle">Y</text>
+<rect class="padsq" x="77" y="462" width="36" height="36" rx="5"/>
+<text class="padt" x="95" y="485" text-anchor="middle">G</text>
+<text class="silk" x="95" y="548" text-anchor="middle">J1</text>
+<circle class="via" cx="150" cy="480" r="5"/>
+<circle class="via" cx="150" cy="496" r="5"/>
+<polyline class="pw gnd" points="113,480 150,480"/>
+<text class="silk dim" x="162" y="492">GND POUR (BOTTOM)</text>
+<rect class="tab" x="340" y="96" width="100" height="26"/>
+<circle class="hole" cx="390" cy="109" r="7"/>
+<rect class="pkg" x="340" y="122" width="100" height="62" rx="3"/>
+<text class="pkgt" x="390" y="158" text-anchor="middle">SCR1</text>
+<rect class="lead" x="362" y="184" width="6" height="22"/>
+<circle class="pad" cx="365" cy="212" r="7"/>
+<text class="silk dim" x="353" y="232" text-anchor="middle">K</text>
+<rect class="lead" x="387" y="184" width="6" height="22"/>
+<circle class="pad" cx="390" cy="212" r="7"/>
+<rect class="lead" x="412" y="184" width="6" height="22"/>
+<circle class="pad" cx="415" cy="212" r="7"/>
+<text class="silk dim" x="427" y="232" text-anchor="middle">G</text>
+<rect class="tab" x="560" y="96" width="100" height="26"/>
+<circle class="hole" cx="610" cy="109" r="7"/>
+<rect class="pkg" x="560" y="122" width="100" height="62" rx="3"/>
+<text class="pkgt" x="610" y="158" text-anchor="middle">SCR2</text>
+<rect class="lead" x="582" y="184" width="6" height="22"/>
+<circle class="pad" cx="585" cy="212" r="7"/>
+<text class="silk dim" x="573" y="232" text-anchor="middle">K</text>
+<rect class="lead" x="607" y="184" width="6" height="22"/>
+<circle class="pad" cx="610" cy="212" r="7"/>
+<rect class="lead" x="632" y="184" width="6" height="22"/>
+<circle class="pad" cx="635" cy="212" r="7"/>
+<text class="silk dim" x="647" y="232" text-anchor="middle">G</text>
+<rect class="fp" x="800" y="118" width="30" height="28" rx="2"/>
+<text class="silk" x="848" y="136" text-anchor="start">NTC1</text>
+<circle class="via" cx="600" cy="245" r="5"/>
+<circle class="via" cx="610" cy="245" r="5"/>
+<circle class="via" cx="620" cy="245" r="5"/>
+<text class="silk dim" x="596" y="262" text-anchor="end"></text>
+<circle class="fp" cx="250" cy="165" r="38"/><text class="silk" x="250" y="162" text-anchor="middle">C2</text><text class="silk dim" x="250" y="176" text-anchor="middle">2200 µF</text>
+<rect class="fp" x="285" y="230" width="50" height="20" rx="2"/>
+<text class="silk" x="310" y="224" text-anchor="middle">RS1</text>
+<rect class="fp" x="165" y="259" width="50" height="22" rx="2"/>
+<text class="silk" x="190" y="252" text-anchor="middle">F1</text>
+<rect class="fp" x="132" y="205" width="30" height="45" rx="2"/>
+<text class="silk" x="147" y="198" text-anchor="middle">TVS2</text>
+<rect class="fp" x="288" y="262" width="26" height="28" rx="2"/>
+<text class="silk" x="322" y="282" text-anchor="start">U5</text>
+<rect class="fp" x="352" y="277" width="34" height="16" rx="2"/>
+<text class="silk" x="340" y="306" text-anchor="middle">R2·C1</text>
+<rect class="fp" x="195" y="350" width="40" height="26" rx="2"/>
+<text class="silk" x="243" y="368" text-anchor="start">TVS1</text>
+<rect class="fp" x="230" y="420" width="40" height="26" rx="2"/>
+<text class="silk" x="278" y="438" text-anchor="start">TVS3</text>
+<circle class="via" cx="250" cy="452" r="5"/>
+<circle class="via" cx="215" cy="380" r="5"/>
+<rect class="fp" x="430" y="313" width="30" height="14" rx="2"/>
+<text class="silk" x="424" y="334" text-anchor="end">R1</text>
+<rect class="fp" x="468" y="355" width="14" height="30" rx="2"/>
+<text class="silk" x="462" y="400" text-anchor="end">R3</text>
+<rect class="fp" x="553" y="355" width="14" height="30" rx="2"/>
+<text class="silk" x="574" y="392" text-anchor="start">R4</text>
+<rect class="fp ic2" x="490" y="340" width="50" height="60" rx="2"/>
+<text class="silk" x="515" y="374" text-anchor="middle">U4</text>
+<rect class="fp ic2" x="645" y="340" width="50" height="60" rx="2"/>
+<text class="silk" x="670" y="374" text-anchor="middle">U6</text>
+<rect class="fp" x="665" y="263" width="40" height="14" rx="2"/>
+<text class="silk" x="685" y="258" text-anchor="middle">DZ1</text>
+<rect class="fp" x="700" y="308" width="30" height="14" rx="2"/>
+<text class="silk" x="715" y="303" text-anchor="middle">R7</text>
+<circle class="via" cx="760" cy="270" r="5"/>
+<circle class="via" cx="760" cy="315" r="5"/>
+<circle class="via" cx="440" cy="410" r="5"/>
+<circle class="via" cx="440" cy="265" r="5"/>
+<circle class="via" cx="147" cy="292" r="5"/>
+<circle class="via" cx="300" cy="300" r="5"/>
+<circle class="via" cx="500" cy="620" r="5"/>
+<circle class="via" cx="690" cy="590" r="5"/>
+<text class="silk dim" x="772" y="297">GND</text>
+<rect class="fp" x="500" y="415" width="30" height="25" rx="2"/>
+<text class="silk" x="540" y="432" text-anchor="start">U7</text>
+<rect class="fp ic2" x="640" y="470" width="70" height="70" rx="3"/><text class="silk" x="675" y="502" text-anchor="middle">U2</text><text class="silk dim" x="675" y="516" text-anchor="middle">MCU</text>
+<rect class="fp ic2" x="560" y="602" width="50" height="38" rx="2"/>
+<text class="silk" x="585" y="626" text-anchor="middle">U1</text>
+<rect class="fp" x="515" y="613" width="30" height="14" rx="2"/>
+<text class="silk" x="530" y="608" text-anchor="middle">D1</text>
+<rect class="fp" x="740" y="536" width="26" height="20" rx="2"/>
+<text class="silk" x="778" y="551" text-anchor="start">U3</text>
+<rect class="fp" x="880" y="440" width="30" height="18" rx="2"/>
+<text class="silk" x="895" y="433" text-anchor="middle">LED1</text>
+<rect class="fp conn" x="780" y="612" width="120" height="26" rx="3"/>
+<circle class="pad" cx="798" cy="625" r="6"/>
+<circle class="pad" cx="826" cy="625" r="6"/>
+<circle class="pad" cx="854" cy="625" r="6"/>
+<circle class="pad" cx="882" cy="625" r="6"/>
+<text class="silk" x="770" y="630" text-anchor="end">J2</text>
+<text class="silk dim" x="480" y="656">LOGIC · +5 V · CONFORMAL COAT</text>
+<text class="silk dim" x="968" y="128" text-anchor="end" style="display:none"></text>
+<text class="silk" x="830" y="212">SPL+ SMART RR · REV A</text>
+<text class="silk dim" x="830" y="228">2-LAYER FR-4 · 2 oz Cu</text><text class="silk dim" x="830" y="242">92 × 56 mm</text>
+<path class="dimline" d="M60 700 H980 M60 692 V708 M980 692 V708"/><text class="out" x="520" y="722" text-anchor="middle">92 mm</text>
+<path class="dimline" d="M1008 110 V670 M1000 110 H1016 M1000 670 H1016"/><text class="out" x="1016" y="394" transform="rotate(90 1016 394)" text-anchor="middle">56 mm</text>
+  </svg></div>
+  <div class="legend">
+    <span><i style="--c:#b9b7a8"></i>W track</span>
+    <span><i style="--c:#e8635a"></i>Battery + track</span>
+    <span><i style="--c:#ecc440"></i>Y track</span>
+    <span><i style="--c:#86d6a6"></i>Ground and signal tracks</span>
+    <span><i class="dash" style="--c:#7cc0f2"></i>Bottom-layer track</span>
+    <span><i class="dash" style="--c:#0b2a1c"></i>Creepage slot</span>
+  </div>
+</section>
+
+<section>
+  <div class="sheethead"><h2>Heat dissipation</h2><span class="eyebrow">Sheet 3 of 3 · section through SCR1</span></div>
+  <div class="draw small"><svg viewBox="0 0 760 225" role="img" aria-label="Thermal stack from SCR junction to cooling fins">
+<rect class="alu" x="44" y="20" width="14" height="44"/>
+<rect class="alu" x="74" y="20" width="14" height="44"/>
+<rect class="alu" x="104" y="20" width="14" height="44"/>
+<rect class="alu" x="134" y="20" width="14" height="44"/>
+<rect class="alu" x="164" y="20" width="14" height="44"/>
+<rect class="alu" x="194" y="20" width="14" height="44"/>
+<rect class="alu" x="224" y="20" width="14" height="44"/>
+<rect class="alu" x="254" y="20" width="14" height="44"/>
+<rect class="alu" x="284" y="20" width="14" height="44"/>
+<rect class="alu" x="314" y="20" width="14" height="44"/>
+<rect class="alu" x="344" y="20" width="14" height="44"/>
+<rect class="alu" x="374" y="20" width="14" height="44"/>
+<rect class="alu" x="404" y="20" width="14" height="44"/>
+<rect class="alu" x="434" y="20" width="14" height="44"/>
+<rect class="alu" x="464" y="20" width="14" height="44"/>
+<rect class="alu" x="40" y="64" width="442" height="30"/>
+<rect class="potting" x="40" y="102" width="442" height="110"/>
+<rect class="tpad" x="170" y="94" width="180" height="8"/>
+<rect class="tab" x="180" y="102" width="160" height="12"/>
+<rect class="pkg" x="200" y="114" width="120" height="34" rx="2"/>
+<rect class="die" x="240" y="116" width="40" height="7"/>
+<rect class="lead" x="225" y="148" width="5" height="40"/>
+<rect class="lead" x="260" y="148" width="5" height="40"/>
+<rect class="lead" x="295" y="148" width="5" height="40"/>
+<rect class="mask" x="60" y="186" width="402" height="12"/>
+<path class="heat" d="M215 110 V34 m-6 9 l6 -9 l6 9"/>
+<path class="heat" d="M260 110 V34 m-6 9 l6 -9 l6 9"/>
+<path class="heat" d="M305 110 V34 m-6 9 l6 -9 l6 9"/>
+<path class="leader" d="M486 34 H512"/>
+<text class="out b" x="520" y="35">Fins in the airstream</text><text class="out" x="520" y="48">case-to-air ≈ 5 °C/W</text>
+<path class="leader" d="M486 68 H512"/>
+<text class="out b" x="520" y="69">Aluminium case wall, 4 mm</text><text class="out" x="520" y="82">spreads heat from both SCRs</text>
+<path class="leader" d="M486 100 H512"/>
+<text class="out b" x="520" y="101">Insulating thermal pad, 0.25 mm</text><text class="out" x="520" y="114">isolates tab, ≈ 1 °C/W</text>
+<path class="leader" d="M486 132 H512"/>
+<text class="out b" x="520" y="133">SCR die and tab</text><text class="out" x="520" y="146">junction-to-tab ≈ 2 °C/W</text>
+<path class="leader" d="M486 164 H512"/>
+<text class="out b" x="520" y="165">Thermal potting compound</text><text class="out" x="520" y="178">seals out water, damps vibration</text>
+<path class="leader" d="M486 196 H512"/>
+<text class="out b" x="520" y="197">PCB, 2 oz copper</text><text class="out" x="520" y="210">wide pours on power nets</text>
+  </svg></div>
+  <div class="cols">
+    <div><h3>Less heat to begin with</h3><p>The stock unit regulates charging by shorting the coil and burning the surplus. Here the charge SCR is in series and stays off when no charge is needed, so it only heats while it is doing useful work. Each SCR dissipates at most about 3 W.</p></div>
+    <div><h3>A short path out</h3><p>Junction to tab is about 2 °C/W, the insulating pad 1 °C/W and the finned case 5 °C/W to air. With 6 W total and 70 °C air around the unit the junctions reach roughly 110 °C, inside the 125 °C rating. Mount the fins where air moves, not behind the side panel foam.</p></div>
+    <div><h3>Watched by a sensor</h3><p>NTC1 is clamped to the wall beside SCR2. Charging current is reduced from 95 °C and stopped at 115 °C. Headlamp regulation keeps running, because switching it off would overvolt the bulbs.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="sheethead"><h2>Safety features</h2><span class="eyebrow">Protection table</span></div>
+  <div class="tablewrap"><table>
+    <tr><th>Hazard</th><th>Protection</th><th>Acts at</th></tr>
+    <tr><td>Overcharge</td><td>U7 voltage detector switches off Q3, which removes drive from the SCR1 opto. It works with the MCU stopped or faulty.</td><td>15.2 V</td></tr>
+    <tr><td>MCU fault</td><td>Watchdog and brown-out reset. With no drive SCR1 stays off, so the failure mode is no charge, never overcharge. DZ1 still fires SCR2 so the lamp is clamped.</td><td>32 ms timeout · −23 V lamp peak</td></tr>
+    <tr><td>Reverse battery</td><td>SCR1 blocks reverse voltage and D1 keeps it away from the logic supply.</td><td>Any reversal</td></tr>
+    <tr><td>Short circuit</td><td>F1 on the board, plus a firmware current limit read from RS1.</td><td>10 A fuse · 5 A limit</td></tr>
+    <tr><td>Voltage spikes</td><td>TVS1 and TVS3 clamp the stator inputs, TVS2 clamps the battery rail, R2 and C1 damp SCR1 switching.</td><td>130 V AC side · 26 V DC side</td></tr>
+    <tr><td>Overheating</td><td>NTC1 on the heat sink reduces, then stops, charging.</td><td>95 °C · 115 °C</td></tr>
+    <tr><td>Battery off</td><td>C2 holds the rail steady. The MCU detects the high ripple, limits the target to 13.8 V and flags a fault.</td><td>Ripple above 1 V</td></tr>
+    <tr><td>Isolation</td><td>Opto-isolators and a 3 mm slot separate stator AC from the 5 V logic.</td><td>Always</td></tr>
+    <tr><td>Water, vibration</td><td>Power side potted in thermal compound, logic side conformally coated, case sealed.</td><td>Always</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="sheethead"><h2>Parts list</h2><span class="eyebrow">Main components</span></div>
+  <div class="tablewrap"><table>
+    <tr><th>Ref</th><th>Part</th><th>Job</th></tr>
+    <tr><td>SCR1, SCR2</td><td>25 A, 800 V SCR in insulated TO-220 (S8025L or similar)</td><td>Series charge switch and lamp shunt</td></tr>
+    <tr><td>U2</td><td>ATtiny1616 microcontroller</td><td>Measurement, both control loops, protection, diagnostics</td></tr>
+    <tr><td>U1</td><td>LM2936-5.0 regulator, 40 V input, 15 µA quiescent</td><td>5 V logic supply that survives load dump</td></tr>
+    <tr><td>U3</td><td>LM4040 2.500 V reference, 0.1 %</td><td>ADC reference, powered only while running</td></tr>
+    <tr><td>U4, U6</td><td>MOC3023 opto-triac driver</td><td>Isolated gate firing for SCR1 and SCR2</td></tr>
+    <tr><td>U5</td><td>INA180A2 current-sense amplifier, gain 50</td><td>Reads charge current across RS1</td></tr>
+    <tr><td>U7, Q3</td><td>TPS3700 voltage detector and 2N7002 MOSFET</td><td>Hardware over-voltage cut-out</td></tr>
+    <tr><td>RS1</td><td>10 mΩ, 1 %, 2 W shunt (2512)</td><td>Current sensing</td></tr>
+    <tr><td>R5, R6</td><td>560 kΩ and 100 kΩ, 0.1 %, 25 ppm</td><td>Battery voltage divider</td></tr>
+    <tr><td>R3, R4</td><td>220 kΩ, two 1206 parts in series each</td><td>Zero-cross and lamp voltage sensing across the slot</td></tr>
+    <tr><td>R1, R7</td><td>180 Ω, 1 W</td><td>Gate current limit</td></tr>
+    <tr><td>R2, C1</td><td>100 Ω, 1 W and 100 nF, 630 V film</td><td>Snubber across SCR1</td></tr>
+    <tr><td>C2</td><td>2200 µF, 35 V, 105 °C electrolytic</td><td>Rail smoothing, battery-off operation</td></tr>
+    <tr><td>TVS1, TVS3</td><td>SMCJ130CA, bidirectional</td><td>Stator spike clamp</td></tr>
+    <tr><td>TVS2</td><td>SMCJ16A</td><td>Battery rail clamp</td></tr>
+    <tr><td>DZ1</td><td>22 V, 1.3 W zener</td><td>Backup trigger for SCR2</td></tr>
+    <tr><td>D1</td><td>60 V, 1 A Schottky</td><td>Reverse-polarity block for the logic</td></tr>
+    <tr><td>F1</td><td>10 A blade fuse in a PCB holder</td><td>Output short-circuit protection</td></tr>
+    <tr><td>NTC1, NTC2</td><td>10 kΩ, B 3950 thermistors</td><td>Heat-sink and battery temperature</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="sheethead"><h2>Before you build</h2><span class="eyebrow">Read first</span></div>
+  <div class="note">
+    <p>This is a design concept. It has been worked through on paper and has not been built or bench-tested, so treat component values and thermal figures as starting points to verify.</p>
+    <p>Wire colours follow the usual Hero Honda 4-pin pattern: white for the charge tap, yellow for lighting, red for battery and green for ground. Harnesses vary by year and by earlier repairs, so confirm each wire with a multimeter before connecting anything.</p>
+    <p>For a first power-up, run it from the bike with a fused battery lead and a 35 W bulb on the yellow wire, and watch the battery voltage and the case temperature through a full rev range.</p>
+  </div>
+</section>
+
+</div>
