@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stop">रोकें</string>
+    <string name="clear">साफ़ करें</string>
+
+    <string name="status_running">बैकग्राउंड में चल रहा है</string>
+    <string name="status_running_desc">ऐप बंद करने या फ़ोन रीस्टार्ट करने के बाद भी चलता रहेगा, जब तक आप रोकें नहीं दबाते।</string>
+    <string name="status_stopped">रुका हुआ</string>
+    <string name="status_stopped_desc">नीचे दिए ऑटोमेशन बैकग्राउंड में चलाने के लिए सर्विस शुरू करें।</string>
+    <string name="start_service">सर्विस शुरू करें</string>
+    <string name="stop_service">सर्विस रोकें</string>
+
+    <string name="no_permission_title">कोई अनुमति नहीं चाहिए</string>
+    <string name="no_permission_body">सूत्र कभी कोई अनुमति नहीं माँगता। Android 13+ पर स्टेटस नोटिफ़िकेशन तब तक छिपा रहता है जब तक आप खुद सिस्टम सेटिंग में नोटिफ़िकेशन चालू न करें — सर्विस फिर भी चलती है, और आप इसे यहाँ, Quick Settings टाइल से, या सेटिंग → ऐप्स → सक्रिय ऐप्स से रोक सकते हैं। Xiaomi, Oppo, Vivo और कुछ Samsung फ़ोन पर बैटरी उपयोग “Unrestricted” करने से यह ज़्यादा भरोसेमंद रहता है।</string>
+    <string name="battery_settings">बैटरी सेटिंग (वैकल्पिक)</string>
+
+    <string name="section_rules">ऑटोमेशन</string>
+    <string name="section_log">गतिविधि</string>
+    <string name="log_empty">अभी कुछ नहीं। सर्विस शुरू करें और चार्जर लगाकर देखें।</string>
+
+    <string name="rule_charger_on">चार्जर लगाया</string>
+    <string name="rule_charger_on_desc">“चार्जिंग शुरू” बोलें।</string>
+    <string name="rule_charger_off">चार्जर हटाया</string>
+    <string name="rule_charger_off_desc">“चार्जर हटाया गया” बोलें।</string>
+    <string name="rule_battery_low">बैटरी 20% पर</string>
+    <string name="rule_battery_low_desc">वाइब्रेट करें और बैटरी स्तर बोलें।</string>
+    <string name="rule_battery_full">चार्ज होते समय बैटरी फ़ुल</string>
+    <string name="rule_battery_full_desc">“बैटरी फ़ुल, चार्जर निकालें” बोलें।</string>
+    <string name="rule_headphones">हेडफ़ोन लगाए / निकाले</string>
+    <string name="rule_headphones_desc">टोस्ट दिखाएँ और लॉग करें।</string>
+    <string name="rule_unlock">फ़ोन अनलॉक</string>
+    <string name="rule_unlock_desc">आज कितनी बार अनलॉक किया, गिनें।</string>
+    <string name="rule_shake">फ़ोन हिलाएँ</string>
+    <string name="rule_shake_desc">टॉर्च चालू/बंद करें। केवल स्क्रीन चालू होने पर।</string>
+    <string name="rule_airplane">एयरप्लेन मोड बदला</string>
+    <string name="rule_airplane_desc">बोलें कि चालू हुआ या बंद।</string>
+    <string name="rule_power_save">बैटरी सेवर बदला</string>
+    <string name="rule_power_save_desc">बैटरी सेवर चालू/बंद होने पर लॉग करें।</string>
+    <string name="rule_heartbeat">हार्टबीट</string>
+    <string name="rule_heartbeat_desc">हर 15 मिनट “अब भी चल रहा है” लॉग करें।</string>
+
+    <string name="log_started">सर्विस शुरू हुई</string>
+    <string name="log_stopped">आपने सर्विस रोकी</string>
+    <string name="log_start_refused">Android ने सर्विस शुरू नहीं होने दी (%1$s)। सूत्र खोलें और शुरू करें दबाएँ।</string>
+    <string name="log_charger_on">चार्जर लगाया</string>
+    <string name="log_charger_off">चार्जर हटाया</string>
+    <string name="log_battery_low">बैटरी कम: %1$d%%</string>
+    <string name="log_battery_full">बैटरी फ़ुल</string>
+    <string name="log_headphones_in">हेडफ़ोन जुड़े</string>
+    <string name="log_headphones_out">हेडफ़ोन हटे</string>
+    <string name="log_unlock">अनलॉक (आज %1$d बार)</string>
+    <string name="log_airplane_on">एयरप्लेन मोड चालू</string>
+    <string name="log_airplane_off">एयरप्लेन मोड बंद</string>
+    <string name="log_saver_on">बैटरी सेवर चालू</string>
+    <string name="log_saver_off">बैटरी सेवर बंद</string>
+    <string name="log_torch_on">टॉर्च चालू (हिलाकर)</string>
+    <string name="log_torch_off">टॉर्च बंद (हिलाकर)</string>
+    <string name="log_no_torch">इस फ़ोन में टॉर्च नहीं है</string>
+    <string name="log_torch_error">टॉर्च उपलब्ध नहीं (%1$s)</string>
+    <string name="log_heartbeat">अब भी चल रहा है</string>
+
+    <string name="say_charger_on">चार्जिंग शुरू</string>
+    <string name="say_charger_off">चार्जर हटाया गया</string>
+    <string name="say_battery_low">बैटरी कम है, %1$d प्रतिशत</string>
+    <string name="say_battery_full">बैटरी फ़ुल है, चार्जर निकालें</string>
+
+    <string name="channel_name">बैकग्राउंड सर्विस</string>
+    <string name="channel_desc">सूत्र के बैकग्राउंड में चलने पर दिखता है।</string>
+    <string name="notif_title">सूत्र चल रहा है</string>
+    <string name="notif_text">आपके ऑटोमेशन पर नज़र रख रहा है</string>
+    <string name="notif_text_battery">आपके ऑटोमेशन पर नज़र रख रहा है · बैटरी %1$d%%</string>
+</resources>

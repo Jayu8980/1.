@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Sutra</string>
+    <string name="tile_label" translatable="false">Sutra</string>
+    <string name="stop">Stop</string>
+    <string name="clear">Clear</string>
+
+    <string name="status_running">Running in background</string>
+    <string name="status_running_desc">Keeps running after you close the app or restart the phone, until you press Stop.</string>
+    <string name="status_stopped">Stopped</string>
+    <string name="status_stopped_desc">Start the service to run the automations below in the background.</string>
+    <string name="start_service">Start service</string>
+    <string name="stop_service">Stop service</string>
+
+    <string name="no_permission_title">No permissions needed</string>
+    <string name="no_permission_body">Sutra never asks for a permission. Everything here uses signals Android gives every app. On Android 13+ the status notification stays hidden unless you allow notifications yourself in system settings — the service runs either way, and you can always stop it here, from the Quick Settings tile, or from Settings → Apps → Active apps. On Xiaomi, Oppo, Vivo and some Samsung phones, setting Sutra\'s battery use to “Unrestricted” keeps it more reliable.</string>
+    <string name="battery_settings">Battery settings (optional)</string>
+
+    <string name="section_rules">Automations</string>
+    <string name="section_log">Activity</string>
+    <string name="log_empty">Nothing yet. Start the service and plug in your charger to try it.</string>
+
+    <string name="rule_charger_on">Charger connected</string>
+    <string name="rule_charger_on_desc">Say “Charging started”.</string>
+    <string name="rule_charger_off">Charger disconnected</string>
+    <string name="rule_charger_off_desc">Say “Charger removed”.</string>
+    <string name="rule_battery_low">Battery falls to 20%</string>
+    <string name="rule_battery_low_desc">Vibrate and say the battery level, once per drop.</string>
+    <string name="rule_battery_full">Battery full while charging</string>
+    <string name="rule_battery_full_desc">Say “Battery full, unplug the charger”.</string>
+    <string name="rule_headphones">Headphones plugged / unplugged</string>
+    <string name="rule_headphones_desc">Show a toast and log it.</string>
+    <string name="rule_unlock">Phone unlocked</string>
+    <string name="rule_unlock_desc">Count how many times you unlocked today.</string>
+    <string name="rule_shake">Shake phone</string>
+    <string name="rule_shake_desc">Toggle the flashlight. Only while the screen is on.</string>
+    <string name="rule_airplane">Airplane mode changed</string>
+    <string name="rule_airplane_desc">Say whether it turned on or off.</string>
+    <string name="rule_power_save">Battery Saver changed</string>
+    <string name="rule_power_save_desc">Log when Battery Saver turns on or off.</string>
+    <string name="rule_heartbeat">Heartbeat</string>
+    <string name="rule_heartbeat_desc">Log “still running” every 15 minutes, to prove it stays alive.</string>
+
+    <string name="log_started">Service started</string>
+    <string name="log_stopped">Service stopped by you</string>
+    <string name="log_start_refused">Android refused to start the service (%1$s). Open Sutra and press Start.</string>
+    <string name="log_charger_on">Charger connected</string>
+    <string name="log_charger_off">Charger disconnected</string>
+    <string name="log_battery_low">Battery low: %1$d%%</string>
+    <string name="log_battery_full">Battery full</string>
+    <string name="log_headphones_in">Headphones connected</string>
+    <string name="log_headphones_out">Headphones disconnected</string>
+    <string name="log_unlock">Unlocked (%1$d today)</string>
+    <string name="log_airplane_on">Airplane mode on</string>
+    <string name="log_airplane_off">Airplane mode off</string>
+    <string name="log_saver_on">Battery Saver on</string>
+    <string name="log_saver_off">Battery Saver off</string>
+    <string name="log_torch_on">Flashlight on (shake)</string>
+    <string name="log_torch_off">Flashlight off (shake)</string>
+    <string name="log_no_torch">This phone has no flashlight</string>
+    <string name="log_torch_error">Flashlight unavailable (%1$s)</string>
+    <string name="log_heartbeat">Still running</string>
+
+    <string name="say_charger_on">Charging started</string>
+    <string name="say_charger_off">Charger removed</string>
+    <string name="say_battery_low">Battery low, %1$d percent</string>
+    <string name="say_battery_full">Battery full, unplug the charger</string>
+
+    <string name="channel_name">Background service</string>
+    <string name="channel_desc">Shown while Sutra runs in the background.</string>
+    <string name="notif_title">Sutra is running</string>
+    <string name="notif_text">Watching for your automations</string>
+    <string name="notif_text_battery">Watching for your automations · battery %1$d%%</string>
+</resources>

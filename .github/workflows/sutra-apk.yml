@@ -1,0 +1,41 @@
+name: Sutra APK
+
+on:
+  push:
+    paths: ["sutra/**", ".github/workflows/sutra-apk.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sutra
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Write signing config (only if secrets are set)
+        env:
+          KEYSTORE_B64: ${{ secrets.SUTRA_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.SUTRA_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SUTRA_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SUTRA_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > release.jks
+            printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+              "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
+          fi
+      - name: Build
+        run: ./gradlew lintDebug assembleDebug assembleRelease --console=plain
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sutra-apks
+          path: |
+            sutra/app/build/outputs/apk/debug/*.apk
+            sutra/app/build/outputs/apk/release/*.apk
