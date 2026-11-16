@@ -163,7 +163,7 @@ svg text{font-family:var(--mono)}
   </div>
   <div class="tb">
     <div>DRG NO</div><div>SPL-RR-01</div>
-    <div>REV</div><div>A · concept</div>
+    <div>REV</div><div>B · concept</div>
     <div>SHEETS</div><div>5</div>
     <div>SYSTEM</div><div>12 V · neg. earth</div>
     <div>PLUG</div><div>4-pin W / Y / R / G</div>
@@ -700,8 +700,8 @@ svg text{font-family:var(--mono)}
 
 <section>
   <div class="sheethead"><h2>Board layout</h2><span class="eyebrow">Sheet 4 of 5 · top view</span></div>
-  <p class="muted">This layout is revision A. The protection parts added on sheet 3 are not placed yet: SCR3 goes on the wall to the right of SCR2, and U8 with its resistors goes in the logic area beside J2, which grows to six pins.</p>
-  <p>The power devices sit on the top edge and bolt to the case wall. Stator AC, which can spike past 100 V with a lamp blown, stays in the upper left. The logic lives behind a milled slot in the lower right, and only the two opto-isolators and the 220 kΩ sense resistors bridge it.</p>
+  <p>Revision B places the protection parts. Crowbar SCR3 joins the wall on the left, directly above the node between RS1 and F1, with DZ2 and R16 at its gate. C2 moves to the lower left on a wide bottom-layer track. U8 and its resistors sit beside J2, which grows to six pins for the battery thermistor.</p>
+  <p>The power devices sit on the top edge and bolt to the case wall. Stator AC, which can spike past 100 V with a lamp blown, stays in the upper half. The logic lives behind a milled slot in the lower right, and only the two opto-isolators and the 220 kΩ sense resistors bridge it.</p>
   <div class="draw"><svg viewBox="0 0 1040 730" role="img" aria-label="Board layout, top view">
 <rect class="alu" x="60" y="62" width="920" height="34"/>
 <rect class="alu" x="64" y="22" width="12" height="40"/>
@@ -735,7 +735,7 @@ svg text{font-family:var(--mono)}
 <rect class="alu" x="904" y="22" width="12" height="40"/>
 <rect class="alu" x="934" y="22" width="12" height="40"/>
 <rect class="alu" x="964" y="22" width="12" height="40"/>
-<text class="out" x="520" y="14" text-anchor="middle">Finned aluminium case wall = heat sink · both SCR tabs clamp to it through an insulating thermal pad</text>
+<text class="out" x="520" y="14" text-anchor="middle">Finned aluminium case wall = heat sink · all three SCR tabs clamp to it through an insulating thermal pad</text>
 <rect class="mask" x="60" y="110" width="920" height="560" rx="10"/>
 <path class="logic" d="M470 370 H970 V660 H470 Z"/>
 <path class="gap" d="M470 668 V370 H978"/>
@@ -744,19 +744,23 @@ svg text{font-family:var(--mono)}
 <circle class="pad" cx="948" cy="142" r="16"/><circle class="hole" cx="948" cy="142" r="9"/>
 <circle class="pad" cx="92" cy="638" r="16"/><circle class="hole" cx="92" cy="638" r="9"/>
 <circle class="pad" cx="948" cy="638" r="16"/><circle class="hole" cx="948" cy="638" r="9"/>
-<polyline class="bot" points="147,292 147,620 500,620"/>
-<polyline class="bot" points="300,300 300,590 690,590"/>
+<polyline class="botp" points="147,296 147,540 195,540"/>
+<polyline class="bot" points="147,540 147,620 500,620"/>
+<polyline class="bot" points="298,324 298,590 690,590"/>
 <polyline class="botp" points="440,410 440,265"/>
 <polyline class="pw ac" points="95,340 390,340 390,212"/>
-<polyline class="pw bat" points="365,212 365,240 230,240 230,270 95,270"/>
-<polyline class="pw bat" points="250,201 250,240"/>
-<polyline class="pw bat" points="147,250 147,292"/>
+<polyline class="pw bat" points="365,212 365,270 95,270"/>
+<polyline class="pw bat" points="250,212 250,270"/>
+<polyline class="pw gnd" points="225,212 198,212"/>
+<polyline class="pw bat" points="147,250 147,296"/>
 <polyline class="pw lamp" points="95,410 440,410"/>
 <polyline class="pw lamp" points="440,265 585,265 585,212"/>
 <polyline class="pw gnd" points="610,212 610,240"/>
 <polyline class="sg" points="415,212 415,300 505,300 505,340"/>
 <polyline class="sg" points="390,320 525,320 525,340"/>
-<polyline class="sg" points="345,240 345,285 390,285"/>
+<polyline class="sg" points="365,270 365,300"/>
+<polyline class="sg" points="275,218 275,270"/>
+<polyline class="sg" points="275,228 318,228"/>
 <polyline class="sg" points="475,320 475,555 660,555 660,540"/>
 <polyline class="sg" points="560,265 560,450 655,450 655,470"/>
 <polyline class="sg" points="635,212 635,300 670,300 670,340"/>
@@ -766,11 +770,14 @@ svg text{font-family:var(--mono)}
 <polyline class="sg" points="515,440 515,500 640,500"/>
 <polyline class="sg" points="670,400 670,470"/>
 <polyline class="sg" points="815,146 815,495 710,495"/>
-<polyline class="sg" points="710,520 895,520 895,458"/>
-<polyline class="sg" points="700,540 700,572 840,572 840,612"/>
+<polyline class="sg" points="710,512 895,512 895,458"/>
+<polyline class="sg" points="858,612 858,562"/>
+<polyline class="sg" points="890,555 905,555"/>
+<polyline class="sg" points="918,545 918,530 710,530"/>
+<polyline class="sg" points="700,540 700,572 830,572 830,612"/>
 <polyline class="sg" points="690,590 690,540"/>
 <polyline class="sg" points="500,620 560,620"/>
-<polyline class="sg" points="300,290 300,300"/>
+<polyline class="sg" points="298,316 298,324"/>
 <polyline class="sg" points="250,420 250,410"/>
 <polyline class="sg" points="215,350 215,340"/>
 <rect class="fp conn" x="62" y="232" width="66" height="296" rx="4"/>
@@ -783,10 +790,19 @@ svg text{font-family:var(--mono)}
 <rect class="padsq" x="77" y="462" width="36" height="36" rx="5"/>
 <text class="padt" x="95" y="485" text-anchor="middle">G</text>
 <text class="silk" x="95" y="548" text-anchor="middle">J1</text>
-<circle class="via" cx="150" cy="480" r="5"/>
-<circle class="via" cx="150" cy="496" r="5"/>
-<polyline class="pw gnd" points="113,480 150,480"/>
-<text class="silk dim" x="162" y="492">GND POUR (BOTTOM)</text>
+<circle class="via" cx="194" cy="205" r="5"/>
+<circle class="via" cx="194" cy="219" r="5"/>
+<text class="silk dim" x="170" y="652">BOTTOM LAYER: GND POUR</text>
+<rect class="tab" x="200" y="96" width="100" height="26"/>
+<circle class="hole" cx="250" cy="109" r="7"/>
+<rect class="pkg" x="200" y="122" width="100" height="62" rx="3"/>
+<text class="pkgt" x="250" y="158" text-anchor="middle">SCR3</text>
+<rect class="lead" x="222" y="184" width="6" height="22"/>
+<circle class="pad" cx="225" cy="212" r="7"/>
+<rect class="lead" x="247" y="184" width="6" height="22"/>
+<circle class="pad" cx="250" cy="212" r="7"/>
+<rect class="lead" x="272" y="184" width="6" height="22"/>
+<circle class="pad" cx="275" cy="212" r="7"/>
 <rect class="tab" x="340" y="96" width="100" height="26"/>
 <circle class="hole" cx="390" cy="109" r="7"/>
 <rect class="pkg" x="340" y="122" width="100" height="62" rx="3"/>
@@ -817,21 +833,29 @@ svg text{font-family:var(--mono)}
 <circle class="via" cx="610" cy="245" r="5"/>
 <circle class="via" cx="620" cy="245" r="5"/>
 <text class="silk dim" x="596" y="262" text-anchor="end"></text>
-<circle class="fp" cx="250" cy="165" r="38"/><text class="silk" x="250" y="162" text-anchor="middle">C2</text><text class="silk dim" x="250" y="176" text-anchor="middle">2200 µF</text>
-<rect class="fp" x="285" y="230" width="50" height="20" rx="2"/>
-<text class="silk" x="310" y="224" text-anchor="middle">RS1</text>
-<rect class="fp" x="165" y="259" width="50" height="22" rx="2"/>
-<text class="silk" x="190" y="252" text-anchor="middle">F1</text>
+<circle class="fp" cx="215" cy="540" r="38"/><text class="silk" x="215" y="524" text-anchor="middle">C2</text><text class="silk dim" x="215" y="566" text-anchor="middle">2200 µF</text>
+<circle class="pad" cx="195" cy="540" r="7"/>
+<circle class="pad" cx="235" cy="540" r="7"/>
+<text class="silk dim" x="195" y="556" text-anchor="middle">+</text>
+<rect class="fp" x="300" y="260" width="50" height="20" rx="2"/>
+<text class="silk" x="325" y="274" text-anchor="middle">RS1</text>
+<rect class="fp" x="150" y="259" width="50" height="22" rx="2"/>
+<text class="silk" x="175" y="252" text-anchor="middle">F1</text>
 <rect class="fp" x="132" y="205" width="30" height="45" rx="2"/>
 <text class="silk" x="147" y="198" text-anchor="middle">TVS2</text>
-<rect class="fp" x="288" y="262" width="26" height="28" rx="2"/>
-<text class="silk" x="322" y="282" text-anchor="start">U5</text>
-<rect class="fp" x="352" y="277" width="34" height="16" rx="2"/>
-<text class="silk" x="340" y="306" text-anchor="middle">R2·C1</text>
+<rect class="fp" x="285" y="292" width="26" height="24" rx="2"/>
+<text class="silk" x="279" y="308" text-anchor="end">U5</text>
+<rect class="fp" x="268" y="238" width="14" height="22" rx="2"/>
+<text class="silk" x="288" y="251" text-anchor="start">DZ2</text>
+<rect class="fp" x="284" y="221" width="24" height="14" rx="2"/>
+<text class="silk" x="296" y="216" text-anchor="middle">R16</text>
+<circle class="via" cx="322" cy="228" r="5"/>
+<rect class="fp" x="366" y="293" width="23" height="14" rx="2"/>
+<text class="silk" x="360" y="304" text-anchor="end">R2·C1</text>
 <rect class="fp" x="195" y="350" width="40" height="26" rx="2"/>
 <text class="silk" x="243" y="368" text-anchor="start">TVS1</text>
 <rect class="fp" x="230" y="420" width="40" height="26" rx="2"/>
-<text class="silk" x="278" y="438" text-anchor="start">TVS3</text>
+<text class="silk" x="222" y="438" text-anchor="end">TVS3</text>
 <circle class="via" cx="250" cy="452" r="5"/>
 <circle class="via" cx="215" cy="380" r="5"/>
 <rect class="fp" x="430" y="313" width="30" height="14" rx="2"/>
@@ -852,8 +876,8 @@ svg text{font-family:var(--mono)}
 <circle class="via" cx="760" cy="315" r="5"/>
 <circle class="via" cx="440" cy="410" r="5"/>
 <circle class="via" cx="440" cy="265" r="5"/>
-<circle class="via" cx="147" cy="292" r="5"/>
-<circle class="via" cx="300" cy="300" r="5"/>
+<circle class="via" cx="147" cy="296" r="5"/>
+<circle class="via" cx="298" cy="324" r="5"/>
 <circle class="via" cx="500" cy="620" r="5"/>
 <circle class="via" cx="690" cy="590" r="5"/>
 <text class="silk dim" x="772" y="297">GND</text>
@@ -868,15 +892,21 @@ svg text{font-family:var(--mono)}
 <text class="silk" x="778" y="551" text-anchor="start">U3</text>
 <rect class="fp" x="880" y="440" width="30" height="18" rx="2"/>
 <text class="silk" x="895" y="433" text-anchor="middle">LED1</text>
-<rect class="fp conn" x="780" y="612" width="120" height="26" rx="3"/>
-<circle class="pad" cx="798" cy="625" r="6"/>
-<circle class="pad" cx="826" cy="625" r="6"/>
-<circle class="pad" cx="854" cy="625" r="6"/>
-<circle class="pad" cx="882" cy="625" r="6"/>
-<text class="silk" x="770" y="630" text-anchor="end">J2</text>
+<rect class="fp conn" x="730" y="612" width="172" height="26" rx="3"/>
+<circle class="pad" cx="746" cy="625" r="6"/>
+<circle class="pad" cx="774" cy="625" r="6"/>
+<circle class="pad" cx="802" cy="625" r="6"/>
+<circle class="pad" cx="830" cy="625" r="6"/>
+<circle class="pad" cx="858" cy="625" r="6"/>
+<circle class="pad" cx="886" cy="625" r="6"/>
+<rect class="fp" x="846" y="548" width="44" height="14" rx="2"/>
+<text class="silk" x="868" y="543" text-anchor="middle">R8–R12·C3</text>
+<rect class="fp" x="905" y="545" width="26" height="22" rx="2"/>
+<text class="silk" x="937" y="560" text-anchor="start">U8</text>
+<text class="silk" x="720" y="630" text-anchor="end">J2</text>
 <text class="silk dim" x="480" y="656">LOGIC · +5 V · CONFORMAL COAT</text>
 <text class="silk dim" x="968" y="128" text-anchor="end" style="display:none"></text>
-<text class="silk" x="830" y="212">SPL+ SMART RR · REV A</text>
+<text class="silk" x="830" y="212">SPL+ SMART RR · REV B</text>
 <text class="silk dim" x="830" y="228">2-LAYER FR-4 · 2 oz Cu</text><text class="silk dim" x="830" y="242">92 × 56 mm</text>
 <path class="dimline" d="M60 700 H980 M60 692 V708 M980 692 V708"/><text class="out" x="520" y="722" text-anchor="middle">92 mm</text>
 <path class="dimline" d="M1008 110 V670 M1000 110 H1016 M1000 670 H1016"/><text class="out" x="1016" y="394" transform="rotate(90 1016 394)" text-anchor="middle">56 mm</text>
