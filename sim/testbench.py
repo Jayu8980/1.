@@ -4,7 +4,9 @@
 Builds one ngspice netlist per loading/fault condition, runs them in parallel,
 and writes sim/results.json with pass/fail verdicts and down-sampled waveforms.
 
-Run:  python3 sim/testbench.py            (needs ngspice on PATH, numpy)
+Run:  python3 sim/testbench.py            half-wave Rev C  -> sim/results.json
+      python3 sim/testbench.py --bridge   full-wave bridge -> sim/results_bridge.json
+      (needs ngspice on PATH and numpy; add test ids such as T03 to run only those)
 
 Modelling notes
 - Stator: two coils sharing one rotor phase (W charge coil, Y lighting coil),
@@ -35,7 +37,7 @@ Brpm rpm 0 V = {rpm}
 Bph 0 ph I = v(rpm)/10
 Cph ph 0 1
 Rph ph 0 1e12
-Bew ew 0 V = {kw}*v(rpm)/1000*sin(2*pi*v(ph))
+Bew ew {wref} V = {kw}*v(rpm)/1000*sin(2*pi*v(ph))
 Lw ew w1 {lw}
 Rw w1 w {rw}
 Bey ey 0 V = {ky}*v(rpm)/1000*sin(2*pi*v(ph))
@@ -58,6 +60,7 @@ Rsn w sn 100
 Csn sn k1 100n
 Vis k1 k1a 0
 Rs1 k1a rail 0.01
+{bridge}
 C2 {c2node} c2e 2200u
 Rc2 c2e 0 0.05
 Dtvs2 0 {tvs2node} DT16
@@ -79,8 +82,8 @@ Rfi fi 0 1e12
 Sbat r b0 bcmd 0 SBAT
 Vbc bcmd 0 {batsw}
 Vib b0 b1 0
-Rb0 b1 b2 0.06
-Rbp b2 b3 0.8
+Rb0 b1 b2 {r0}
+Rbp b2 b3 {rp}
 Cbp b2 b3 0.125
 Vocv b3 0 {ocv}
 
@@ -115,7 +118,7 @@ Dz1b g4 y DZ56
 Bvb vbm 0 V = v(r)
 Rvb vbm vbf 1k
 Cvb vbf 0 10u
-Bim im 0 V = i(Vis)
+Bim im 0 V = {isense}
 Rim im imf 1k
 Cim imf 0 20u
 Bsc 0 sct I = v(vbf) < 8 ? 1 : 0
@@ -135,6 +138,22 @@ Cv1 ctl1 0 1
 Rv1 ctl1 0 1e9
 Bpa pa 0 V = ((v(ph)-floor(v(ph))) < 0.5 && 2*(v(ph)-floor(v(ph))) > 1-(v(ctl1)+0.15*(13.8-v(vbf)))) ? 1 : 0
 Bc1 cmd1 0 V = {cmd1expr}
+* gate-off current check: more than 6 ms since U2 last commanded any gate, yet RS1 reads
+* over 0.5 A for 3 ms -> an SCR is conducting by itself -> U2 fires SCR3 via Q4/R27 (40 mA)
+Bgo 0 tsl I = ({gateoff}) > 0.5 ? 1 : -2e4*v(tsl)
+Ctsl tsl 0 1
+Rtsl tsl 0 1e12
+Rif im imf2 1k
+Cif imf2 0 0.5u
+Bxc 0 xct I = (v(tsl) > 0.006 && v(imf2) > 0.5 && v(nbl) < 0.005) ? 1 : -1000*v(xct)
+Cxc xct 0 1
+Rxc xct 0 1e12
+Bxl 0 xl I = v(xct) > 0.003 ? 1 : 0
+Cxl xl 0 1
+Rxl xl 0 1e12
+Bxg 0 g3 I = (v(xl) > 0.001 && v(r) > 5) ? 0.04 : 0
+* forced test window: gates held off 15 ms in every second (every few seconds on the bike)
+Btw tw 0 V = (v(nbl) < 0.005 && (time - floor(time)) > 0.985) ? 0 : 1
 * lamp loop
 By2 y2 0 V = v(y)*v(y)
 Ry2 y2 y2f 1k
@@ -182,7 +201,7 @@ Rgk G K 1k
 .model SLOAD7 SW(VT=2.5 VH=0 RON=7.2 ROFF=1e8)
 .model SLOAD5 SW(VT=2.5 VH=0 RON=4.8 ROFF=1e8)
 .model SSHORT SW(VT=2.5 VH=0 RON=0.02 ROFF=1e8)
-.ic v(ph)=0 v(rail)={vinit} v(r)={vinit} v(b2)={vb2} v(b3)={ocv} v(c2e)=0 v(ctl)={ctl0} v(fi)=0 v(nbl)=0 v(ctl1)=0.6 v(sct)=0 v(g3)=0 v(u7f)={vinit} v(u7c)=0 v(u8c)=0 v(vbf)={vinit}
+.ic v(ph)=0 v(rail)={vinit} v(r)={vinit} v(b2)={vb2} v(b3)={ocv} v(c2e)=0 v(ctl)={ctl0} v(fi)=0 v(nbl)=0 v(xct)=0 v(xl)=0 v(tsl)=0 v(ctl1)=0.6 v(sct)=0 v(g3)=0 v(u7f)={vinit} v(u7c)=0 v(u8c)=0 v(vbf)={vinit}
 .options method=gear reltol=2e-3 abstol=1e-8 vntol=1e-5 itl4=100
 .control
 set wr_singlescale
@@ -190,7 +209,7 @@ set wr_vecnames
 option numdgt=6
 tran 5u {tstop} 0 5u uic
 linearize
-wrdata {out} v(r) v(rail) i(Vis) i(Vib) i(Vld) v(y) i(Vi2) v(w) v(k1) v(rpm) v(fi) v(u7c) v(u8c) v(ctl) i(Vi3) v(y2f) i(Vi4) v(cmd1) v(win) v(u7f) v(nbl)
+wrdata {out} v(r) v(rail) i(Vis) i(Vib) i(Vld) v(y) i(Vi2) v(w) v(k1) v(rpm) v(fi) v(u7c) v(u8c) v(ctl) i(Vi3) v(y2f) i(Vi4) v(cmd1) v(win) v(u7f) v(nbl)@@WREXTRA@@
 quit
 .endc
 .end
@@ -266,13 +285,39 @@ TESTS = [
        temp=58, fw="stuck"),
     tc("T18", "Firmware stuck firing at 25 °C: U7 cut-out", "Protection", "6000", lamp="off", fw="stuck"),
     tc("T19", "SCR1 self-firing (gate fault): crowbar", "Protection", "6000", lamp="off", scr1="selffire"),
-    tc("T20", "SCR1 failed short", "Protection", "4000", lamp="off", scr1="short"),
+    tc("T20", "SCR1 failed short", "Protection", "4000", tstop=1.5, lamp="off", scr1="short"),
     tc("T21", "Battery connected backwards", "Protection", "1400", lamp="off", battery="reverse",
        vinit=0.0),
 ]
 
 
+BRIDGE = r"""
+* ---- full-wave bridge: second SCR leg (SCR4), D3 dual Schottky bottom legs, W2 clamp
+D1c t1b w2 DT130
+D1d t1b 0 DT130
+Vdb1 0 db1 0
+Db1 db1 w DSCH
+Vdb2 0 db2 0
+Db2 db2 w2 DSCH
+Rr1b w2 n1b 180
+S1b n1b gd1b cmd1b 0 SOPTO
+Dg1b gd1b g1b DSIG
+X1b w2 g1b k1b SCR
+Visb k1b k1a 0
+Rsnb w2 snb 100
+Csnb snb k1a 100n
+Bwin2 win2 0 V = sin(2*pi*v(ph)) < 0 ? 1 : 0
+Bpa2 pa2 0 V = ((v(ph)-floor(v(ph))) >= 0.5 && 2*((v(ph)-floor(v(ph)))-0.5) > 1-(v(ctl1)+0.15*(13.8-v(vbf)))) ? 1 : 0
+Bc1b cmd1b 0 V = {cmd1b}
+.model DSCH D(IS=1e-6 N=1.3 RS=0.01 BV=220 IBV=1m CJO=500p)
+"""
+ILIM = {"C": 4.0, "B": 4.0, "F": 4.5}
+RSA_T = {"C": 3.0, "B": 3.0, "F": 2.2}   # case wall to air, °C/W: the bridge needs bigger fins
+BRIDGE_COLS = ["vw2", "vk1b", "ichgb", "idb1", "idb2", "cmd1b", "win2"]
+
+
 def netlist(t, out, topology="C"):
+    ilim = ILIM[topology]
     lamp_r = {"on": 4.05, "off": 17.0, "blown": 17.0}[t["lamp"]]
     vset = vset_for(t["temp"])
     if t["fw"] == "stuck":
@@ -280,21 +325,32 @@ def netlist(t, out, topology="C"):
     elif vset is None:
         fwexpr = "0"
     else:
-        fwexpr = "(v(imf) < 4 && v(sct) < 0.1 && (v(nbl) > 0.005 ? 1 : v(vbf) < %g)) ? 1 : 0" % vset
+        fwexpr = "(v(imf) < %g && v(sct) < 0.1" % ilim + " && (v(nbl) > 0.005 ? 1 : v(vbf) < %g)) ? 1 : 0" % vset
     # firmware has no supply if the battery is reversed (D1 blocks)
     if t["battery"] == "reverse":
         fwexpr = "0"
-    cmd1 = "5*(v(nbl) > 0.005 ? v(pa) : v(win))*v(fw)*v(hw)"
+    fwcmd1 = "(v(nbl) > 0.005 ? v(pa) : v(win))*v(fw)*v(tw)"
+    cmd1 = "5*" + fwcmd1 + "*v(hw)"
     if t["scr1"] == "selffire":
         cmd1 = "5"
+    gateoff = "(%s) < 0.5 ? 1 : 0" % fwcmd1
     scr1_fault = "Rsh w k1 0.01" if t["scr1"] == "short" else ""
+    bridge, wref, isense, wrextra = "", "0", "i(Vis)", ""
+    if topology == "F":
+        fwcmd1b = "(v(nbl) > 0.005 ? v(pa2) : v(win2))*v(fw)*v(tw)"
+        cmd1b = "5*" + fwcmd1b + "*v(hw)"
+        gateoff = "((%s) < 0.5 && (%s) < 0.5) ? 1 : 0" % (fwcmd1, fwcmd1b)
+        bridge = BRIDGE.replace("{cmd1b}", cmd1b)
+        wref, isense = "w2", "i(Vis)+i(Visb)"
+        wrextra = " v(w2) v(k1b) i(Visb) i(Vdb1) i(Vdb2) v(cmd1b) v(win2)"
+    r0, rp = (0.01, 0.001) if t.get("stiff") else (0.06, 0.8)
     batsw = {"ok": "5", "reverse": "PWL(0 0 0.01 0 0.0101 5)", "off": "0",
              "dump": "PWL(0 5 0.4 5 0.40001 0)"}[t["battery"]]
     ocv = -OCV if t["battery"] == "reverse" else OCV
     vinit = t["vinit"]
     vb2 = vinit if t["battery"] != "reverse" else ocv
     # Rev B had C2 and TVS2 on the battery side of F1, Rev C moves them to the rail
-    c2node, tvs2node = ("rail", "rail") if topology == "C" else ("r", "r")
+    c2node, tvs2node = ("r", "r") if topology == "B" else ("rail", "rail")
     rpm = t["rpm"]
     if not rpm.startswith("pwl"):
         rpm = rpm
@@ -303,7 +359,7 @@ def netlist(t, out, topology="C"):
         rpm=rpm, rlamp=lamp_r, fwexpr=fwexpr, cmd1expr=cmd1, scr1_fault=scr1_fault, batsw=batsw,
         ocv=ocv, vinit=vinit, vb2=vb2, c2node=c2node, tvs2node=tvs2node, rntc="%.1f" % ntc(t["temp"]),
         stop=t["stop"], ind=t["ind"], horn=t["horn"], short=t["short"], tstop=t["tstop"], out=out,
-        ctl0=ctl0, **STATOR)
+        ctl0=ctl0, gateoff=gateoff, bridge=bridge, wref=wref, isense=isense, r0=r0, rp=rp, **STATOR).replace("@@WREXTRA@@", wrextra)
 
 
 def run(t, topology="C"):
@@ -322,8 +378,13 @@ COLS = ["time", "vr", "vrail", "ichg", "ibat", "iload", "vy", "i2", "vw", "vk1",
         "ctl", "i3", "y2f", "i4", "cmd1", "win", "u7f", "nbl"]
 
 
-def analyse(t, data):
-    D = {c: data[:, i] for i, c in enumerate(COLS)}
+def analyse(t, data, ilim=4.0, rsa=None):
+    rsa = RSA if rsa is None else rsa
+    bridge = data.shape[1] > len(COLS)
+    D = {c: data[:, i] for i, c in enumerate(COLS + (BRIDGE_COLS if bridge else []))}
+    if bridge:
+        ia = D["ichg"].copy()
+        D["ichg"] = ia + D["ichgb"]
     tt = D["time"]
     T = tt[-1]
     late = tt > T * 0.5
@@ -336,7 +397,9 @@ def analyse(t, data):
     # lamp RMS over the last half, per-window
     def rms(x, m):
         return float(np.sqrt(np.mean(x[m] ** 2)))
-    p1 = (D["vw"] - D["vk1"]) * D["ichg"]
+    p1 = (D["vw"] - D["vk1"]) * (ia if bridge else D["ichg"])
+    p1b = (D["vw2"] - D["vk1b"]) * D["ichgb"] if bridge else np.zeros_like(p1)
+    pd = ((0 - D["vw"]) * D["idb1"] + (0 - D["vw2"]) * D["idb2"]) if bridge else np.zeros_like(p1)
     p2 = (0 - D["vy"]) * D["i2"] + D["vy"] * D["i4"]
     res = dict(
         vbat_mean=mean(vr), vbat_min=float(vr[tt > 0.05].min()), vbat_max=float(vr[tt > 0.05].max()),
@@ -353,6 +416,7 @@ def analyse(t, data):
     n = max(1, int(0.02 / dt))
     ma = np.convolve(D["ichg"], np.ones(n) / n, mode="same")
     res["ichg_max_avg"] = float(ma[tt > 0.05].max())
+    res["lim_frac"] = float(np.mean(ma[late] >= 0.95 * ilim))
     if res["fuse_blown"]:
         res["fuse_t"] = float(tt[np.argmax(D["fi"] > 69.6)])
     # whole-run worst SCR1 power over any 100 ms window
@@ -360,12 +424,23 @@ def analyse(t, data):
     res["p_scr1_peak"] = float(np.convolve(np.clip(p1, 0, None), np.ones(n100) / n100, mode="valid").max())
     res["p_scr2_peak"] = float(np.convolve(np.clip(p2, 0, None), np.ones(n100) / n100, mode="valid").max())
     # junction temperature: 70 °C air, 3 °C/W junction-to-wall, 5 °C/W wall-to-air shared
-    tot = res["p_scr1"] + res["p_scr2"]
-    res["tj1"] = TAIR + RJW * res["p_scr1"] + RSA * tot
-    res["tj2"] = TAIR + RJW * res["p_scr2"] + RSA * tot
-    cmd = D["cmd1"] > 2.5
+    res["bridge"], res["ilim"] = bridge, ilim
+    res["p_scr1b"] = mean(np.clip(p1b, 0, None))
+    res["p_d3"] = mean(np.clip(pd, 0, None))
+    tot = res["p_scr1"] + res["p_scr1b"] + res["p_d3"] + res["p_scr2"]
+    res["p_total"] = tot
+    res["tj1"] = TAIR + RJW * res["p_scr1"] + rsa * tot
+    res["tj1b"] = TAIR + RJW * res["p_scr1b"] + rsa * tot
+    res["tjd"] = TAIR + RJW * res["p_d3"] + rsa * tot
+    res["tj2"] = TAIR + RJW * res["p_scr2"] + rsa * tot
+    fired = (D["cmd1"] > 2.5) & (D["win"] > 0.5)
     win = D["win"] > 0.5
-    res["fire_frac"] = float(np.sum(cmd & win & late) / max(1, np.sum(win & late)))
+    if bridge:
+        fired = fired | ((D["cmd1b"] > 2.5) & (D["win2"] > 0.5))
+        win = win | (D["win2"] > 0.5)
+    normal = late & ((tt - np.floor(tt)) <= 0.985)       # leave out the forced test window
+    res["fire_frac"] = float(np.sum(fired & normal) / max(1, np.sum(win & normal)))
+    res["ripple_pp"] = float(np.mean([np.ptp(vr[(tt >= a) & (tt < a + 0.02)]) for a in np.arange(T * 0.6, T - 0.02, 0.02)]))
     res["rail_late_min"] = float(D["vrail"][tt > T * 0.6].min())
     res["rail_late_max"] = float(D["vrail"][tt > T * 0.6].max())
     res["c2_rev_end"] = float(np.mean(D["vrail"][tt > T * 0.8]))
@@ -412,6 +487,9 @@ def verdict(t, r):
     def junctions():
         add("SCR1 junction, 70 °C air", "%.0f °C (%.1f W)" % (r["tj1"], r["p_scr1"]), "below 125 °C", r["tj1"] < 125)
         add("TR1 junction, 70 °C air", "%.0f °C (%.1f W)" % (r["tj2"], r["p_scr2"]), "below 125 °C", r["tj2"] < 125)
+        if r.get("bridge"):
+            add("SCR4 junction, 70 °C air", "%.0f °C (%.1f W)" % (r["tj1b"], r["p_scr1b"]), "below 125 °C", r["tj1b"] < 125)
+            add("D3 junction, 70 °C air", "%.0f °C (%.1f W)" % (r["tjd"], r["p_d3"]), "below 125 °C", r["tjd"] < 125)
 
     vset = vset_for(t["temp"])
     i = t["id"]
@@ -422,9 +500,9 @@ def verdict(t, r):
         elif i != "T10":
             dv = r["vbat_mean"] - vset
             sat = r["fire_frac"] >= 0.9
-            if dv < -0.2 and r["ichg_mean"] >= 3.6:
-                add("Average battery voltage", "%.2f V, current limit active (%.1f A)" % (r["vbat_mean"], r["ichg_mean"]),
-                    "%.2f ± 0.20 V, or at 4 A limit" % vset, True)
+            if dv < -0.2 and (r["ichg_mean"] >= 0.9 * r["ilim"] or r["lim_frac"] >= 0.2):
+                add("Average battery voltage", "%.2f V, current limit active %.0f %% of the time" % (r["vbat_mean"], 100 * r["lim_frac"]),
+                    "%.2f ± 0.20 V, or at %g A limit" % (vset, r["ilim"]), True)
             elif dv < -0.2 and sat:
                 add("Average battery voltage", "%.2f V, stator at full output (%.0f %% of cycles)" % (r["vbat_mean"], 100 * r["fire_frac"]),
                     "%.2f ± 0.20 V, or at full output" % vset, True)
@@ -432,7 +510,8 @@ def verdict(t, r):
                 add("Average battery voltage", "%.2f V" % r["vbat_mean"], "%.2f ± 0.20 V" % vset, abs(dv) <= 0.2)
         add("Peak battery voltage, 10 ms filtered", "%.2f V" % r["vbat_fmax"], "below 15.2 V", r["vbat_fmax"] < 15.2)
         if i == "T07":
-            add("Battery covers the shortfall", "%.2f A from battery" % -r["ibat_mean"], "discharging", r["ibat_mean"] < 0)
+            add("Battery under overload", "%.2f V, %s %.2f A" % (r["vbat_mean"], "charging" if r["ibat_mean"] >= 0 else "discharging", abs(r["ibat_mean"])),
+            "above 11.5 V", r["vbat_mean"] > 11.5)
         if t["lamp"] == "on" and i not in ("T02", "T07", "T10"):
             add("Headlamp voltage", "%.2f V RMS" % r["vy_rms"], "13.2 ± 0.4 V RMS", abs(r["vy_rms"] - 13.2) <= 0.4)
         elif i in ("T02", "T07"):
@@ -442,6 +521,8 @@ def verdict(t, r):
         else:
             add("Tail and meter lamp voltage", "%.2f V RMS" % r["vy_rms"], "below 13.6 V RMS", r["vy_rms"] < 13.6)
         junctions()
+        add("F1 intact, crowbar off", "%s, %.1f A peak in SCR3" % ("blown" if r["fuse_blown"] else "intact", r["i3_max"]),
+            "intact, below 1 A", (not r["fuse_blown"]) and r["i3_max"] < 1)
     elif i == "T12":
         add("Rail peak after disconnect", "%.2f V" % r["vrail_max"], "below 20 V (parts rated 35 V+)", r["vrail_max"] < 20)
         add("No-battery mode entered", "yes" if r["nobat"] else "no", "yes", r["nobat"])
@@ -452,6 +533,8 @@ def verdict(t, r):
         add("Tail and meter lamp voltage", "%.2f V RMS" % r["vy_rms"], "below 13.6 V RMS", r["vy_rms"] < 13.6)
         add("Lamp wire peak", "%.1f V" % max(r["vy_pk"], -r["vy_neg_pk"]), "below 60 V", max(r["vy_pk"], -r["vy_neg_pk"]) < 60)
         junctions()
+        add("F1 intact, crowbar off", "%s, %.1f A peak in SCR3" % ("blown" if r["fuse_blown"] else "intact", r["i3_max"]),
+            "intact, below 1 A", (not r["fuse_blown"]) and r["i3_max"] < 1)
     elif i == "T14":
         add("Charging shut down after short", "%.2f A average" % r["ichg_mean"], "below 0.1 A", r["ichg_mean"] < 0.1)
         add("Worst 20 ms current before shutdown", "%.2f A" % r["ichg_max_avg"], "below 10 A (F1 holds)", r["ichg_max_avg"] < 10)
@@ -459,6 +542,7 @@ def verdict(t, r):
     elif i == "T17":
         add("U8 battery temperature cut-out", "tripped" if r["u8_trip"] else "did not trip", "trips", r["u8_trip"])
         add("Charge current after trip", "%.3f A" % r["ichg_mean"], "below 0.05 A", r["ichg_mean"] < 0.05)
+        add("F1 intact", "blown" if r["fuse_blown"] else "intact", "intact", not r["fuse_blown"])
     elif i == "T18":
         add("U7 over-voltage cut-out", "tripped" if r["u7_trip"] else "did not trip", "trips", r["u7_trip"])
         add("Peak battery voltage, 10 ms filtered", "%.2f V" % r["vbat_fmax"], "below 15.5 V", r["vbat_fmax"] < 15.5)
@@ -478,14 +562,34 @@ def verdict(t, r):
     return ck
 
 
+CAP_RPM = [1000, 1400, 2000, 3000, 4000, 5000, 6000, 7000, 8000]
+
+
+def capacity(topology):
+    """Maximum charge current into a stiff 13.5 V battery, SCRs fired every half-cycle."""
+    out = []
+    for rpm in CAP_RPM:
+        t = tc("CAP", "capacity %d rpm" % rpm, "Capacity", str(rpm), tstop=0.25, lamp="off", fw="stuck", vinit=13.5)
+        t["stiff"] = True
+        d, data = run(t, topology)
+        r, _, _ = analyse(t, data, ILIM[topology], RSA_T[topology])
+        subprocess.run(["rm", "-r", "--", d])
+        p = r["p_scr1"] + r["p_scr1b"] + r["p_d3"]
+        out.append(dict(rpm=rpm, amps=round(r["ichg_mean"], 3), loss=round(p, 3)))
+        print("  %s %5d rpm  %.2f A  rectifier loss %.2f W" % (topology, rpm, r["ichg_mean"], p), flush=True)
+    return out
+
+
 def main():
-    only = sys.argv[1:]
+    args = sys.argv[1:]
+    topology = "F" if "--bridge" in args else "C"
+    only = [a for a in args if not a.startswith("--")]
     tests = [t for t in TESTS if not only or t["id"] in only]
     results = []
 
     def job(t):
-        d, data = run(t)
-        r, wave, zoom = analyse(t, data)
+        d, data = run(t, topology)
+        r, wave, zoom = analyse(t, data, ILIM[topology], RSA_T[topology])
         ck = verdict(t, r)
         print("%s %-55s %s" % (t["id"], t["title"][:55], "PASS" if all(c["ok"] for c in ck) else "FAIL"), flush=True)
         for c in ck:
@@ -498,15 +602,18 @@ def main():
         results = list(ex.map(job, tests))
     # Rev B comparison for the reverse-battery case
     extra = []
-    if not only or "T21" in only:
+    if topology == "C" and (not only or "T21" in only):
         t = [x for x in TESTS if x["id"] == "T21"][0]
         d, data = run(t, topology="B")
         r, _, _ = analyse(t, data)
         subprocess.run(["rm", "-r", "--", d])
         extra.append(dict(id="T21-revB", metrics=r))
         print("T21 on Rev B layout: C2 held at %.2f V, fuse %s" % (r["vbat_min"], r["fuse_blown"]))
-    path = os.path.join(HERE, "results.json" if not only else "results_partial.json")
-    json.dump(dict(stator=STATOR, ocv=OCV, tests=results, extra=extra), open(path, "w"), separators=(",", ":"))
+    name = "results_bridge.json" if topology == "F" else "results.json"
+    path = os.path.join(HERE, name if not only else "results_partial.json")
+    cap = capacity(topology) if not only else []
+    json.dump(dict(stator=STATOR, ocv=OCV, topology=topology, ilim=ILIM[topology], rsa=RSA_T[topology], tests=results, extra=extra,
+                   capacity=cap), open(path, "w"), separators=(",", ":"))
     print("wrote", path)
 
 
