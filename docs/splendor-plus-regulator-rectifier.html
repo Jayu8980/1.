@@ -140,6 +140,17 @@ svg text{font-family:var(--mono)}
 .tip em{font-style:normal;text-align:right;font-family:var(--mono)}
 .tip i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
 .tip i.s1{background:var(--s1)} .tip i.s2{background:var(--s2)} .tip i.sv{background:var(--fg)}
+
+/* temperature curve */
+.tc .tc-grid{stroke:var(--line);stroke-width:1}
+.tc .tc-axis{stroke:var(--muted);stroke-width:1}
+.tc .tc-ref{stroke:var(--muted);stroke-width:1;stroke-dasharray:5 4}
+.tc .tc-t{font-size:11px;fill:var(--muted)}
+.tc .tc-l{font-size:11.5px;font-weight:600;fill:var(--fg)}
+.tc .tc-line{fill:none;stroke:var(--s1);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.tc .tc-dot{fill:var(--s1);stroke:var(--sheet);stroke-width:2}
+.tc .tc-warn{fill:var(--w-lamp);fill-opacity:.14}
+.tc .tc-stop{fill:var(--hot);fill-opacity:.13}
 </style>
 
 <div class="wrap">
@@ -153,7 +164,7 @@ svg text{font-family:var(--mono)}
   <div class="tb">
     <div>DRG NO</div><div>SPL-RR-01</div>
     <div>REV</div><div>A · concept</div>
-    <div>SHEETS</div><div>4</div>
+    <div>SHEETS</div><div>5</div>
     <div>SYSTEM</div><div>12 V · neg. earth</div>
     <div>PLUG</div><div>4-pin W / Y / R / G</div>
     <div>DATE</div><div>2026-11-16</div>
@@ -169,7 +180,7 @@ svg text{font-family:var(--mono)}
 </div>
 
 <section>
-  <div class="sheethead"><h2>Circuit diagram</h2><span class="eyebrow">Sheet 1 of 4</span></div>
+  <div class="sheethead"><h2>Circuit diagram</h2><span class="eyebrow">Sheet 1 of 5</span></div>
   <p>The stator winding is earthed at one end, so each tap can only be used on one half of the AC wave. SCR1 passes positive half-cycles from the white wire to the battery and simply stays off when the battery is full, so the charging coil is never shorted. SCR2 trims the headlamp voltage by shunting part of each negative half-cycle on the yellow wire. Both gates are fired through opto-isolators by the microcontroller.</p>
   <div class="draw"><svg class="sch" viewBox="0 0 1200 775" role="img" aria-label="Circuit diagram of the smart regulator rectifier">
 <text class="zone" x="40" y="28" text-anchor="start">CHARGE PATH · SERIES SCR, POSITIVE HALF-CYCLE</text>
@@ -375,7 +386,7 @@ svg text{font-family:var(--mono)}
 </section>
 
 <section>
-  <div class="sheethead"><h2>Voltage and current control</h2><span class="eyebrow">Sheet 2 of 4 · varying load</span></div>
+  <div class="sheethead"><h2>Voltage and current control</h2><span class="eyebrow">Sheet 2 of 5 · varying load</span></div>
   <p>Two loops run one inside the other. The outer loop compares battery voltage with the set point and asks for a current. The inner loop compares that request with the current measured at RS1 and decides how many of every 16 positive half-cycles SCR1 passes. Because the lamps and horn join the red wire outside the unit, RS1 reads battery and load current together, so a load switching on is seen and answered within a few cycles.</p>
   <div class="draw"><svg class="sch" viewBox="0 0 1200 390" role="img" aria-label="Cascaded voltage and current control loop">
 <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ahp" d="M0 0 L10 5 L0 10 z"/></marker><marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="ahpb" d="M0 0 L10 5 L0 10 z"/></marker></defs>
@@ -476,6 +487,202 @@ svg text{font-family:var(--mono)}
 </section>
 
 <section>
+  <div class="sheethead"><h2>Battery temperature and overcharge protection</h2><span class="eyebrow">Sheet 3 of 5 · protection detail</span></div>
+  <p>Overcharging is guarded in layers, and each layer works without the one above it. Firmware adjusts the charge voltage to the battery's temperature. Two hardware detectors, one for voltage and one for battery temperature, can each stop the gate drive to SCR1 whatever the firmware is doing. If SCR1 itself fails short, a crowbar diverts the stator and the fuse disconnects the battery.</p>
+  <div class="draw"><svg class="sch" viewBox="0 0 1200 612" role="img" aria-label="Battery temperature sensing and overcharge protection circuit">
+<text class="zone" x="40" y="24" text-anchor="start">BATTERY TEMPERATURE SENSING</text>
+<text class="zone" x="40" y="432" text-anchor="start">LAST RESORT · CROWBAR IF SCR1 FAILS SHORT</text>
+<rect class="ic mcu" x="330" y="40" width="650" height="56" rx="3"/>
+<text class="ref big" x="655" y="64" text-anchor="middle">U2 ATtiny1616</text>
+<text class="pin" x="350" y="88" text-anchor="start">SENS-EN</text>
+<text class="pin" x="720" y="88" text-anchor="middle">FAULT-IN</text>
+<text class="pin" x="910" y="88" text-anchor="middle">CHG-TRIG</text>
+<polyline class="w sig" points="350,96 350,120"/>
+<polyline class="w sig" points="170,120 580,120"/>
+<polyline class="w sig" points="170,120 170,150"/>
+<rect class="part sig" x="163" y="150" width="14" height="40"/>
+<polyline class="w sig" points="170,190 170,282"/>
+<text class="ref" x="158" y="168" text-anchor="end">R8 10 k</text>
+<text class="val" x="158" y="181" text-anchor="end">1 %</text>
+<circle class="term sig" cx="170" cy="290" r="8"/>
+<text class="val" x="154" y="294" text-anchor="end">J2-5</text>
+<polyline class="w sig" points="170,298 170,310"/>
+<rect class="part sig" x="163" y="310" width="14" height="40"/>
+<polyline class="w sig" points="170,350 170,364"/>
+<text class="ref" x="154" y="328" text-anchor="end">NTC2 10 k</text>
+<text class="val" x="154" y="341" text-anchor="end">on battery case</text>
+<circle class="term gnd" cx="170" cy="372" r="8"/>
+<text class="val" x="154" y="376" text-anchor="end">J2-6</text>
+<polyline class="w gnd" points="170,380 170,394"/>
+<polyline class="w gnd" points="159,394 181,394"/>
+<polyline class="w gnd" points="163,399 177,399"/>
+<polyline class="w gnd" points="167,404 173,404"/>
+<polyline class="w sig" points="170,255 215,255"/>
+<rect class="part sig" x="215" y="248" width="40" height="14"/>
+<polyline class="w sig" points="255,255 520,255"/>
+<text class="val" x="235" y="240" text-anchor="middle">R9 1 k</text>
+<polyline class="w sig" points="310,255 310,290"/>
+<polyline class="w sig" points="296,290 324,290"/>
+<polyline class="w gnd" points="296,298 324,298"/>
+<polyline class="w gnd" points="310,298 310,326"/>
+<polyline class="w gnd" points="299,326 321,326"/>
+<polyline class="w gnd" points="303,331 317,331"/>
+<polyline class="w gnd" points="307,336 313,336"/>
+<text class="val" x="332" y="290" text-anchor="start">C3 100 nF</text>
+<polyline class="w sig" points="430,255 430,300"/>
+<text class="pin" x="430" y="316" text-anchor="middle">T-BAT → U2 ADC</text>
+<polyline class="w sig" points="580,120 580,132"/>
+<rect class="part sig" x="573" y="132" width="14" height="36"/>
+<polyline class="w sig" points="580,168 580,200"/>
+<polyline class="w sig" points="580,184 670,184 670,196"/>
+<rect class="part sig" x="663" y="196" width="14" height="30"/>
+<polyline class="w gnd" points="670,226 670,234"/>
+<polyline class="w gnd" points="659,234 681,234"/>
+<polyline class="w gnd" points="663,239 677,239"/>
+<polyline class="w gnd" points="667,244 673,244"/>
+<text class="ref" x="568" y="148" text-anchor="end">R10</text>
+<text class="val" x="568" y="161" text-anchor="end">33 k</text>
+<text class="ref" x="656" y="208" text-anchor="end">R11</text>
+<text class="val" x="656" y="221" text-anchor="end">10 k</text>
+<rect class="ic" x="520" y="200" width="100" height="90" rx="3"/>
+<text class="ref" x="570" y="243" text-anchor="middle">U8 TLV7021</text>
+<text class="val" x="570" y="257" text-anchor="middle">trips ≈ 55 °C</text>
+<text class="pin" x="510" y="249" text-anchor="end">+</text>
+<text class="pin" x="590" y="196" text-anchor="start">−</text>
+<polyline class="w sig" points="620,255 860,255"/>
+<text class="pin" x="800" y="247" text-anchor="start">INHIBIT</text>
+<polyline class="w sig" points="720,96 720,255"/>
+<polyline class="w sig" points="778,140 802,140"/>
+<text class="val" x="790" y="132" text-anchor="middle">+5 V</text>
+<polyline class="w sig" points="790,140 790,160"/>
+<rect class="part sig" x="783" y="160" width="14" height="40"/>
+<polyline class="w sig" points="790,200 790,255"/>
+<text class="val" x="804" y="184" text-anchor="start">R12 100 k</text>
+<rect class="ic" x="730" y="330" width="120" height="60" rx="3"/>
+<text class="ref" x="790" y="358" text-anchor="middle">U7 TPS3700</text>
+<text class="val" x="790" y="372" text-anchor="middle">trips 15.2 V</text>
+<polyline class="w sig" points="790,330 790,255"/>
+<polyline class="w sig" points="790,390 790,410"/>
+<rect class="part sig" x="783" y="410" width="14" height="36"/>
+<polyline class="w bat" points="790,446 790,470"/>
+<text class="ref" x="804" y="425" text-anchor="start">R13/R14</text>
+<text class="val" x="804" y="438" text-anchor="start">divider</text>
+<rect class="ic" x="860" y="228" width="100" height="54" rx="3"/>
+<text class="ref" x="910" y="253" text-anchor="middle">Q3 2N7002</text>
+<text class="val" x="910" y="267" text-anchor="middle">low gate = off</text>
+<polyline class="w gnd" points="910,282 910,296"/>
+<polyline class="w gnd" points="899,296 921,296"/>
+<polyline class="w gnd" points="903,301 917,301"/>
+<polyline class="w gnd" points="907,306 913,306"/>
+<polyline class="w sig" points="910,96 910,140 945,140"/>
+<rect class="part sig" x="945" y="133" width="40" height="14"/>
+<polyline class="w sig" points="985,140 1020,140"/>
+<text class="val" x="965" y="126" text-anchor="middle">R15 330 Ω</text>
+<rect class="ic" x="1020" y="112" width="130" height="56" rx="3"/>
+<text class="ref" x="1085" y="138" text-anchor="middle">U4 MOC3023</text>
+<text class="val" x="1085" y="152" text-anchor="middle">LED side</text>
+<polyline class="w sig" points="1085,168 1085,255 960,255"/>
+<polyline class="w sig" points="1085,112 1085,84"/>
+<text class="pin" x="1085" y="76" text-anchor="middle">to SCR1 gate</text>
+<text class="val" x="40" y="458" text-anchor="start">from SCR1 via RS1</text>
+<polyline class="w bat" points="40,470 540,470"/>
+<rect class="part bat" x="540" y="463" width="50" height="14" rx="7"/>
+<polyline class="w bat" points="540,470 590,470"/>
+<polyline class="w bat" points="590,470 1132,470"/>
+<text class="ref" x="565" y="455" text-anchor="middle">F1 10 A</text>
+<polyline class="w bat" points="300,470 300,492"/>
+<polygon class="part bat" points="288,492 312,492 300,514"/>
+<polyline class="w gnd" points="287,514 313,514"/>
+<polyline class="w gnd" points="300,514 300,560"/>
+<polyline class="w sig" points="308,516 318,526 420,526"/>
+<text class="ref" x="276" y="500" text-anchor="end">SCR3</text>
+<text class="val" x="276" y="513" text-anchor="end">fires ≈ 16 V</text>
+<polyline class="w bat" points="420,470 420,484"/>
+<polygon class="part bat" points="411,502 429,502 420,486"/>
+<polyline class="w bat" points="408,490 411,486 429,486 432,482"/>
+<polyline class="w sig" points="420,502 420,530"/>
+<rect class="part gnd" x="413" y="530" width="14" height="22"/>
+<polyline class="w gnd" points="420,552 420,560"/>
+<text class="ref" x="436" y="499" text-anchor="start">DZ2 15 V</text>
+<text class="val" x="436" y="546" text-anchor="start">R16 1 k</text>
+<polyline class="w gnd" points="300,560 1132,560"/>
+<text class="ref" x="1165" y="438" text-anchor="end">J1-1 · R (red)</text>
+<text class="val" x="1165" y="451" text-anchor="end">battery +, DC loads</text>
+<text class="ref" x="1165" y="585" text-anchor="end">J1-4 · G (green)</text>
+<text class="val" x="1165" y="598" text-anchor="end">frame ground, battery −</text>
+<circle class="dot sig" cx="350" cy="120" r="3.4"/>
+<circle class="dot sig" cx="170" cy="255" r="3.4"/>
+<circle class="dot sig" cx="310" cy="255" r="3.4"/>
+<circle class="dot sig" cx="430" cy="255" r="3.4"/>
+<circle class="dot sig" cx="580" cy="184" r="3.4"/>
+<circle class="dot sig" cx="720" cy="255" r="3.4"/>
+<circle class="dot sig" cx="790" cy="255" r="3.4"/>
+<circle class="dot bat" cx="300" cy="470" r="3.4"/>
+<circle class="dot bat" cx="420" cy="470" r="3.4"/>
+<circle class="dot bat" cx="790" cy="470" r="3.4"/>
+<circle class="dot sig" cx="420" cy="526" r="3.4"/>
+<circle class="dot gnd" cx="420" cy="560" r="3.4"/>
+<circle class="term bat" cx="1140" cy="470" r="8"/>
+<circle class="term gnd" cx="1140" cy="560" r="8"/>
+  </svg></div>
+  <div class="cols">
+    <div><h3>Battery temperature sensing</h3><p>NTC2 is taped to the battery case and plugs into J2. With R8 it forms a divider that the MCU reads through a small filter. The divider is powered only while the engine runs, so it adds nothing to parked drain. A reading stuck at either rail means a broken or shorted sensor: the charge voltage then falls back to a fixed 14.1 V and LED1 shows a fault code.</p></div>
+    <div><h3>Hardware inhibit</h3><p>U7 (voltage) and U8 (battery temperature) have open-drain outputs tied to the gate of Q3. Either one pulling low switches Q3 off, which removes current from the opto LED, so SCR1 cannot be fired. The MCU reads the same line to log which detector tripped. A shorted or unpowered sensor reads as hot, so that fault also stops charging.</p></div>
+    <div><h3>Crowbar</h3><p>All of the above depends on SCR1 being able to switch off. If it fails short, DZ2 conducts at about 16 V and fires SCR3, which shunts the stator to ground. The battery then blows F1 through SCR3 and is disconnected. The bike keeps running on the battery and LED1 flags the fault. SCR3 mounts on the heat-sink wall.</p></div>
+  </div>
+
+  <h3>Charge voltage against battery temperature</h3>
+  <div class="draw"><svg class="tc" viewBox="0 0 1000 285" role="img" aria-label="Charge voltage set point against battery temperature">
+<rect class="tc-warn" x="751.429" y="40" width="62.8571" height="210"/>
+<rect class="tc-stop" x="814.286" y="40" width="125.714" height="210"/>
+<line class="tc-grid" x1="60" x2="940" y1="250" y2="250"/>
+<text class="tc-t" x="52" y="254" text-anchor="end">13.0 V</text>
+<line class="tc-grid" x1="60" x2="940" y1="202.273" y2="202.273"/>
+<text class="tc-t" x="52" y="206.273" text-anchor="end">13.5 V</text>
+<line class="tc-grid" x1="60" x2="940" y1="154.545" y2="154.545"/>
+<text class="tc-t" x="52" y="158.545" text-anchor="end">14.0 V</text>
+<line class="tc-grid" x1="60" x2="940" y1="106.818" y2="106.818"/>
+<text class="tc-t" x="52" y="110.818" text-anchor="end">14.5 V</text>
+<line class="tc-grid" x1="60" x2="940" y1="59.0909" y2="59.0909"/>
+<text class="tc-t" x="52" y="63.0909" text-anchor="end">15.0 V</text>
+<text class="tc-t" x="60" y="270" text-anchor="middle">-10 °C</text>
+<text class="tc-t" x="185.714" y="270" text-anchor="middle">0 °C</text>
+<text class="tc-t" x="311.429" y="270" text-anchor="middle">10 °C</text>
+<text class="tc-t" x="437.143" y="270" text-anchor="middle">20 °C</text>
+<text class="tc-t" x="562.857" y="270" text-anchor="middle">30 °C</text>
+<text class="tc-t" x="688.571" y="270" text-anchor="middle">40 °C</text>
+<text class="tc-t" x="814.286" y="270" text-anchor="middle">50 °C</text>
+<text class="tc-t" x="940" y="270" text-anchor="middle">60 °C</text>
+<line class="tc-axis" x1="60" x2="940" y1="250" y2="250"/>
+<line class="tc-ref" x1="60" x2="940" y1="40" y2="40"/>
+<text class="tc-t" x="66" y="34">Hardware voltage cut-out 15.2 V</text>
+<line class="tc-ref" x1="877.143" x2="877.143" y1="102" y2="250"/>
+<polyline class="tc-line" points="60.0,73.4 185.7,73.4 751.4,150.7 751.4,192.7 814.3,192.7"/>
+<circle class="tc-dot" cx="185.7" cy="73.4" r="4.5"/>
+<text class="tc-l" x="193.7" y="64.4" text-anchor="start">14.85 V at 0 °C and below</text>
+<circle class="tc-dot" cx="500.0" cy="116.4" r="4.5"/>
+<text class="tc-l" x="508.0" y="107.4" text-anchor="start">14.40 V at 25 °C</text>
+<circle class="tc-dot" cx="751.4" cy="150.7" r="4.5"/>
+<text class="tc-l" x="741.4" y="166.7" text-anchor="end">14.04 V at 45 °C</text>
+<circle class="tc-dot" cx="814.3" cy="192.7" r="4.5"/>
+<text class="tc-l" x="804.3" y="210.7" text-anchor="end">13.60 V float only</text>
+<text class="tc-l" x="822.286" y="58">Charging stopped</text>
+<text class="tc-t" x="822.286" y="73">firmware from 50 °C</text>
+<text class="tc-t" x="936" y="88" text-anchor="end">hardware from 55 °C</text>
+  </svg></div>
+  <div class="tablewrap"><table>
+    <tr><th>Layer</th><th>What it watches</th><th>Acts at</th><th>Action</th></tr>
+    <tr><td>1 · Firmware</td><td>Battery temperature from NTC2</td><td>−18 mV per °C, 0 to 45 °C</td><td>Moves the charge voltage between 14.85 V and 14.04 V</td></tr>
+    <tr><td>1 · Firmware</td><td>Charge current and time</td><td>Under 0.3 A for 10 min, or 2 h in absorption</td><td>Drops to 13.6 V float</td></tr>
+    <tr><td>1 · Firmware</td><td>Battery temperature</td><td>45 °C · 50 °C</td><td>Float only, then charging stopped until it cools to 45 °C</td></tr>
+    <tr><td>2 · Hardware</td><td>Battery voltage, U7</td><td>15.2 V, resets at 14.8 V</td><td>Blocks SCR1 gate drive</td></tr>
+    <tr><td>2 · Hardware</td><td>Battery temperature, U8</td><td>About 55 °C, resets near 50 °C</td><td>Blocks SCR1 gate drive</td></tr>
+    <tr><td>3 · Crowbar</td><td>Output voltage, DZ2 and SCR3</td><td>About 16 V</td><td>Shunts the stator, F1 blows and isolates the battery</td></tr>
+  </table></div>
+  <p class="muted">Temperature thresholds suit a flooded or sealed lead-acid battery. The crowbar firing voltage depends on zener tolerance, so select DZ2 to fire between 15.6 V and 16.4 V, and check that F1 clears before SCR3 exceeds its surge rating with your battery.</p>
+</section>
+
+<section>
   <div class="sheethead"><h2>Smart control</h2><span class="eyebrow">Firmware behaviour</span></div>
   <ol class="stages">
     <li><b>Wake</b>The MCU sleeps until it sees zero-crossings on the white wire. It then powers the reference and the current amplifier and checks battery voltage and both temperatures.</li>
@@ -492,7 +699,8 @@ svg text{font-family:var(--mono)}
 </section>
 
 <section>
-  <div class="sheethead"><h2>Board layout</h2><span class="eyebrow">Sheet 3 of 4 · top view</span></div>
+  <div class="sheethead"><h2>Board layout</h2><span class="eyebrow">Sheet 4 of 5 · top view</span></div>
+  <p class="muted">This layout is revision A. The protection parts added on sheet 3 are not placed yet: SCR3 goes on the wall to the right of SCR2, and U8 with its resistors goes in the logic area beside J2, which grows to six pins.</p>
   <p>The power devices sit on the top edge and bolt to the case wall. Stator AC, which can spike past 100 V with a lamp blown, stays in the upper left. The logic lives behind a milled slot in the lower right, and only the two opto-isolators and the 220 kΩ sense resistors bridge it.</p>
   <div class="draw"><svg viewBox="0 0 1040 730" role="img" aria-label="Board layout, top view">
 <rect class="alu" x="60" y="62" width="920" height="34"/>
@@ -684,7 +892,7 @@ svg text{font-family:var(--mono)}
 </section>
 
 <section>
-  <div class="sheethead"><h2>Heat dissipation</h2><span class="eyebrow">Sheet 4 of 4 · section through SCR1</span></div>
+  <div class="sheethead"><h2>Heat dissipation</h2><span class="eyebrow">Sheet 5 of 5 · section through SCR1</span></div>
   <div class="draw small"><svg viewBox="0 0 760 225" role="img" aria-label="Thermal stack from SCR junction to cooling fins">
 <rect class="alu" x="44" y="20" width="14" height="44"/>
 <rect class="alu" x="74" y="20" width="14" height="44"/>
@@ -743,6 +951,8 @@ svg text{font-family:var(--mono)}
     <tr><td>Reverse battery</td><td>SCR1 blocks reverse voltage and D1 keeps it away from the logic supply.</td><td>Any reversal</td></tr>
     <tr><td>Short circuit</td><td>F1 on the board, plus a firmware current limit read from RS1.</td><td>10 A fuse · 5 A limit</td></tr>
     <tr><td>Voltage spikes</td><td>TVS1 and TVS3 clamp the stator inputs, TVS2 clamps the battery rail, R2 and C1 damp SCR1 switching.</td><td>130 V AC side · 26 V DC side</td></tr>
+    <tr><td>Hot battery</td><td>NTC2 on the battery case lowers the charge voltage as it warms. U8 blocks charging in hardware if firmware does not.</td><td>50 °C firmware · 55 °C hardware</td></tr>
+    <tr><td>SCR1 fails short</td><td>DZ2 fires crowbar SCR3, which shunts the stator and blows F1 to isolate the battery.</td><td>About 16 V</td></tr>
     <tr><td>Overheating</td><td>NTC1 on the heat sink reduces, then stops, charging.</td><td>95 °C · 115 °C</td></tr>
     <tr><td>Battery off</td><td>C2 holds the rail steady. The MCU detects the high ripple, limits the target to 13.8 V and flags a fault.</td><td>Ripple above 1 V</td></tr>
     <tr><td>Isolation</td><td>Opto-isolators and a 3 mm slot separate stator AC from the 5 V logic.</td><td>Always</td></tr>
@@ -761,6 +971,9 @@ svg text{font-family:var(--mono)}
     <tr><td>U4, U6</td><td>MOC3023 opto-triac driver</td><td>Isolated gate firing for SCR1 and SCR2</td></tr>
     <tr><td>U5</td><td>INA180A2 current-sense amplifier, gain 50</td><td>Reads charge current across RS1</td></tr>
     <tr><td>U7, Q3</td><td>TPS3700 voltage detector and 2N7002 MOSFET</td><td>Hardware over-voltage cut-out</td></tr>
+    <tr><td>U8</td><td>TLV7021 open-drain comparator</td><td>Hardware battery over-temperature cut-out</td></tr>
+    <tr><td>SCR3, DZ2, R16</td><td>25 A, 800 V SCR, 15 V 1.3 W zener, 1 kΩ</td><td>Crowbar for a shorted SCR1</td></tr>
+    <tr><td>R8 to R12</td><td>10 kΩ 1 %, 1 kΩ, 33 kΩ 1 %, 10 kΩ 1 %, 100 kΩ, with C3 100 nF</td><td>Battery temperature divider, filter, threshold and inhibit pull-up</td></tr>
     <tr><td>RS1</td><td>10 mΩ, 1 %, 2 W shunt (2512)</td><td>Current sensing</td></tr>
     <tr><td>R5, R6</td><td>560 kΩ and 100 kΩ, 0.1 %, 25 ppm</td><td>Battery voltage divider</td></tr>
     <tr><td>R3, R4</td><td>220 kΩ, two 1206 parts in series each</td><td>Zero-cross and lamp voltage sensing across the slot</td></tr>
