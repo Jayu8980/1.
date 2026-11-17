@@ -8,6 +8,10 @@
         <classes>
             <class name="com.automation.tests.PreferenceTest"/>
             <class name="com.automation.tests.ViewsTest"/>
+            <class name="com.automation.tests.ControlsTest"/>
+            <class name="com.automation.tests.GestureTest"/>
+            <class name="com.automation.tests.DialogTest"/>
+            <class name="com.automation.tests.DeviceTest"/>
         </classes>
     </test>
 </suite>

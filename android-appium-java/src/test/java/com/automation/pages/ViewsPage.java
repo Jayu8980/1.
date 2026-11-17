@@ -18,7 +18,20 @@ public class ViewsPage extends BasePage {
         return scrollToText(itemText).isDisplayed();
     }
 
-    public void openItem(String itemText) {
+    public ViewsPage openItem(String itemText) {
         scrollToText(itemText).click();
+        return this;
+    }
+
+    /** Opens a second-level item, e.g. Controls -> "1. Light Theme". */
+    public ViewsPage openSubItem(String accessibilityId) {
+        tap(AppiumBy.accessibilityId(accessibilityId));
+        return this;
+    }
+
+    /** Swipes the list up and reports whether the first item scrolled away. */
+    public boolean swipeUpHidesFirstItem() {
+        swipe(By.id("android:id/list"), "up");
+        return driver.findElements(firstItem).isEmpty();
     }
 }

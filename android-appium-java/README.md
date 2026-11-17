@@ -21,12 +21,15 @@ android-appium-java/
         ├── base/BaseTest.java            Opens app before each test, closes after
         ├── pages/                        One class per app screen
         │   ├── HomePage.java
-        │   ├── PreferencePage.java
-        │   ├── PreferenceDependenciesPage.java
-        │   └── ViewsPage.java
+        │   ├── PreferencePage.java, PreferenceDependenciesPage.java
+        │   ├── ViewsPage.java, ControlsPage.java, SwitchesPage.java
+        │   ├── SpinnerPage.java, TextFieldsPage.java, DateWidgetsPage.java
+        │   ├── DragDropPage.java, ExpandableListPage.java, SeekBarPage.java
+        │   └── AlertDialogsPage.java, PopupMenuPage.java
         ├── tests/                        The actual tests
-        │   ├── PreferenceTest.java
-        │   └── ViewsTest.java
+        │   ├── PreferenceTest.java, ViewsTest.java
+        │   ├── ControlsTest.java, GestureTest.java
+        │   └── DialogTest.java, DeviceTest.java
         └── listeners/TestListener.java   Screenshot on failure
 ```
 
@@ -100,15 +103,25 @@ mvn test -Ddevice.name=R58M123ABC
 - Report: `target/surefire-reports/index.html`
 - Failure screenshots: `screenshots/`
 
-## What the tests do
+## What the tests do (30 tests, no login)
 
-| Test | Steps |
+| Test class | What it automates |
 |---|---|
-| `appLaunches` | Opens the app and checks the home screen |
-| `wifiCheckboxEnablesSettings` | Preference → Preference dependencies → toggles the WiFi checkbox and checks that "WiFi settings" turns on/off |
-| `saveWifiName` | Opens the WiFi dialog, types a name, taps OK, reopens it and checks the name was saved |
-| `scrollToWebView` | Views → scrolls down the long list to "WebView" |
-| `backReturnsHome` | Opens Views, presses Back, checks the home screen |
+| `PreferenceTest` | App launch, checkbox that enables another option, typing in a dialog and saving |
+| `ViewsTest` | Scrolling a long list to an item, Back button |
+| `ControlsTest` | Checkbox, radio buttons, toggle button, on/off switch, dropdown (data-driven with 3 values), text field and keyboard, date picker |
+| `GestureTest` | Drag and drop, long press, expand a list, swipe, slider (seek bar) |
+| `DialogTest` | Accept an alert, dismiss an alert, list dialog, single-choice dialog, popup menu and toast message |
+| `DeviceTest` | Screen rotation, app to background and back, Home key, close and relaunch the app, notification panel, clipboard, screenshot, device info |
+
+All the reusable actions live in `BasePage.java`: `tap`, `type`, `getText`,
+`scrollToText`, `longPress`, `doubleTap`, `dragAndDrop`, `swipe`, `pinchOpen`,
+`pinchClose`, `tapAt` and `hideKeyboardIfShown`.
+
+Run one class only:
+```bash
+mvn test -Dtest=GestureTest
+```
 
 ## Use it for your own app
 
