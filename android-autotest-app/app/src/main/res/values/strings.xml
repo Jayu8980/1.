@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AutoTest Runner</string>
+    <string name="service_label">AutoTest Runner engine</string>
+    <string name="service_description">Lets AutoTest Runner tap, type and swipe in the ApiDemos test app to run automated UI tests. It only acts while you run tests from the app and does not collect or send any data.</string>
+</resources>
