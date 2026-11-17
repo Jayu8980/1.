@@ -1,0 +1,13 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Android Appium Suite" verbose="1">
+    <listeners>
+        <listener class-name="com.automation.listeners.TestListener"/>
+    </listeners>
+
+    <test name="Android Tests">
+        <classes>
+            <class name="com.automation.tests.PreferenceTest"/>
+            <class name="com.automation.tests.ViewsTest"/>
+        </classes>
+    </test>
+</suite>

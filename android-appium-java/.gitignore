@@ -1,0 +1,7 @@
+target/
+screenshots/
+test-output/
+apps/*.apk
+.idea/
+*.iml
+.vscode/
