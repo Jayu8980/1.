@@ -19,3 +19,4 @@ engine/secrets.enc
 relay-server/.env
 relay-server/state/
 .pytest_cache/
+.token

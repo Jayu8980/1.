@@ -1,0 +1,17 @@
+# Engine + Caddy for HTTPS on a cloud VPS. Point engine.example.com at the server.
+services:
+  engine:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes: ["./state:/app/state", "./data_cache:/app/data_cache"]
+    expose: ["8000"]
+  caddy:
+    image: caddy:2.8
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      ENGINE_DOMAIN: ${ENGINE_DOMAIN}
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy_data:/data"]
+volumes:
+  caddy_data:

@@ -1,3 +1,5 @@
+> **TradeLens – AI Trading Analyser** (Android app + Python strategy engine + order relay) lives in `android-app/`, `engine/` and `relay-server/`. See [TRADELENS.md](TRADELENS.md) for setup, broker keys, the static-IP relay, building the APK and running the engine on Windows.
+
 # VoxForge Studio
 
 A full-featured **singing voice synthesis studio** that runs entirely in the browser — in the spirit of AI vocal tools like ACE Studio. Draw a melody, type lyrics, pick a virtual singer and shape the performance. No build step, no server-side processing, no account.

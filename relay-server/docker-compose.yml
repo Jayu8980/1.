@@ -1,0 +1,19 @@
+# Relay + Caddy (automatic HTTPS via Let's Encrypt). Point an A-record (e.g. relay.example.com) at the VPS static IP.
+services:
+  relay:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes: ["./state:/app/state"]
+    expose: ["8080"]
+  caddy:
+    image: caddy:2.8
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      RELAY_DOMAIN: ${RELAY_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+volumes:
+  caddy_data:

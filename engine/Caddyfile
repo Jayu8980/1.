@@ -1,0 +1,4 @@
+{$ENGINE_DOMAIN} {
+    encode gzip
+    reverse_proxy engine:8000
+}
