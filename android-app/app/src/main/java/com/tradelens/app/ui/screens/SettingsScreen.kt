@@ -72,8 +72,8 @@ class SettingsViewModel @Inject constructor(
     private fun say(block: suspend () -> String) = viewModelScope.launch { msg.value = runCatching { block() }.getOrElse { "Error: ${it.message}" } }
 
     fun testDelta() = say { delta.testConnection() }
-    fun testEngine() = say { val s = engine.api.status(); "Engine OK – mode ${s.mode}, regime ${s.regime}, v${s.version}" }
-    fun testRelay() = say { relay.health() }
+    fun testEngine() = say { engine.diagnose() }
+    fun testRelay() = say { relay.diagnose() }
     fun refreshInstruments(b: BrokerProvider) = say { "${b.displayName}: ${brokers.refreshInstruments(b)} instruments cached" }
     fun login(b: BrokerProvider, params: Map<String, String>) = say {
         b.login(params); db.audit().log(AuditEntity(category = "AUTH", message = "${b.displayName} connected"))
@@ -112,7 +112,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
 
     LazyColumn(Modifier.statusBarsPadding().imePadding(), contentPadding = ListPadding) {
         item { Text("Settings", fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp)) }
-        item { msg?.let { Text(it, color = if (it.startsWith("Error")) Bear else Bull, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp)) } }
+        item { msg?.let { Text(it, color = if (it.startsWith("Error") || it.startsWith("✗")) Bear else Bull, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp)) } }
 
         item {
             SectionCard("Security") {
@@ -180,7 +180,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             SectionCard("Strategy engine (your laptop / VPS)") {
                 var url by remember { mutableStateOf(s.engineUrl) }
                 var tok by remember { mutableStateOf(vm.secure.get(SecureStore.ENGINE_TOKEN) ?: "") }
-                Field(url, { url = it; vm.settings.update { st -> st.copy(engineUrl = it.trim()) } }, "Engine URL", hint = "https://your-engine.example.com  (or http://192.168.x.x:8000 is NOT allowed – use HTTPS or a tunnel)")
+                Field(url, { url = it; vm.settings.update { st -> st.copy(engineUrl = it.trim()) } }, "Engine URL", hint = "Same Wi-Fi: http://<PC IP>:8000 (run_windows.ps1 prints it). Remote: https://… (tunnel or VPS)")
                 Field(tok, { tok = it; vm.secure.put(SecureStore.ENGINE_TOKEN, it.trim()) }, "Engine API token", secret = true)
                 OutlinedButton(onClick = vm::testEngine) { Text("Test engine") }
             }

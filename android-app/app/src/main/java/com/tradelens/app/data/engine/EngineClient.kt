@@ -115,8 +115,9 @@ class EngineClient @Inject constructor(private val settings: SettingsStore, priv
     fun isConfigured() = settings.value.engineUrl.isNotBlank() && secure.get(SecureStore.ENGINE_TOKEN) != null
 
     private fun baseUrl(): String {
-        val u = settings.value.engineUrl.trim().trimEnd('/')
+        val u = com.tradelens.app.data.net.UrlPolicy.normalize(settings.value.engineUrl)
         require(u.isNotBlank()) { "Engine URL not set (Settings → Engine)" }
+        com.tradelens.app.data.net.UrlPolicy.check(u, "Engine")
         return "$u/api/"
     }
 
@@ -132,6 +133,19 @@ class EngineClient @Inject constructor(private val settings: SettingsStore, priv
             cached = url to api
             return api
         }
+
+    /** Step-by-step connectivity check used by Settings → Test engine. */
+    suspend fun diagnose(): String {
+        val base = runCatching { baseUrl().removeSuffix("api/") }.getOrElse { return "✗ ${it.message}" }
+        if (secure.get(SecureStore.ENGINE_TOKEN).isNullOrBlank()) return "✗ Engine token is empty – paste the token printed by run_windows.ps1"
+        runCatching { Http.execute(Request.Builder().url(base + "health").build(), retries = 0) }
+            .onFailure { return "✗ Cannot reach ${base}health\n" + com.tradelens.app.data.net.UrlPolicy.explain(it, base, "Engine") }
+        return runCatching { val s = api.status(); "✓ Engine OK – mode ${s.mode}, regime ${s.regime}, v${s.version}" }
+            .getOrElse {
+                val e = (it as? retrofit2.HttpException)?.let { h -> com.tradelens.app.data.net.ApiException(h.code(), "HTTP ${h.code()}", h.response()?.errorBody()?.string()) } ?: it
+                "✗ Reached the engine but /api/status failed\n" + com.tradelens.app.data.net.UrlPolicy.explain(e, base, "Engine")
+            }
+    }
 
     /** Live event stream (signals, fills, risk breaches, status) with auto-reconnect. */
     fun events(): Flow<EngineEvent> = reconnectingSocket(

@@ -40,8 +40,14 @@ data class RelayResult(val status: String, val brokerOrderId: String? = null, va
 class RelayClient @Inject constructor(private val settings: SettingsStore, private val secure: SecureStore) {
     fun isConfigured() = settings.value.relayUrl.isNotBlank() && secure.get(SecureStore.RELAY_TOKEN) != null
 
-    private fun req(path: String) = Request.Builder().url(settings.value.relayUrl.trimEnd('/') + path)
+    private fun base(): String = com.tradelens.app.data.net.UrlPolicy.normalize(settings.value.relayUrl).also { com.tradelens.app.data.net.UrlPolicy.check(it, "Relay") }
+
+    private fun req(path: String) = Request.Builder().url(base() + path)
         .header("Authorization", "Bearer ${secure.get(SecureStore.RELAY_TOKEN).orEmpty()}")
+
+    suspend fun diagnose(): String = runCatching { "✓ " + health() }.getOrElse {
+        "✗ " + (runCatching { com.tradelens.app.data.net.UrlPolicy.explain(it, base(), "Relay") }.getOrElse { e -> e.message ?: "invalid URL" })
+    }
 
     suspend fun health(): String {
         val o = parseJson(Http.execute(req("/health").get().build(), retries = 0)).obj()

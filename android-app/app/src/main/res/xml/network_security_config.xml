@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- HTTPS only. Cleartext is permitted solely for a local engine on the LAN / emulator
-     (e.g. http://192.168.x.x:8000 while testing at home). Use HTTPS for any remote engine. -->
+<!-- Cleartext is allowed at the OS level so you can reach your own engine on home Wi-Fi
+     (http://192.168.x.x:8000). The app itself (UrlPolicy) refuses plain http:// to any public host,
+     and all broker / Delta / AI endpoints are hard-coded https://. -->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false" />
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">localhost</domain>
-        <domain includeSubdomains="false">10.0.2.2</domain>
-        <domain includeSubdomains="false">127.0.0.1</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors><certificates src="system" /></trust-anchors>
+    </base-config>
 </network-security-config>

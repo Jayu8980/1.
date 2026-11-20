@@ -100,14 +100,20 @@ Relay safeguards (independent of the app): LIMIT only, max order value, max orde
 ## 4. Run the strategy engine
 
 ### Windows laptop (16 GB RAM, no GPU needed)
-1. Install **Python 3.11 or 3.12** from python.org (tick "Add to PATH").
-2. PowerShell:
+1. Install **Python 3.11 or 3.12** from python.org (tick "Add python.exe to PATH").
+2. PowerShell **as Administrator the first time** (so it can open the firewall port):
    ```powershell
    cd engine
    Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-   .\run_windows.ps1          # creates .venv, installs requirements, prints your API token, starts http://127.0.0.1:8000
+   .\run_windows.ps1
    ```
-3. The phone must reach the engine over **HTTPS**. Easiest: `cloudflared tunnel --url http://127.0.0.1:8000` (prints an https URL) or Tailscale Funnel. Put that URL and the token in the app → Settings → Engine → **Test engine**.
+   It installs everything, then prints e.g. `URL : http://192.168.1.20:8000` and `Token : ...`.
+3. Phone on the **same Wi-Fi** (not mobile data, not a guest network): open `http://192.168.1.20:8000/health` in the phone's browser – it must show `{"ok":true}`.
+4. App → More → Settings → Strategy engine: paste that URL and the token → **Test engine**. The result tells you exactly what is wrong (wrong IP / firewall / token / path).
+
+**If it can't connect:** Windows Wi-Fi must be a *Private* network (Settings → Network → Wi-Fi → your network → Private); allow Python in the Windows Firewall prompt; the PC must stay awake. To use the engine away from home, run `.\run_windows.ps1 -Local` and expose it with `cloudflared tunnel --url http://127.0.0.1:8000` (gives an https URL) or Tailscale.
+
+Plain `http://` is accepted only for home-network addresses (192.168.x.x, 10.x.x.x, 172.16–31.x.x, Tailscale 100.x); anything on the internet must be `https://`.
 
 ### Linux cloud VPS
 ```bash
