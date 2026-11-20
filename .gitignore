@@ -1,2 +1,21 @@
 node_modules/
 .DS_Store
+
+# TradeLens
+android-app/.gradle/
+android-app/build/
+android-app/app/build/
+android-app/local.properties
+android-app/.kotlin/
+*.jks
+*.keystore
+__pycache__/
+*.pyc
+.venv/
+engine/data_cache/
+engine/state/
+engine/.env
+engine/secrets.enc
+relay-server/.env
+relay-server/state/
+.pytest_cache/
