@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">AI Trader</string>
+    <string name="widget_name">AI Trader P&amp;L</string>
+    <string name="widget_desc">Today\'s P&amp;L and kill switch</string>
+</resources>

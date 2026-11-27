@@ -52,7 +52,7 @@ to PAPER and blocks re-arming until released.
   app/broker      Broker interface, PaperBroker, cost model, smartapi/{client,session,broker}
   app/execution   ExecutionGateway, risk veto contract
   tests/          pytest, SmartAPI fully mocked with respx
-/android    Kotlin/Compose app            (Phase 4–5)
+/android    Kotlin/Compose app, signed APK in android/dist/
 /infra      VM bootstrap, Caddy, systemd, firewall (Phase 6)
 /docs/trading   this document
 ```
@@ -63,6 +63,6 @@ to PAPER and blocks re-arming until released.
 | 1 | Broker layer, paper broker, costs, compliance primitives | **done, 39 tests** |
 | 2 | Data pipeline (corp actions, holidays, survivorship-free universe) + event-driven backtester | next |
 | 3 | Regime, strategies, meta-labeling, sizing, full risk engine, validation suite | |
-| 4 | API (REST/WSS, JWT) + Android core screens | |
-| 5 | FCM alerts, widget, AI analyst | |
+| 4 | API (REST/WSS, JWT) + Android core screens | **app done** (demo mode); engine API pending |
+| 5 | FCM alerts, widget, AI analyst | widget + local alerts done; FCM pending |
 | 6 | Deployment, TLS pinning, hardening | |
