@@ -1,0 +1,10 @@
+# Phase 1 compose. Phase 6 adds Caddy (TLS), Postgres/Timescale, and the scheduler.
+services:
+  engine:
+    build: { context: ., target: runtime }
+    env_file: .env
+    volumes: [ "engine-data:/data" ]
+    ports: [ "127.0.0.1:8000:8000" ]   # bound to localhost; TLS reverse proxy in front
+    restart: unless-stopped
+volumes:
+  engine-data:
