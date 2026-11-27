@@ -128,6 +128,31 @@ class TradingRepository @Inject constructor(
         if (isDemo()) demo.demote(id) else client.api().demote(id)
     } catch (e: Exception) { ActionResult(false, describe(e)) }
 
+    suspend fun apiKeys() = load("apikeys", ListSerializer(ApiKeyInfo.serializer()), demo::apiKeys) { apiKeys() }
+
+    /** Biometric-signed; the raw key comes back exactly once. */
+    suspend fun createKey(name: String, scopes: List<String>): NewApiKeyResult = try {
+        if (isDemo()) { signer.confirm("Create API key", "Demo"); demo.createKey(name, scopes) }
+        else client.api().createKey(NewApiKey(name, scopes))
+    } catch (e: Exception) { NewApiKeyResult(false, describe(e)) }
+
+    suspend fun revokeKey(id: String): ActionResult = try {
+        if (isDemo()) demo.revokeKey(id) else client.api().revokeKey(id)
+    } catch (e: Exception) { ActionResult(false, describe(e)) }
+
+    suspend fun intents() = load("intents", ListSerializer(OrderIntent.serializer()), demo::intents) { intents() }
+
+    /** The only path from an AI/API order request to a real broker: biometric-signed approval. */
+    suspend fun approveIntent(i: OrderIntent) = act("APPROVE REAL ORDER: ${i.summary}", { demo.approveIntent(i.id) }) {
+        approveIntent(i.id)
+    }
+
+    suspend fun rejectIntent(id: String): ActionResult = try {
+        if (isDemo()) demo.rejectIntent(id) else client.api().rejectIntent(id)
+    } catch (e: Exception) { ActionResult(false, describe(e)) }
+
+    suspend fun engineUrl() = settings.current().engineUrl
+
     suspend fun brokers() = load("brokers", ListSerializer(BrokerInfo.serializer()), demo::brokers) { brokers() }
 
     // ------------------------------------------------------------ actions

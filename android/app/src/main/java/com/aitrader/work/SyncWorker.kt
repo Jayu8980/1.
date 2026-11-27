@@ -38,6 +38,12 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
                     "${o.qty} @ %.2f (${o.strategy})".format(o.avgFillPrice), "positions")
                 repo.addAlert(if (stop) "stop" else "fill", "${o.side} ${o.symbol}", "${o.qty} @ ${o.avgFillPrice}")
             }
+            val seenIntents = prefs.getStringSet("intents", emptySet())!!
+            val pend = runCatching { repo.intents().data.filter { it.status == "PENDING" } }.getOrDefault(emptyList())
+            pend.filter { it.id !in seenIntents }.forEach {
+                n.notify(Channel.RISK, "Approval needed: ${it.summary}", "Requested by ${it.requestedBy}: ${it.reason}", "approvals")
+            }
+            prefs.edit().putStringSet("intents", pend.map { it.id }.toSet()).apply()
             prefs.edit().putBoolean("kill", dash.killSwitch).putStringSet("breaches", risk.breaches.toSet())
                 .putLong("lastOrderTs", orders.maxOfOrNull { it.ts } ?: lastTs).apply()
             PnlWidget().updateAll(applicationContext)

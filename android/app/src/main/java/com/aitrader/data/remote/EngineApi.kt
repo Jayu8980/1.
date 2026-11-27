@@ -19,6 +19,10 @@ interface EngineApi {
     @POST("backtests") suspend fun backtest(@Body body: BacktestRequest): Tearsheet
     @GET("brokers") suspend fun brokers(): List<BrokerInfo>
     @GET("watchlist") suspend fun watchlist(): List<WatchItem>
+    @GET("apikeys") suspend fun apiKeys(): List<ApiKeyInfo>
+    @DELETE("apikeys/{id}") suspend fun revokeKey(@Path("id") id: String): ActionResult
+    @GET("intents") suspend fun intents(): List<OrderIntent>
+    @POST("intents/{id}/reject") suspend fun rejectIntent(@Path("id") id: String): ActionResult
     @GET("autotrade") suspend fun autotrade(): AutoTradeStatus
     @POST("autotrade/off") suspend fun autotradeOff(): ActionResult
     @POST("strategies/{id}/demote") suspend fun demote(@Path("id") id: String): ActionResult
@@ -35,6 +39,8 @@ interface EngineApi {
     @POST("mode") suspend fun setMode(@Body body: ModeRequest): ActionResult
     @POST("autotrade/on") suspend fun autotradeOn(): ActionResult
     @POST("orders") suspend fun placeOrder(@Body t: OrderTicket): ActionResult
+    @POST("apikeys") suspend fun createKey(@Body k: NewApiKey): NewApiKeyResult
+    @POST("intents/{id}/approve") suspend fun approveIntent(@Path("id") id: String): ActionResult
     @POST("strategies/{id}/promote") suspend fun promote(@Path("id") id: String): ActionResult
     @POST("brokers/{id}/connect") suspend fun connectBroker(@Path("id") id: String): ConnectResult
     @POST("brokers/{id}/activate") suspend fun activateBroker(@Path("id") id: String): ActionResult

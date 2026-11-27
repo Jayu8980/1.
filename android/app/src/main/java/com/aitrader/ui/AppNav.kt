@@ -40,6 +40,8 @@ enum class Dest(val route: String, val title: String, val icon: ImageVector) {
     Logs("logs", "Logs & alerts", Icons.Filled.History),
     Brokers("brokers", "Brokers", Icons.Filled.AccountBalance),
     Appearance("appearance", "Appearance", Icons.Filled.Palette),
+    Api("api", "API & MCP", Icons.Filled.Hub),
+    Approvals("approvals", "Approvals", Icons.Filled.VerifiedUser),
     Settings("settings", "Settings", Icons.Filled.Settings),
 }
 
@@ -139,6 +141,8 @@ fun AppNav(startRoute: String = Dest.Home.route, pendingRoute: String? = null, o
                     composable(Dest.Logs.route) { LogsScreen(snackbar) }
                     composable(Dest.Brokers.route) { BrokersScreen(snackbar) }
                     composable(Dest.Appearance.route) { AppearanceScreen() }
+                    composable(Dest.Api.route) { ApiScreen(snackbar) }
+                    composable(Dest.Approvals.route) { ApprovalsScreen(snackbar) }
                     composable(Dest.Settings.route) { SettingsScreen(snackbar) }
                 }
             }
@@ -162,7 +166,8 @@ fun BrandMark(modifier: Modifier = Modifier) {
 /** Launcher-style grid of every section. */
 @Composable
 fun MoreScreen(go: (String) -> Unit) {
-    val items = listOf(Dest.Signals, Dest.Strategies, Dest.Backtest, Dest.Brokers, Dest.Analyst, Dest.Logs, Dest.Appearance, Dest.Settings)
+    val items = listOf(Dest.Approvals, Dest.Api, Dest.Brokers, Dest.Signals, Dest.Strategies, Dest.Backtest, Dest.Analyst,
+        Dest.Logs, Dest.Appearance, Dest.Settings)
     BoxWithConstraints {
         val cols = if (maxWidth > 600.dp) 4 else 2
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

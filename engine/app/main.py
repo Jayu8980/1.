@@ -6,7 +6,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api.data_routes import router as data_router
+from app.api.ext_routes import router as ext_router
 from app.api.routes import router
+from app.mcp_server import ApiKeyMiddleware, LocalBackend, build_mcp
+from app.services.apikeys import ApiKeyStore
+from app.services.external import External
+from app.services.intents import IntentStore
 from app.api.security import DeviceKeys, Security
 from app.broker.paper import PaperBroker
 from app.broker.registry import BrokerManager, build_brokers
@@ -72,6 +77,9 @@ def build_state(app: FastAPI, s: Settings, transport=None, ip_fetcher=None, sour
     app.state.brokers, app.state.hub, app.state.watchlist = manager, hub, watchlist
     app.state.portfolio, app.state.risk = portfolio, risk
     app.state.instruments = InstrumentSearch(angel, s.delta_region, transport=transport)
+    app.state.apikeys = ApiKeyStore(s.apikeys_path, s.api_rate_per_min)
+    app.state.intents = IntentStore(s.intent_ttl_s)
+    app.state.external = External(app.state)
     app.state.security = Security(s.jwt_secret.get_secret_value(), s.jwt_ttl_min, DeviceKeys(s.device_keys_path))
 
 
@@ -111,20 +119,52 @@ def start_background(app: FastAPI) -> tuple[asyncio.Event, list[asyncio.Task]]:
     return stop, tasks
 
 
+def mount_mcp(app: FastAPI, s: Settings):
+    """Mount the MCP server at /mcp/ (streamable HTTP, stateless JSON) behind the API-key guard."""
+    from mcp.server.transport_security import TransportSecuritySettings
+    mcp = build_mcp(LocalBackend(app.state))
+    hosts = ["127.0.0.1:*", "localhost:*", "testserver"] + ([s.domain, f"{s.domain}:*"] if s.domain else [])
+    inner = mcp.streamable_http_app(streamable_http_path="/", stateless_http=True, json_response=True,
+                                    transport_security=TransportSecuritySettings(
+                                        enable_dns_rebinding_protection=True, allowed_hosts=hosts,
+                                        allowed_origins=[f"https://{s.domain}"] if s.domain else []))
+    app.mount("/mcp", ApiKeyMiddleware(inner, lambda: app.state.apikeys))
+    return mcp
+
+
+_mcp_holder: dict = {}
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if not hasattr(app.state, "gateway"):
         build_state(app, get_settings())
     stop, tasks = start_background(app)
-    yield
+    mcp = _mcp_holder.get("mcp")
+    if mcp is not None:
+        async with mcp.session_manager.run():
+            yield
+    else:
+        yield
     stop.set()
     for t in tasks:
         t.cancel()
 
 
-app = FastAPI(title="Trading Engine", version="0.3.0", lifespan=lifespan)
+app = FastAPI(title="Trading Engine", version="0.4.0", lifespan=lifespan)
 app.include_router(router)
 app.include_router(data_router)
+app.include_router(ext_router)
+
+
+def _init_mcp():
+    s = get_settings()
+    if s.mcp_enabled:
+        # state is filled lazily in lifespan; LocalBackend reads app.state at call time
+        _mcp_holder["mcp"] = mount_mcp(app, s)
+
+
+_init_mcp()
 
 
 @app.get("/health")

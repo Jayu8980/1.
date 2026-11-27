@@ -13,6 +13,7 @@ from app.core.enums import Exchange, Instrument, Mode, OrderType, Side
 from app.core.errors import BrokerError, OrderBlocked
 from app.core.models import Contract, OrderRequest
 from app.services.portfolio import order_view, position_view
+from app.services.orders import Ticket, submit
 from app.services.risk import RiskLimits
 
 from .security import current_user, signed_user
@@ -72,54 +73,17 @@ async def orders(request: Request, venue: str = Query("current", pattern="^(curr
         raise _blocked(e) from e
 
 
-class OrderTicket(BaseModel):
-    symbol: str
-    exchange: str
-    side: Side
-    qty: int
-    orderType: OrderType = OrderType.LIMIT
-    price: float | None = None
-    triggerPrice: float | None = None
-    product: str = "INTRADAY"
+class OrderTicket(Ticket):
     expectLive: bool = False      # the app states what the user saw; mismatch => refuse
 
 
 @router.post("/orders")
 async def place_order(body: OrderTicket, request: Request, user: str = Depends(signed_user)):
-    """Manual order from the app. Goes wherever the engine trades now: the REAL broker when LIVE.
-    Full gateway path: kill switch, risk veto, static IP, rate limit, audit."""
-    from app.core.enums import Product
+    """Manual order from the app. Goes wherever the engine trades now: the REAL broker when LIVE."""
     s = st(request)
-    live_now = s.gateway.mode is Mode.LIVE
-    if body.expectLive != live_now:
+    if body.expectLive != (s.gateway.mode is Mode.LIVE):
         return {"ok": False, "message": "Mode changed since you opened the ticket — review and resend"}
-    c = s.watchlist.find(body.symbol, body.exchange)
-    if c is None:
-        return {"ok": False, "message": f"Add {body.exchange}:{body.symbol} to the watchlist first (instrument ids)"}
-    try:
-        product = Product(body.product)
-        ot, price = body.orderType, (Decimal(str(body.price)) if body.price is not None else None)
-        t = s.hub.latest.get(c.key)
-        ltp = t.ltp if t else None
-        if ot is OrderType.MARKET and live_now:
-            # Never send a raw MARKET order to the exchange: marketable LIMIT with a protection band.
-            if ltp is None:
-                return {"ok": False, "message": "No live price yet — use a LIMIT order"}
-            band = Decimal(str(s.settings.live_market_protection_pct)) / 100
-            price = _round_tick(ltp * (1 + band if body.side is Side.BUY else 1 - band), c.tick_size)
-            ot = OrderType.LIMIT
-        req = OrderRequest(contract=c, side=body.side, quantity=body.qty, order_type=ot, price=price,
-                           trigger_price=Decimal(str(body.triggerPrice)) if body.triggerPrice is not None else None,
-                           product=product, strategy="manual")
-    except (ValueError, ValidationError) as e:
-        return {"ok": False, "message": str(e).splitlines()[-1] if str(e) else "invalid order"}
-    try:
-        o = await s.gateway.place(req, price or ltp)
-    except (OrderBlocked, BrokerError) as e:
-        return {"ok": False, "message": getattr(e, "reason", None) or str(e)}
-    await s.audit.record("order.manual", actor=user, venue="live" if live_now else "paper", order_id=o.order_id)
-    where = f"REAL order at {s.brokers.active.info.name}" if live_now else "PAPER order"
-    return {"ok": True, "message": f"{where}: {body.side.value} {body.qty} {c.symbol} — {o.status.value} (#{o.order_id})"}
+    return await submit(s, Ticket(**body.model_dump(exclude={"expectLive"})), user, "app")
 
 
 @router.post("/orders/{order_id}/cancel")
@@ -404,3 +368,68 @@ async def stream(ws: WebSocket):
         pass
     finally:
         s.hub.unsubscribe(q)
+
+
+# ------------------------------------------------------------------ API keys (managed from the app)
+class KeyBody(BaseModel):
+    name: str
+    scopes: list[str]
+
+
+@router.get("/apikeys")
+async def list_keys(request: Request, _: str = Depends(current_user)):
+    return st(request).apikeys.list()
+
+
+@router.post("/apikeys")
+async def create_key(body: KeyBody, request: Request, user: str = Depends(signed_user)):
+    """Biometric-signed. The raw key is returned ONCE and never stored."""
+    s = st(request)
+    try:
+        k, raw = s.apikeys.create(body.name, body.scopes)
+    except ValueError as e:
+        return {"ok": False, "message": str(e)}
+    await s.audit.record("apikey.created", actor=user, key=k.id, name=k.name, scopes=k.scopes)
+    return {"ok": True, "message": "Copy this key now — it will not be shown again", "key": raw, "info": k.view()}
+
+
+@router.delete("/apikeys/{key_id}")
+async def revoke_key(key_id: str, request: Request, user: str = Depends(current_user)):
+    s = st(request)
+    if not s.apikeys.revoke(key_id):
+        raise HTTPException(404, "no such key")
+    await s.audit.record("apikey.revoked", actor=user, key=key_id)
+    return {"ok": True, "message": "Key revoked"}
+
+
+# ------------------------------------------------------------------ live-order approvals
+@router.get("/intents")
+async def list_intents(request: Request, _: str = Depends(current_user)):
+    return [i.view() for i in st(request).intents.recent()]
+
+
+@router.post("/intents/{intent_id}/approve")
+async def approve_intent(intent_id: str, request: Request, user: str = Depends(signed_user)):
+    """Biometric-signed approval: the only way an API/MCP-requested order reaches a real broker."""
+    s = st(request)
+    i = s.intents.get(intent_id)
+    if i is None or i.status != "PENDING":
+        return {"ok": False, "message": f"request is {i.status if i else 'unknown'}"}
+    if s.gateway.mode is not Mode.LIVE:
+        i.status, i.result = "FAILED", "engine is no longer LIVE"
+        return {"ok": False, "message": i.result}
+    r = await submit(s, Ticket(**i.ticket), f"{user} approving {i.requested_by}", "intent")
+    i.status, i.result, i.order_id = ("APPROVED" if r["ok"] else "FAILED"), r["message"], r.get("orderId")
+    await s.audit.record("intent.approved" if r["ok"] else "intent.failed", intent=i.id, actor=user, result=r["message"])
+    return {"ok": r["ok"], "message": r["message"]}
+
+
+@router.post("/intents/{intent_id}/reject")
+async def reject_intent(intent_id: str, request: Request, user: str = Depends(current_user)):
+    s = st(request)
+    i = s.intents.get(intent_id)
+    if i is None or i.status != "PENDING":
+        return {"ok": False, "message": "nothing to reject"}
+    i.status, i.result = "REJECTED", f"rejected by {user}"
+    await s.audit.record("intent.rejected", intent=i.id, actor=user)
+    return {"ok": True, "message": "Rejected"}

@@ -302,6 +302,37 @@ class DemoEngine(seed: Long = 42, private val now: () -> Long = System::currentT
         if (watch.removeAll { it.key == key }) ActionResult(true, "Removed") else ActionResult(false, "Not in watchlist")
 
     private var autoTrade = false
+    private val keys = mutableListOf<ApiKeyInfo>()
+    private val intents = mutableListOf(OrderIntent("oi_demo00001",
+        mapOf("symbol" to kotlinx.serialization.json.JsonPrimitive("RELIANCE-EQ"), "side" to kotlinx.serialization.json.JsonPrimitive("BUY"),
+            "qty" to kotlinx.serialization.json.JsonPrimitive(10), "orderType" to kotlinx.serialization.json.JsonPrimitive("LIMIT"),
+            "price" to kotlinx.serialization.json.JsonPrimitive(1410.5), "product" to kotlinx.serialization.json.JsonPrimitive("INTRADAY")),
+        "key:demo (Claude)", "Breakout above yesterday's high with sector strength (demo request)",
+        "2026-11-27T10:00:00Z", "PENDING", expiresInSec = 240))
+
+    @Synchronized fun apiKeys(): List<ApiKeyInfo> = keys.toList()
+    @Synchronized fun createKey(name: String, scopes: List<String>): NewApiKeyResult {
+        if (scopes.isEmpty()) return NewApiKeyResult(false, "pick at least one scope")
+        val k = ApiKeyInfo("d${keys.size + 1}", name.ifBlank { "key" }, scopes.sorted(), "2026-11-27T10:00:00Z")
+        keys += k
+        return NewApiKeyResult(true, "Demo key (not usable against a real engine)", "atk_demo_${k.id}_xxxxxxxxxxxxxxxx", k)
+    }
+    @Synchronized fun revokeKey(id: String): ActionResult {
+        val i = keys.indexOfFirst { it.id == id }; if (i < 0) return ActionResult(false, "no such key")
+        keys[i] = keys[i].copy(revoked = true); return ActionResult(true, "Key revoked")
+    }
+    @Synchronized fun intents(): List<OrderIntent> = intents.toList()
+    @Synchronized fun approveIntent(id: String): ActionResult {
+        val i = intents.indexOfFirst { it.id == id && it.status == "PENDING" }
+        if (i < 0) return ActionResult(false, "nothing to approve")
+        intents[i] = intents[i].copy(status = "APPROVED", result = "Demo: approved — no real order is sent in demo mode")
+        return ActionResult(true, intents[i].result)
+    }
+    @Synchronized fun rejectIntent(id: String): ActionResult {
+        val i = intents.indexOfFirst { it.id == id && it.status == "PENDING" }
+        if (i < 0) return ActionResult(false, "nothing to reject")
+        intents[i] = intents[i].copy(status = "REJECTED"); return ActionResult(true, "Rejected")
+    }
 
     @Synchronized fun placeOrder(t: OrderTicket): ActionResult {
         if (killSwitch) return ActionResult(false, "kill switch engaged")

@@ -233,3 +233,22 @@ data class OrderTicket(
     /** What the user saw when confirming; the engine refuses if the mode changed in between. */
     val expectLive: Boolean = false,
 )
+
+@Serializable
+data class ApiKeyInfo(val id: String, val name: String, val scopes: List<String>, val created: String,
+                      @kotlinx.serialization.SerialName("last_used") val lastUsed: String? = null, val revoked: Boolean = false)
+
+@Serializable data class NewApiKey(val name: String, val scopes: List<String>)
+@Serializable data class NewApiKeyResult(val ok: Boolean, val message: String = "", val key: String? = null, val info: ApiKeyInfo? = null)
+
+@Serializable
+data class OrderIntent(
+    val id: String, val ticket: Map<String, kotlinx.serialization.json.JsonElement>,
+    @kotlinx.serialization.SerialName("requested_by") val requestedBy: String,
+    val reason: String, val created: String, val status: String, val result: String = "",
+    @kotlinx.serialization.SerialName("order_id") val orderId: String? = null, val expiresInSec: Int = 0,
+) {
+    private fun s(k: String) = (ticket[k] as? kotlinx.serialization.json.JsonPrimitive)?.content
+    val summary: String get() = listOfNotNull(s("side"), s("qty"), s("symbol"), s("orderType"),
+        s("price")?.takeIf { it != "null" }?.let { "@ $it" }, s("product")).joinToString(" ")
+}

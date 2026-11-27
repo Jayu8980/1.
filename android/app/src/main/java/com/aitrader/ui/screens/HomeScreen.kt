@@ -43,8 +43,10 @@ class HomeViewModel @Inject constructor(private val repo: TradingRepository, set
     ResourceViewModel<Dashboard>(pollMs = 3_000) {
     val demo = settings.settings.map { it.demoMode }.stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val positions = MutableStateFlow<List<Position>>(emptyList())
+    val pending = MutableStateFlow(0)
     override suspend fun fetch() = repo.dashboard().also {
         runCatching { repo.positions() }.onSuccess { p -> positions.value = p.data.filter { it.qty != 0 } }
+        runCatching { repo.intents() }.onSuccess { l -> pending.value = l.data.count { it.status == "PENDING" } }
     }
 
     fun switchMode(mode: TradingMode, phrase: String) = viewModelScope.launch {
@@ -61,6 +63,7 @@ class HomeViewModel @Inject constructor(private val repo: TradingRepository, set
 /** Everything Home needs, so the three layouts are pure functions of state (and screenshot-testable). */
 data class HomeState(
     val d: Dashboard, val demo: Boolean, val venue: String, val positions: List<Position>, val tape: List<TapeItem>,
+    val pendingApprovals: Int = 0,
 )
 
 class HomeActions(
@@ -77,6 +80,7 @@ fun HomeScreen(snackbar: SnackbarHostState, onNavigate: (String) -> Unit = {}, v
     val venue by vm.venue.collectAsStateCompat()
     val positions by vm.positions.collectAsStateCompat()
     val quotes by vm.feed.quotes.collectAsStateCompat()
+    val pending by vm.pending.collectAsStateCompat()
     var liveDialog by remember { mutableStateOf(false) }
     var paperDialog by remember { mutableStateOf(false) }
     var autoDialog by remember { mutableStateOf(false) }
@@ -90,7 +94,7 @@ fun HomeScreen(snackbar: SnackbarHostState, onNavigate: (String) -> Unit = {}, v
         onAuto = { on -> if (on) autoDialog = true else vm.setAuto(false) },
         onVenue = vm::setVenue, onKill = { killDialog = true }, onNavigate = onNavigate)
 
-    StateContent(state, vm::refresh) { l -> HomeContent(HomeState(l.data, demo, venue, positions, tape), actions) }
+    StateContent(state, vm::refresh) { l -> HomeContent(HomeState(l.data, demo, venue, positions, tape, pending), actions) }
 
     if (liveDialog) LiveDialog(onDismiss = { liveDialog = false }) { vm.switchMode(TradingMode.LIVE, it) }
     if (autoDialog) ConfirmDialog("Turn auto-trading ON?",
@@ -105,12 +109,28 @@ fun HomeScreen(snackbar: SnackbarHostState, onNavigate: (String) -> Unit = {}, v
 
 @Composable
 fun HomeContent(s: HomeState, a: HomeActions) {
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val wide = maxWidth >= 720.dp
-        when (LocalAppearance.current.layout) {
-            LayoutStyle.PRO -> ProHome(s, a, wide)
-            LayoutStyle.CARDS -> CardsHome(s, a, wide)
-            LayoutStyle.MINIMAL -> FocusHome(s, a)
+    Column(Modifier.fillMaxSize()) {
+        if (s.pendingApprovals > 0) ApprovalBanner(s.pendingApprovals) { a.onNavigate("approvals") }
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val wide = maxWidth >= 720.dp
+            when (LocalAppearance.current.layout) {
+                LayoutStyle.PRO -> ProHome(s, a, wide)
+                LayoutStyle.CARDS -> CardsHome(s, a, wide)
+                LayoutStyle.MINIMAL -> FocusHome(s, a)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ApprovalBanner(n: Int, onClick: () -> Unit) {
+    Surface(color = Warn.copy(alpha = .18f), modifier = Modifier.fillMaxWidth().testTag("approvalBanner"), onClick = onClick) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.VerifiedUser, null, tint = Warn)
+            Spacer(Modifier.width(10.dp))
+            Text("$n order${if (n > 1) "s" else ""} waiting for your approval", color = Warn, fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f))
+            Text("Review ›", color = Warn)
         }
     }
 }

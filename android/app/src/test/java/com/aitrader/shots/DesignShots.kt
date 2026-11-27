@@ -53,6 +53,9 @@ class DesignShots {
             MarketsContent(items, q, FeedState.Live(mapOf("angelone-ws" to emptyList()), emptyList(), "angelone"), "table", {}, {}, {})
         }
     }
+    @Test fun home_cards_pending_approval() = paparazzi.snapshot {
+        Frame(Appearance(LayoutStyle.CARDS)) { HomeContent(state().copy(pendingApprovals = 1), HomeActions()) }
+    }
     @Test fun appearance_picker() = paparazzi.snapshot {
         Frame(Appearance(LayoutStyle.CARDS)) { AppearancePicker(Appearance(LayoutStyle.CARDS)) {} }
     }

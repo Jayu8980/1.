@@ -74,6 +74,13 @@ class Settings(BaseSettings):
     auto_time_stop_bars: int = 24
     auto_allow_crypto: bool = False
 
+    # --- external API + MCP ----------------------------------------------------
+    apikeys_path: str = "data/api_keys.json"
+    api_rate_per_min: int = 120
+    intent_ttl_s: int = 300                  # live-order approval requests expire after 5 min
+    mcp_enabled: bool = True
+    domain: str = ""                         # ENGINE_DOMAIN: allowed Host for /mcp (DNS-rebinding guard)
+
     # --- paper broker --------------------------------------------------------
     paper_starting_capital: Decimal = Decimal("1000000")
     paper_slippage_bps: Decimal = Decimal("5")
