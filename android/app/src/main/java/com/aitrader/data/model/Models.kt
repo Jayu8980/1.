@@ -150,3 +150,22 @@ data class AuditEntry(val ts: String, val event: String, val data: String, val h
 @Serializable data class KillSwitchRequest(val engaged: Boolean, val reason: String)
 @Serializable data class ExitRequest(val symbol: String, val exchange: String, val product: String)
 @Serializable data class ActionResult(val ok: Boolean, val message: String = "")
+
+@Serializable
+data class BrokerInfo(
+    val id: String,
+    val name: String,
+    val auth: String,                 // OAUTH | TOTP | TOKEN
+    val segments: List<String>,
+    val docs: String = "",
+    val requiredSettings: List<String> = emptyList(),
+    val active: Boolean,
+    val configured: Boolean,
+    val connected: Boolean,
+    val account: String = "",
+    val expiresAt: String? = null,
+    val message: String = "",
+)
+
+@Serializable
+data class ConnectResult(val ok: Boolean, val loginUrl: String? = null, val message: String = "")

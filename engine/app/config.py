@@ -28,6 +28,19 @@ class Settings(BaseSettings):
     smartapi_mac: str = "00:00:00:00:00:00"
     smartapi_timeout_s: float = 10.0
 
+    # --- broker selection & other brokers (see docs/trading/BROKERS.md) ------
+    live_broker: str = "angelone"           # angelone | zerodha | upstox | dhan | fyers
+    public_base_url: str = ""               # https://your-vm  (OAuth redirect base)
+    token_store_path: str = "data/broker_tokens.json"
+    zerodha_api_key: str = ""
+    zerodha_api_secret: SecretStr = SecretStr("")
+    upstox_client_id: str = ""
+    upstox_client_secret: SecretStr = SecretStr("")
+    dhan_client_id: str = ""
+    dhan_access_token: SecretStr = SecretStr("")
+    fyers_app_id: str = ""                  # e.g. "XA1234-100"
+    fyers_secret: SecretStr = SecretStr("")
+
     # --- compliance ----------------------------------------------------------
     static_ip: str = ""                     # IP registered with SmartAPI
     ip_check_url: str = "https://api.ipify.org"
@@ -44,6 +57,9 @@ class Settings(BaseSettings):
     # --- api -----------------------------------------------------------------
     jwt_secret: SecretStr = SecretStr("change-me")
     jwt_ttl_min: int = 30
+    app_user: str = ""
+    app_password_hash: str = ""             # python -m app.api.security
+    device_keys_path: str = "data/device_keys.json"
 
 
 @lru_cache

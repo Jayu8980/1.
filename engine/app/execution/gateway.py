@@ -50,6 +50,8 @@ class ExecutionGateway:
                     problems.append("confirmation phrase mismatch")
                 if self.kill_switch:
                     problems.append("kill switch is engaged")
+                if self.live is not None and hasattr(self.live, "status") and not (await self.live.status()).connected:
+                    problems.append(f"live broker '{self.live.name}' is not connected")
                 if problems:
                     await self.audit.record("mode.live_denied", actor=actor, problems=problems)
                     raise OrderBlocked("; ".join(problems), "LIVE_DENIED")

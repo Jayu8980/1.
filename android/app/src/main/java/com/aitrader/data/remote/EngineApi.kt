@@ -16,12 +16,16 @@ interface EngineApi {
     @GET("analyst/{symbol}") suspend fun analyst(@Path("symbol") symbol: String): Analysis
     @GET("audit") suspend fun audit(@Query("limit") limit: Int = 200): List<AuditEntry>
     @POST("backtests") suspend fun backtest(@Body body: BacktestRequest): Tearsheet
+    @GET("brokers") suspend fun brokers(): List<BrokerInfo>
+    @POST("brokers/{id}/disconnect") suspend fun disconnectBroker(@Path("id") id: String): ActionResult
 
     // ---- money-touching (signed) ----
     @POST("positions/exit") suspend fun exit(@Body body: ExitRequest): ActionResult
     @PATCH("strategies/{id}") suspend fun updateStrategy(@Path("id") id: String, @Body body: StrategyUpdate): ActionResult
     @PUT("risk") suspend fun updateRisk(@Body body: RiskConfig): ActionResult
     @POST("mode") suspend fun setMode(@Body body: ModeRequest): ActionResult
+    @POST("brokers/{id}/connect") suspend fun connectBroker(@Path("id") id: String): ConnectResult
+    @POST("brokers/{id}/activate") suspend fun activateBroker(@Path("id") id: String): ActionResult
     // Kill switch is intentionally NOT biometric-gated: stopping must be instant.
     @POST("kill-switch") suspend fun killSwitch(@Body body: KillSwitchRequest): ActionResult
 }

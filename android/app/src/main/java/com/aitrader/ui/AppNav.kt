@@ -25,6 +25,7 @@ enum class Dest(val route: String, val title: String, val icon: ImageVector) {
     Backtest("backtest", "Backtest", Icons.Filled.QueryStats),
     Analyst("analyst", "AI Analyst", Icons.Filled.Psychology),
     Logs("logs", "Logs & alerts", Icons.Filled.History),
+    Brokers("brokers", "Brokers", Icons.Filled.AccountBalance),
     Settings("settings", "Settings", Icons.Filled.Settings),
 }
 
@@ -32,8 +33,12 @@ private val bottom = listOf(Dest.Home, Dest.Positions, Dest.Signals, Dest.Risk, 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppNav(startRoute: String = Dest.Home.route) {
+fun AppNav(startRoute: String = Dest.Home.route, pendingRoute: String? = null, onRouteHandled: () -> Unit = {}) {
     val nav = rememberNavController()
+    LaunchedEffect(pendingRoute) {
+        pendingRoute?.takeIf { r -> Dest.entries.any { it.route == r } }?.let { nav.navigate(it) { launchSingleTop = true } }
+        if (pendingRoute != null) onRouteHandled()
+    }
     val snackbar = remember { SnackbarHostState() }
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route
@@ -66,6 +71,7 @@ fun AppNav(startRoute: String = Dest.Home.route) {
             composable(Dest.Backtest.route) { BacktestScreen() }
             composable(Dest.Analyst.route) { AnalystScreen() }
             composable(Dest.Logs.route) { LogsScreen(snackbar) }
+            composable(Dest.Brokers.route) { BrokersScreen(snackbar) }
             composable(Dest.Settings.route) { SettingsScreen(snackbar) }
         }
     }
@@ -74,7 +80,7 @@ fun AppNav(startRoute: String = Dest.Home.route) {
 @Composable
 private fun MoreScreen(go: (Dest) -> Unit) {
     Column(Modifier.padding(vertical = 8.dp)) {
-        listOf(Dest.Strategies, Dest.Backtest, Dest.Analyst, Dest.Logs, Dest.Settings).forEach { d ->
+        listOf(Dest.Brokers, Dest.Strategies, Dest.Backtest, Dest.Analyst, Dest.Logs, Dest.Settings).forEach { d ->
             ListItem(headlineContent = { Text(d.title) }, leadingContent = { Icon(d.icon, null) },
                 modifier = Modifier.clickable { go(d) }.testTag("more_${d.route}"))
         }

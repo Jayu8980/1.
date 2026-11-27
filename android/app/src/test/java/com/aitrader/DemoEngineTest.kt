@@ -63,4 +63,15 @@ class DemoEngineTest {
         assertEquals(a.curve.size, a.drawdown.size)
         assertTrue(a.drawdown.all { it <= 0.0 })
     }
+
+    @Test fun broker_connect_activate_flow() {
+        assertEquals("angelone", e.brokers().single { it.active }.id)
+        assertFalse(e.activateBroker("zerodha").ok)                 // not connected yet
+        assertFalse(e.connectBroker("upstox").ok)                   // not configured on server
+        assertTrue(e.connectBroker("zerodha").ok)
+        assertTrue(e.activateBroker("zerodha").ok)
+        assertEquals(listOf("zerodha"), e.brokers().filter { it.active }.map { it.id })
+        assertTrue(e.disconnectBroker("zerodha").ok)
+        assertFalse(e.brokers().single { it.id == "zerodha" }.connected)
+    }
 }

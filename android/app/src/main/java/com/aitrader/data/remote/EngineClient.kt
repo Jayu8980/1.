@@ -28,6 +28,7 @@ internal fun requiresSignature(method: String, path: String): Boolean = when {
     method == "PATCH" && path.contains("/strategies/") -> true
     method == "PUT" && path.endsWith("/risk") -> true
     method == "POST" && path.endsWith("/mode") -> true
+    method == "POST" && path.contains("/brokers/") && (path.endsWith("/connect") || path.endsWith("/activate")) -> true
     else -> false
 }
 

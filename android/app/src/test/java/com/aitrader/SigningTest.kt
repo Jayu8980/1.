@@ -9,12 +9,16 @@ class SigningTest {
         assertTrue(requiresSignature("PATCH", "/api/v1/strategies/trend"))
         assertTrue(requiresSignature("PUT", "/api/v1/risk"))
         assertTrue(requiresSignature("POST", "/api/v1/mode"))
+        assertTrue(requiresSignature("POST", "/api/v1/brokers/zerodha/connect"))
+        assertTrue(requiresSignature("POST", "/api/v1/brokers/dhan/activate"))
     }
 
     @Test fun reads_and_kill_switch_do_not() {
         assertFalse(requiresSignature("GET", "/api/v1/risk"))
         assertFalse(requiresSignature("GET", "/api/v1/positions"))
         assertFalse(requiresSignature("POST", "/api/v1/kill-switch"))
+        assertFalse(requiresSignature("GET", "/api/v1/brokers"))
+        assertFalse(requiresSignature("POST", "/api/v1/brokers/zerodha/disconnect"))
     }
 
     @Test fun payload_is_canonical() {

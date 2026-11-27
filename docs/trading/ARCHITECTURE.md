@@ -26,7 +26,7 @@ flowchart LR
     RISK --> EXEC[Execution gateway]
     EXEC --> IPG[Static-IP guard]
     IPG --> RL[Rate limiter ≤8 OPS]
-    RL --> SA[SmartAPI broker]
+    RL --> SA[Broker adapters<br/>Angel One · Zerodha · Upstox · Dhan · Fyers]
     EXEC --> PAPER[Paper broker]
     MON[Monitor / drift] --> BUS
     AUD[(Hash-chained<br/>audit log)]
@@ -34,7 +34,7 @@ flowchart LR
     SESS[Session mgr<br/>daily logout + TOTP login] --> SA
   end
 
-  SA -->|REST| ANGEL[(Angel One SmartAPI)]
+  SA -->|REST| ANGEL[(Active broker API)]
   MON -->|push| FCMS[Firebase Cloud Messaging] --> FCM
 ```
 
@@ -54,7 +54,7 @@ to PAPER and blocks re-arming until released.
   tests/          pytest, SmartAPI fully mocked with respx
 /android    Kotlin/Compose app, signed APK in android/dist/
 /infra      VM bootstrap, Caddy, systemd, firewall (Phase 6)
-/docs/trading   this document
+/docs/trading   this document, BROKERS.md (multi-broker setup)
 ```
 
 ## Phases

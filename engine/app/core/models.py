@@ -16,6 +16,9 @@ class Contract(BaseModel):
     instrument: Instrument = Instrument.EQUITY
     lot_size: int = 1
     tick_size: Decimal = Decimal("0.05")
+    # Broker-specific instrument ids from each broker's instrument master, e.g.
+    # {"upstox": "NSE_EQ|INE062A01020", "dhan": "3045", "fyers": "NSE:SBIN-EQ"}
+    ids: dict[str, str] = Field(default_factory=dict)
 
     @property
     def key(self) -> str:

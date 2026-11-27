@@ -220,6 +220,46 @@ class DemoEngine(seed: Long = 42, private val now: () -> Long = System::currentT
         sources = listOf("demo"), generatedAt = now(), synthetic = true,
     )
 
+    private val brokers = linkedMapOf(
+        "angelone" to BrokerInfo("angelone", "Angel One (SmartAPI)", "TOTP", listOf("NSE", "BSE", "NFO", "BFO", "MCX"),
+            active = true, configured = true, connected = true, account = "DEMO01", message = "Connected (daily TOTP login)"),
+        "zerodha" to BrokerInfo("zerodha", "Zerodha (Kite Connect)", "OAUTH", listOf("NSE", "BSE", "NFO", "BFO", "MCX"),
+            active = false, configured = true, connected = false, message = "Not connected"),
+        "upstox" to BrokerInfo("upstox", "Upstox", "OAUTH", listOf("NSE", "BSE", "NFO", "BFO", "MCX"),
+            requiredSettings = listOf("ENGINE_UPSTOX_CLIENT_ID", "ENGINE_UPSTOX_CLIENT_SECRET"),
+            active = false, configured = false, connected = false, message = "API keys not set on server"),
+        "dhan" to BrokerInfo("dhan", "Dhan", "TOKEN", listOf("NSE", "BSE", "NFO", "BFO", "MCX"),
+            active = false, configured = true, connected = false, message = "Not connected"),
+        "fyers" to BrokerInfo("fyers", "Fyers", "OAUTH", listOf("NSE", "BSE", "NFO", "BFO", "MCX"),
+            active = false, configured = true, connected = false, message = "Not connected"),
+    )
+
+    @Synchronized fun brokers(): List<BrokerInfo> = brokers.values.toList()
+
+    @Synchronized fun connectBroker(id: String): ConnectResult {
+        val b = brokers[id] ?: return ConnectResult(false, null, "unknown broker")
+        if (!b.configured) return ConnectResult(false, null,
+            "${b.name} is not configured on the server: set ${b.requiredSettings.joinToString()}")
+        brokers[id] = b.copy(connected = true, account = "DEMO-${id.uppercase().take(3)}", message = "Connected (simulated)")
+        log("broker.connected", "$id (simulated)")
+        return ConnectResult(true, null, "${b.name} connected (demo — no real login)")
+    }
+
+    @Synchronized fun activateBroker(id: String): ActionResult {
+        val b = brokers[id] ?: return ActionResult(false, "unknown broker")
+        if (!b.connected) return ActionResult(false, "${b.name} is not connected")
+        brokers.replaceAll { k, v -> v.copy(active = k == id) }
+        log("broker.activated", id)
+        return ActionResult(true, "${b.name} is now the live broker")
+    }
+
+    @Synchronized fun disconnectBroker(id: String): ActionResult {
+        val b = brokers[id] ?: return ActionResult(false, "unknown broker")
+        brokers[id] = b.copy(connected = false, account = "", message = "Not connected")
+        log("broker.disconnected", id)
+        return ActionResult(true, "Disconnected ${b.name}")
+    }
+
     @Synchronized fun audit(): List<AuditEntry> = audit.toList().reversed()
 
     private fun log(event: String, data: String) {

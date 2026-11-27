@@ -79,7 +79,22 @@ class TradingRepository @Inject constructor(
     suspend fun backtest(req: BacktestRequest) =
         load("bt:${req.strategyId}:${req.from}:${req.to}", Tearsheet.serializer(), { demo.backtest(req) }) { backtest(req) }
 
+    suspend fun brokers() = load("brokers", ListSerializer(BrokerInfo.serializer()), demo::brokers) { brokers() }
+
     // ------------------------------------------------------------ actions
+    /** OAUTH brokers return a loginUrl for the system browser; TOTP/TOKEN brokers connect server-side. */
+    suspend fun connectBroker(id: String): ConnectResult = try {
+        if (isDemo()) { signer.confirm("Connect $id", "Demo mode — simulated"); demo.connectBroker(id) }
+        else client.api().connectBroker(id)
+    } catch (e: Exception) { ConnectResult(false, null, describe(e)) }
+
+    suspend fun activateBroker(id: String) =
+        act("Use $id for LIVE orders", { demo.activateBroker(id) }) { activateBroker(id) }
+
+    suspend fun disconnectBroker(id: String): ActionResult = try {
+        if (isDemo()) demo.disconnectBroker(id) else client.api().disconnectBroker(id)
+    } catch (e: Exception) { ActionResult(false, describe(e)) }
+
     suspend fun exit(p: Position) = act("Exit ${p.symbol}", { demo.exit(p.symbol, p.product) }) {
         exit(ExitRequest(p.symbol, p.exchange, p.product))
     }
