@@ -46,7 +46,8 @@ class BrokersViewModel @Inject constructor(private val repo: TradingRepository) 
 }
 
 private fun authLabel(a: String) = when (a) {
-    "OAUTH" -> "Browser login (daily)"; "TOTP" -> "Server TOTP login (daily)"; "TOKEN" -> "Access token on server"; else -> a
+    "OAUTH" -> "Browser login (daily)"; "TOTP" -> "Server TOTP login (daily)"; "TOKEN" -> "Access token on server"
+    "API_KEY" -> "API key + secret on server (signed)"; else -> a
 }
 
 @Composable
@@ -98,6 +99,7 @@ private fun BrokerCard(b: BrokerInfo, onConnect: () -> Unit, onActivate: () -> U
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(b.name, fontWeight = FontWeight.Bold)
                     if (b.active) { Spacer(Modifier.width(8.dp)); Chip("ACTIVE", PaperBlue) }
+                    if (b.segments.any { it.startsWith("CRYPTO") }) { Spacer(Modifier.width(6.dp)); Chip("CRYPTO 24×7", Warn) }
                 }
                 Text(authLabel(b.auth) + " · " + b.segments.joinToString(" "), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -113,6 +115,9 @@ private fun BrokerCard(b: BrokerInfo, onConnect: () -> Unit, onActivate: () -> U
         }
         Text(status, style = MaterialTheme.typography.bodySmall,
             color = if (b.connected) Profit else MaterialTheme.colorScheme.onSurfaceVariant)
+        if (b.segments.any { it.startsWith("CRYPTO") })
+            Text("Crypto derivatives: not SEBI-regulated, trades 24×7, separate fees and tax treatment.",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (!b.configured && b.requiredSettings.isNotEmpty())
             Text("Set on server: ${b.requiredSettings.joinToString()}", style = MaterialTheme.typography.labelSmall, color = Warn)
         Spacer(Modifier.height(8.dp))

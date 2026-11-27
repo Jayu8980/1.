@@ -16,6 +16,9 @@ class Contract(BaseModel):
     instrument: Instrument = Instrument.EQUITY
     lot_size: int = 1
     tick_size: Decimal = Decimal("0.05")
+    # Value of one contract in the underlying (Delta BTCUSD = 0.001 BTC). 1 for Indian cash/F&O,
+    # where quantity is already in shares/units.
+    multiplier: Decimal = Decimal("1")
     # Broker-specific instrument ids from each broker's instrument master, e.g.
     # {"upstox": "NSE_EQ|INE062A01020", "dhan": "3045", "fyers": "NSE:SBIN-EQ"}
     ids: dict[str, str] = Field(default_factory=dict)
@@ -81,7 +84,9 @@ class Position(BaseModel):
 
     @property
     def unrealized_pnl(self) -> Decimal:
-        return (self.ltp - self.avg_price) * self.net_qty if self.net_qty else Decimal("0")
+        if not self.net_qty:
+            return Decimal("0")
+        return (self.ltp - self.avg_price) * self.net_qty * self.contract.multiplier
 
 
 class Funds(BaseModel):

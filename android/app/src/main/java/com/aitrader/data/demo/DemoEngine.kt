@@ -232,6 +232,8 @@ class DemoEngine(seed: Long = 42, private val now: () -> Long = System::currentT
             active = false, configured = true, connected = false, message = "Not connected"),
         "fyers" to BrokerInfo("fyers", "Fyers", "OAUTH", listOf("NSE", "BSE", "NFO", "BFO", "MCX"),
             active = false, configured = true, connected = false, message = "Not connected"),
+        "delta" to BrokerInfo("delta", "Delta Exchange", "API_KEY", listOf("CRYPTO_FUT", "CRYPTO_OPT"),
+            active = false, configured = true, connected = false, message = "Not connected"),
     )
 
     @Synchronized fun brokers(): List<BrokerInfo> = brokers.values.toList()

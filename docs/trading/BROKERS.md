@@ -11,6 +11,7 @@ Switch the active broker from the app (Brokers screen, biometric) — only allow
 | Upstox | Browser OAuth | yes, token dies ~03:30 IST | `ENGINE_UPSTOX_CLIENT_ID/SECRET` | **required** `upstox` = `instrument_key` e.g. `NSE_EQ|INE062A01020` |
 | Dhan | Access token on server | when the token expires (≤30 days) | `ENGINE_DHAN_CLIENT_ID/ACCESS_TOKEN` | **required** `dhan` = `securityId` |
 | Fyers | Browser OAuth | yes | `ENGINE_FYERS_APP_ID/SECRET` | optional `fyers` (defaults to `NSE:<symbol>`) |
+| Delta Exchange (crypto) | API key + secret, HMAC-signed per request | no (keys don't expire) | `ENGINE_DELTA_API_KEY/SECRET`, `ENGINE_DELTA_REGION` | optional `delta` = product_symbol (defaults to symbol, e.g. `BTCUSD`) |
 
 ## Setup, per broker
 1. Create an API app in the broker's developer console.
@@ -21,6 +22,17 @@ Switch the active broker from the app (Brokers screen, biometric) — only allow
 5. App → More → **Brokers** → *Log in* / *Connect*. OAuth opens the broker's login page in your
    browser; after login the engine's page has a **Return to AI Trader** link (`aitrader://brokers`).
 6. Tap **Use for LIVE** on the broker you want (PAPER mode only, biometric).
+
+## Delta Exchange specifics
+- Crypto derivatives (perpetuals, futures, options), **24×7**, not SEBI-regulated. Use exchange `DELTA`
+  and set `Contract.multiplier` to the contract value (BTCUSD = 0.001 BTC); quantity = contracts.
+- Regions: `india` (api.india.delta.exchange), `global`, and the `india-testnet` / `global-testnet`
+  sandboxes — **start on testnet**.
+- Create the API key with trading permission and **whitelist the VM's static IP** on the key. An
+  un-whitelisted IP surfaces as a clear error on Connect.
+- Fees: separate `CryptoFeeSchedule` (taker 0.05% / maker 0.02% of notional + 18% GST, verify your tier).
+  Indian crypto taxes (income tax, TDS on VDA) are not modelled as fill costs.
+- `Funds` reads the wallet in `ENGINE_DELTA_SETTLE_ASSET` (default `USD`).
 
 ## How a connection works
 ```
@@ -35,7 +47,7 @@ Engine ──verifies state (10 min, single use) ──► exchanges token with 
 - Each adapter has its own order rate limiter: min(`ENGINE_ORDERS_PER_SEC`, the broker's own cap).
 
 ## ⚠ Before real money
-The Zerodha, Upstox, Dhan and Fyers adapters are written from the brokers' public API docs and
+The Zerodha, Upstox, Dhan, Fyers and Delta adapters are written from the brokers' public API docs and
 tested only against mocked responses. Before LIVE on any of them, run a small manual check on a real
 account: place → modify → cancel a far-from-market limit order, and check positions/funds parsing.
 Instrument masters (for `Contract.ids`) get loaded in Phase 2.

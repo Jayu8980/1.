@@ -67,7 +67,8 @@ def test_list_requires_jwt_and_shows_all_brokers(env):
     c, _, app = env
     assert TestClient(app).get("/api/v1/brokers").status_code == 401
     rows = {b["id"]: b for b in c.get("/api/v1/brokers").json()}
-    assert set(rows) == {"angelone", "zerodha", "upstox", "dhan", "fyers"}
+    assert set(rows) == {"angelone", "zerodha", "upstox", "dhan", "fyers", "delta"}
+    assert rows["delta"]["auth"] == "API_KEY" and not rows["delta"]["configured"]
     assert rows["zerodha"]["configured"] and rows["zerodha"]["auth"] == "OAUTH"
     assert not rows["upstox"]["configured"] and "ENGINE_UPSTOX_CLIENT_ID" in rows["upstox"]["requiredSettings"]
     assert rows["angelone"]["active"]

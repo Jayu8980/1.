@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     smartapi_timeout_s: float = 10.0
 
     # --- broker selection & other brokers (see docs/trading/BROKERS.md) ------
-    live_broker: str = "angelone"           # angelone | zerodha | upstox | dhan | fyers
+    live_broker: str = "angelone"           # angelone | zerodha | upstox | dhan | fyers | delta
     public_base_url: str = ""               # https://your-vm  (OAuth redirect base)
     token_store_path: str = "data/broker_tokens.json"
     zerodha_api_key: str = ""
@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     dhan_access_token: SecretStr = SecretStr("")
     fyers_app_id: str = ""                  # e.g. "XA1234-100"
     fyers_secret: SecretStr = SecretStr("")
+    delta_api_key: str = ""
+    delta_api_secret: SecretStr = SecretStr("")
+    delta_region: str = "india"              # india | global | india-testnet | global-testnet
+    delta_settle_asset: str = "USD"           # wallet asset used for funds/margin
 
     # --- compliance ----------------------------------------------------------
     static_ip: str = ""                     # IP registered with SmartAPI

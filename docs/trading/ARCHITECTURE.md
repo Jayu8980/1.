@@ -26,7 +26,7 @@ flowchart LR
     RISK --> EXEC[Execution gateway]
     EXEC --> IPG[Static-IP guard]
     IPG --> RL[Rate limiter ≤8 OPS]
-    RL --> SA[Broker adapters<br/>Angel One · Zerodha · Upstox · Dhan · Fyers]
+    RL --> SA[Broker adapters<br/>Angel One · Zerodha · Upstox · Dhan · Fyers · Delta]
     EXEC --> PAPER[Paper broker]
     MON[Monitor / drift] --> BUS
     AUD[(Hash-chained<br/>audit log)]

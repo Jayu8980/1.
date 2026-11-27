@@ -73,5 +73,8 @@ class DemoEngineTest {
         assertEquals(listOf("zerodha"), e.brokers().filter { it.active }.map { it.id })
         assertTrue(e.disconnectBroker("zerodha").ok)
         assertFalse(e.brokers().single { it.id == "zerodha" }.connected)
+        assertTrue(e.connectBroker("delta").ok)
+        assertTrue(e.activateBroker("delta").ok)
+        assertEquals("API_KEY", e.brokers().single { it.active }.auth)
     }
 }

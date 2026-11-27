@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 
-from app.core.enums import Instrument, Product, Side
+from app.core.enums import Exchange, Instrument, Product, Side
 
 D = Decimal
 
@@ -46,6 +46,16 @@ class CostSchedule:
 
 
 @dataclass(frozen=True)
+class CryptoFeeSchedule:
+    """Delta Exchange style: % of notional per fill + GST on the fee. No STT/stamp/SEBI.
+    !! Verify current maker/taker rates for your Delta account tier. Indian tax on crypto
+    !! (income tax / TDS on VDA) is NOT modelled here — it's a tax-filing matter, not a fill cost."""
+    taker_pct: Decimal = D("0.05")
+    maker_pct: Decimal = D("0.02")
+    gst_pct: Decimal = D("18")
+
+
+@dataclass(frozen=True)
 class CostBreakdown:
     turnover: Decimal
     brokerage: Decimal
@@ -67,10 +77,16 @@ def _r(x: Decimal) -> Decimal:
 
 
 def compute_costs(side: Side, qty: int, price: Decimal, instrument: Instrument,
-                  product: Product, schedule: CostSchedule = CostSchedule()) -> CostBreakdown:
+                  product: Product, schedule: CostSchedule = CostSchedule(), *,
+                  exchange: Exchange | None = None, multiplier: Decimal = D("1"),
+                  crypto: CryptoFeeSchedule = CryptoFeeSchedule(), maker: bool = False) -> CostBreakdown:
     """Costs for one executed order leg. For options, `price` is the premium."""
+    turnover = D(qty) * D(price) * D(multiplier)
+    if exchange is Exchange.DELTA:
+        fee = turnover * (crypto.maker_pct if maker else crypto.taker_pct) / 100
+        z = D("0")
+        return CostBreakdown(_r(turnover), _r(fee), z, z, z, z, _r(fee * crypto.gst_pct / 100))
     rt = schedule.rates_for(instrument, product)
-    turnover = D(qty) * D(price)
     if rt.brokerage_flat is not None:
         brokerage = rt.brokerage_flat
     else:

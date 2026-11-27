@@ -11,6 +11,7 @@ import httpx
 
 from app.broker.adapters.angelone import AngelOneBroker
 from app.broker.adapters.base import AuthKind, RestBroker
+from app.broker.adapters.delta import DeltaBroker
 from app.broker.adapters.dhan import DhanBroker
 from app.broker.adapters.fyers import FyersBroker
 from app.broker.adapters.upstox import UpstoxBroker
@@ -23,7 +24,7 @@ from app.core.audit import AuditLog
 from app.core.errors import BrokerError, OrderBlocked
 from app.core.ratelimit import SlidingWindowLimiter
 
-SUPPORTED = ("angelone", "zerodha", "upstox", "dhan", "fyers")
+SUPPORTED = ("angelone", "zerodha", "upstox", "dhan", "fyers", "delta")
 
 
 def redirect_uri(s: Settings, broker_id: str) -> str:
@@ -49,6 +50,8 @@ def build_brokers(s: Settings, tokens: TokenStore, audit: AuditLog,
         "dhan": DhanBroker(tokens, s.dhan_client_id, s.dhan_access_token.get_secret_value(), ops, transport=transport),
         "fyers": FyersBroker(tokens, s.fyers_app_id, s.fyers_secret.get_secret_value(),
                              redirect_uri(s, "fyers"), ops, transport=transport),
+        "delta": DeltaBroker(tokens, s.delta_api_key, s.delta_api_secret.get_secret_value(), s.delta_region,
+                             s.delta_settle_asset, ops, transport=transport),
     }
 
 

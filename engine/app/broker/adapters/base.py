@@ -20,6 +20,7 @@ class AuthKind(StrEnum):
     OAUTH = "OAUTH"        # browser login -> redirect to engine callback (Zerodha, Upstox, Fyers)
     TOTP = "TOTP"          # server logs in itself with TOTP (Angel One)
     TOKEN = "TOKEN"        # long-lived access token configured on server (Dhan)
+    API_KEY = "API_KEY"    # API key + secret on server, every request HMAC-signed (Delta Exchange)
 
 
 @dataclass(frozen=True)

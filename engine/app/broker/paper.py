@@ -144,7 +144,7 @@ class PaperBroker(Broker):
         return o
 
     def _margin(self, c: Contract, product: Product, qty: int, price: Decimal) -> Decimal:
-        notional = abs(D(qty)) * D(price)
+        notional = abs(D(qty)) * D(price) * c.multiplier
         if c.instrument is Instrument.OPTION:
             return notional if qty > 0 else notional * self.short_option_margin_multiple  # crude SPAN proxy
         if c.instrument is Instrument.FUTURE:
@@ -197,7 +197,8 @@ class PaperBroker(Broker):
 
     def _execute(self, o: Order, px: Decimal) -> Fill:
         req = o.request
-        cb = compute_costs(req.side, req.quantity, px, req.contract.instrument, req.product, self.costs)
+        cb = compute_costs(req.side, req.quantity, px, req.contract.instrument, req.product, self.costs,
+                           exchange=req.contract.exchange, multiplier=req.contract.multiplier)
         now = self._clock()
         key = (req.contract.key, req.product)
         pos = self._positions.setdefault(key, Position(contract=req.contract, product=req.product))
@@ -210,7 +211,7 @@ class PaperBroker(Broker):
         else:                                               # reduce / close / flip
             closed = min(abs(cur), abs(signed))
             direction = 1 if cur > 0 else -1
-            pos.realized_pnl += (px - avg) * closed * direction
+            pos.realized_pnl += (px - avg) * closed * direction * req.contract.multiplier
             new = cur + signed
             pos.net_qty = new
             if new == 0:

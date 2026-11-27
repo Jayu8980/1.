@@ -11,6 +11,7 @@ class Exchange(StrEnum):
     BSE = "BSE"
     NFO = "NFO"   # NSE F&O
     BFO = "BFO"   # BSE F&O
+    DELTA = "DELTA"  # Delta Exchange crypto derivatives (24x7, not an Indian stock exchange)
 
 
 class Side(StrEnum):
