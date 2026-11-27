@@ -20,6 +20,8 @@ from app.core.models import Order, OrderRequest
 
 from .risk_hook import RiskVeto
 
+PROTECT = ":PROTECT"   # strategy-tag suffix for protective stop orders
+
 
 class ExecutionGateway:
     def __init__(self, paper: Broker, risk: RiskVeto, audit: AuditLog, *,
@@ -69,6 +71,10 @@ class ExecutionGateway:
         for b in {id(x): x for x in (self.paper, self.live) if x}.values():
             try:
                 for o in await b.orders():
+                    # Protective stop-losses stay at the broker: cancelling them would leave
+                    # open positions unprotected. Entries and everything else are cancelled.
+                    if o.request.strategy.endswith(PROTECT):
+                        continue
                     if o.status.value in ("PENDING", "OPEN"):
                         try:
                             await b.cancel_order(o.order_id)
@@ -93,14 +99,19 @@ class ExecutionGateway:
                 return (p.net_qty > 0 > signed or p.net_qty < 0 < signed) and abs(signed) <= abs(p.net_qty)
         return False
 
-    async def place(self, req: OrderRequest, ref_price: Decimal | None = None, *, exit_only: bool = False) -> Order:
+    def venue_broker(self, force_paper: bool) -> Broker:
+        return self.paper if force_paper else self.broker
+
+    async def place(self, req: OrderRequest, ref_price: Decimal | None = None, *, exit_only: bool = False,
+                    force_paper: bool = False) -> Order:
         """exit_only=True: allowed under the kill switch and exempt from size limits, but ONLY
         if it reduces an existing position (verified against the broker)."""
         mode = self.mode
         ctx = dict(mode=mode, cid=req.client_order_id, strategy=req.strategy, symbol=req.contract.key,
-                   side=req.side, qty=req.quantity, type=req.order_type, price=req.price, exit_only=exit_only)
+                   side=req.side, qty=req.quantity, type=req.order_type, price=req.price, exit_only=exit_only,
+                   venue="paper" if force_paper or mode is Mode.PAPER else "live")
         try:
-            broker = self.broker
+            broker = self.venue_broker(force_paper)
             if broker is None:
                 raise OrderBlocked("no broker for mode", "NO_BROKER")
             if exit_only:
@@ -111,10 +122,10 @@ class ExecutionGateway:
             if ref_price is None:
                 ref_price = req.price if req.price is not None else await broker.ltp(req.contract)
             if not exit_only:
-                decision = await self.risk.check(req, Decimal(ref_price))
+                decision = await self.risk.check(req, Decimal(ref_price), broker)
                 if not decision.approved:
                     raise OrderBlocked(decision.reason, "RISK_VETO")
-            if mode is Mode.LIVE:
+            if broker is self.live and mode is Mode.LIVE:
                 ip = await self.ip_guard.assert_ok()
                 ctx["egress_ip"] = ip
         except OrderBlocked as e:
@@ -130,7 +141,17 @@ class ExecutionGateway:
                                 fill_price=order.avg_fill_price, msg=order.message, **ctx)
         return order
 
-    async def cancel(self, order_id: str, actor: str = "system") -> Order:
-        o = await self.broker.cancel_order(order_id)  # cancels always allowed, even under kill switch
+    async def cancel(self, order_id: str, actor: str = "system", force_paper: bool = False) -> Order:
+        o = await self.venue_broker(force_paper).cancel_order(order_id)  # always allowed, even under kill switch
         await self.audit.record("order.cancel", order_id=order_id, actor=actor, status=o.status)
+        return o
+
+    async def modify(self, order_id: str, *, force_paper: bool = False, actor: str = "system", **kw) -> Order:
+        """Modify a resting order (stop trailing / resizing). Only tightens risk by construction of callers."""
+        b = self.venue_broker(force_paper)
+        if b is self.live and self.mode is Mode.LIVE:
+            await self.ip_guard.assert_ok()
+        o = await b.modify_order(order_id, **kw)
+        await self.audit.record("order.modify", order_id=order_id, actor=actor,
+                                **{k: v for k, v in kw.items() if v is not None})
         return o

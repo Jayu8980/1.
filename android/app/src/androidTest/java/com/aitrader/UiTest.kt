@@ -38,4 +38,13 @@ class UiTest {
         rule.setContent { AITraderTheme { ModeBadge(TradingMode.LIVE, demo = false) } }
         rule.onNodeWithText("LIVE").assertExists()
     }
+
+    @Test fun trading_controls_switches_call_back() {
+        var live: Boolean? = null; var auto: Boolean? = null
+        val d = com.aitrader.data.model.Dashboard(TradingMode.PAPER, false, 0.0, 0.0, 0.0, 1e6, 0, emptyList(), 0L)
+        rule.setContent { AITraderTheme { com.aitrader.ui.screens.TradingControls(d, false, { live = it }, { auto = it }) } }
+        rule.onNodeWithTag("liveSwitch").performClick()
+        rule.onNodeWithTag("autoSwitch").performClick()
+        assertEquals(true, live); assertEquals(true, auto)
+    }
 }

@@ -16,6 +16,11 @@ from app.core.audit import AuditLog
 from app.core.enums import Exchange
 from app.core.ipguard import StaticIPGuard, fetch_public_ip
 from app.execution.gateway import ExecutionGateway
+from app.autotrade.engine import AutoSettings, AutoTrader
+from app.autotrade.store import StrategyStore
+from app.autotrade.strategies import ALL as STRATEGIES
+from app.autotrade.warmup import warm
+from app.broker.adapters.delta import REGIONS as DELTA_REGIONS
 from app.marketdata.hub import MarketDataHub
 from app.marketdata.sources import AngelWsSource, DeltaWsSource, PollingSource
 from app.services.instruments import InstrumentSearch
@@ -54,6 +59,14 @@ def build_state(app: FastAPI, s: Settings, transport=None, ip_fetcher=None, sour
     hub.set_contracts(watchlist.all())
     portfolio = Portfolio(gateway, hub, s.equity_curve_path, NIFTY.key)
     risk.portfolio = portfolio
+    store = StrategyStore(s.strategies_path, s.trade_journal_path, [x.id for x in STRATEGIES])
+    autotrader = AutoTrader(gateway, risk, store, audit, AutoSettings(
+        min_confidence=s.auto_min_confidence, max_open_trades=s.auto_max_open_trades,
+        max_trades_per_day=s.auto_max_trades_per_day, time_stop_bars=s.auto_time_stop_bars,
+        protection_pct=s.live_market_protection_pct, allow_crypto=s.auto_allow_crypto))
+    hub.add_listener(autotrader.on_tick)
+    portfolio.autotrader = autotrader
+    app.state.autotrader = autotrader
 
     app.state.settings, app.state.audit, app.state.gateway = s, audit, gateway
     app.state.brokers, app.state.hub, app.state.watchlist = manager, hub, watchlist
@@ -89,6 +102,9 @@ def start_background(app: FastAPI) -> tuple[asyncio.Event, list[asyncio.Task]]:
              asyncio.create_task(_every(s.risk_monitor_interval_s, lambda: risk_monitor(app), stop))]
     if s.feed_enabled:
         tasks.append(asyncio.create_task(st.hub.run(stop)))
+        # re-seed bars every 30 min (covers broker logins that happen after startup)
+        tasks.append(asyncio.create_task(_every(1800, lambda: warm(
+            st.autotrader, st.watchlist.all(), st.brokers.get("angelone"), DELTA_REGIONS[s.delta_region]), stop)))
         angel = st.brokers.get("angelone")
         if angel.configured():
             tasks.append(asyncio.create_task(angel.s.run_daily_cycle(stop)))

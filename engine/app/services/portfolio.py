@@ -36,28 +36,31 @@ class Portfolio:
         self.curve_path = Path(curve_path); self.curve_path.parent.mkdir(parents=True, exist_ok=True)
         self.benchmark_key = benchmark_key
         self.max_points = max_points
-        self._sod: tuple[str, Decimal] | None = None     # (IST date, start-of-day equity)
+        self._sod: dict[str, tuple[str, Decimal]] = {}   # broker name -> (IST date, start-of-day equity)
         self._last_nifty: float | None = None
 
-    async def positions(self) -> list[Position]:
-        ps = await self.gw.broker.positions()
+    async def positions(self, broker=None) -> list[Position]:
+        ps = await (broker or self.gw.broker).positions()
         for p in ps:   # live brokers' LTP lags; overlay the streaming price when we have one
             t = self.hub.latest.get(p.contract.key)
             if t is not None:
                 p.ltp = t.ltp
         return ps
 
-    async def snapshot(self) -> dict:
-        ps = await self.positions()
-        f = await self.gw.broker.funds()
+    async def snapshot(self, broker=None) -> dict:
+        """Account snapshot for `broker` (default: the one the engine mode currently uses)."""
+        broker = broker or self.gw.broker
+        ps = await self.positions(broker)
+        f = await broker.funds()
         unreal = sum((p.unrealized_pnl for p in ps), D("0"))
         realized = sum((p.realized_pnl - p.charges for p in ps), D("0"))
         equity = f.available_cash + f.used_margin + unreal
         today = datetime.now(IST).date().isoformat()
-        if self._sod is None or self._sod[0] != today:
-            self._sod = (today, equity - (realized + unreal))
+        name = getattr(broker, "name", "broker")
+        if name not in self._sod or self._sod[name][0] != today:
+            self._sod[name] = (today, equity - (realized + unreal))
         day_pnl = realized + unreal
-        sod = self._sod[1] or D("1")
+        sod = self._sod[name][1] or D("1")
         return {"mode": self.gw.mode.value, "killSwitch": self.gw.kill_switch,
                 "dayPnl": float(day_pnl), "dayPnlPct": float(day_pnl / sod * 100),
                 "totalPnl": float(equity - self.starting_equity(equity)), "equity": float(equity),
@@ -105,4 +108,6 @@ class Portfolio:
             curve.append({"t": p["t"], "equity": p["equity"],
                           "nifty": last_n if last_n is not None else pts[0]["equity"]})
         snap.pop("equityDec"); snap.pop("dayPnlDec")
-        return {**snap, "curve": curve, "updatedAt": now["t"], "benchmarkLive": first_n is not None}
+        at = getattr(self, "autotrader", None)
+        return {**snap, "curve": curve, "updatedAt": now["t"], "benchmarkLive": first_n is not None,
+                "autoTrade": bool(at and at.enabled), "autoOpenTrades": len(at.open_trades()) if at else 0}

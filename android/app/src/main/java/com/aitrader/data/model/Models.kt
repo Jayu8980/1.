@@ -20,6 +20,8 @@ data class Dashboard(
     val curve: List<CurvePoint>,
     val updatedAt: Long,
     val benchmarkLive: Boolean = true,
+    val autoTrade: Boolean = false,
+    val autoOpenTrades: Int = 0,
 )
 
 @Serializable
@@ -86,6 +88,10 @@ data class StrategyStats(
     val drawdownPct: Double,
     val backtestMaxDdPct: Double,
     val autoDisabledReason: String? = null,
+    val promotable: Boolean = false,
+    val gate: String = "",
+    val daysInStage: Double = 0.0,
+    val openTrades: Int = 0,
 )
 
 @Serializable
@@ -207,3 +213,12 @@ data class InstrumentHit(
 /** Live price as seen by the app. */
 data class Quote(val key: String, val symbol: String, val exchange: String, val ltp: Double, val ts: Long,
                  val source: String, val prev: Double? = null, val sessionOpen: Double = ltp)
+
+@Serializable
+data class AutoTradeView(val id: String, val strategy: String, val symbol: String, val side: String, val qty: Int,
+                         val remaining: Int, val venue: String, val status: String, val entry: Double,
+                         val stop: Double, val target: Double, val partial: Boolean)
+
+@Serializable
+data class AutoTradeStatus(val enabled: Boolean, val mode: TradingMode, val killSwitch: Boolean,
+                           val liveStrategies: List<String> = emptyList(), val openTrades: List<AutoTradeView> = emptyList())

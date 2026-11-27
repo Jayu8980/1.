@@ -65,6 +65,15 @@ class Settings(BaseSettings):
     # LIVE exits are sent as LIMIT orders this far through the LTP instead of raw MARKET.
     live_market_protection_pct: float = 0.5
 
+    # --- auto-trader (PLACEHOLDER defaults: confirm before LIVE) --------------
+    strategies_path: str = "data/strategies.json"
+    trade_journal_path: str = "data/trades.jsonl"
+    auto_min_confidence: float = 0.55
+    auto_max_open_trades: int = 3
+    auto_max_trades_per_day: int = 5
+    auto_time_stop_bars: int = 24
+    auto_allow_crypto: bool = False
+
     # --- paper broker --------------------------------------------------------
     paper_starting_capital: Decimal = Decimal("1000000")
     paper_slippage_bps: Decimal = Decimal("5")

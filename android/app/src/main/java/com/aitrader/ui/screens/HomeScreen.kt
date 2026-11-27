@@ -40,6 +40,10 @@ class HomeViewModel @Inject constructor(private val repo: TradingRepository, set
     fun switchMode(mode: TradingMode, phrase: String) = viewModelScope.launch {
         val r = repo.setMode(mode, phrase); say(r.message.ifBlank { if (r.ok) "Mode: $mode" else "Denied" }); refresh()
     }
+
+    fun setAuto(on: Boolean) = viewModelScope.launch {
+        val r = if (on) repo.autotradeOn() else repo.autotradeOff(); say(r.message); refresh()
+    }
 }
 
 @Composable
@@ -49,18 +53,15 @@ fun HomeScreen(snackbar: SnackbarHostState, vm: HomeViewModel = hiltViewModel())
     val demo by vm.demo.collectAsStateCompat()
     var liveDialog by remember { mutableStateOf(false) }
     var paperDialog by remember { mutableStateOf(false) }
+    var autoDialog by remember { mutableStateOf(false) }
 
     StateContent(state, vm::refresh) { l ->
         val d = l.data
         Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ModeBadge(d.mode, demo)
-                Spacer(Modifier.weight(1f))
-                if (d.mode == TradingMode.PAPER)
-                    OutlinedButton(onClick = { liveDialog = true }, modifier = Modifier.testTag("goLive")) { Text("Go LIVE…") }
-                else Button(onClick = { paperDialog = true }) { Text("Back to PAPER") }
-            }
             if (d.killSwitch) KillBanner()
+            TradingControls(d, demo,
+                onLive = { on -> if (on) liveDialog = true else paperDialog = true },
+                onAuto = { on -> if (on) autoDialog = true else vm.setAuto(false) })
             SectionCard {
                 Text("Today", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(Fmt.signedMoney(d.dayPnl), Modifier.testTag("dayPnl"), style = MaterialTheme.typography.displaySmall,
@@ -99,8 +100,48 @@ fun HomeScreen(snackbar: SnackbarHostState, vm: HomeViewModel = hiltViewModel())
     }
 
     if (liveDialog) LiveDialog(onDismiss = { liveDialog = false }) { vm.switchMode(TradingMode.LIVE, it) }
+    if (autoDialog) ConfirmDialog("Turn auto-trading ON?",
+        "The engine will place orders by itself, inside your risk limits. Strategies in PAPER stage trade on paper " +
+            "even while LIVE is on; only strategies promoted through the gate use real money. Requires biometric.",
+        "Turn ON", onConfirm = { vm.setAuto(true) }, onDismiss = { autoDialog = false })
     if (paperDialog) ConfirmDialog("Switch to PAPER?", "New orders will be simulated. Open live positions are not closed.",
         "Switch", onConfirm = { vm.switchMode(TradingMode.PAPER, "") }, onDismiss = { paperDialog = false })
+}
+
+@Composable
+fun TradingControls(d: Dashboard, demo: Boolean, onLive: (Boolean) -> Unit, onAuto: (Boolean) -> Unit) {
+    val live = d.mode == TradingMode.LIVE
+    SectionCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ModeBadge(d.mode, demo)
+            Spacer(Modifier.weight(1f))
+            if (d.autoTrade) Chip("AUTO · ${d.autoOpenTrades} open", Profit)
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("LIVE trading", fontWeight = FontWeight.SemiBold, color = if (live) LiveRed else MaterialTheme.colorScheme.onSurface)
+                Text(if (live) "Real orders via your active broker" else "OFF — all orders are simulated (PAPER)",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(live, onCheckedChange = onLive, modifier = Modifier.testTag("liveSwitch"),
+                colors = SwitchDefaults.colors(checkedTrackColor = LiveRed))
+        }
+        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Auto-trade", fontWeight = FontWeight.SemiBold)
+                Text(when {
+                    d.killSwitch -> "Blocked by kill switch"
+                    d.autoTrade && live -> "ON — promoted strategies trade real money, others paper"
+                    d.autoTrade -> "ON — engine places paper orders by itself"
+                    else -> "OFF — no automatic entries"
+                }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(d.autoTrade, onCheckedChange = onAuto, enabled = !d.killSwitch || d.autoTrade,
+                modifier = Modifier.testTag("autoSwitch"))
+        }
+    }
 }
 
 @Composable

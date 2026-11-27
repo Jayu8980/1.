@@ -54,7 +54,7 @@ to PAPER and blocks re-arming until released.
   tests/          pytest, SmartAPI fully mocked with respx
 /android    Kotlin/Compose app, signed APK in android/dist/
 /infra      VM bootstrap, Caddy, systemd, firewall (Phase 6)
-/docs/trading   this document, BROKERS.md (multi-broker setup)
+/docs/trading   this document, BROKERS.md (multi-broker setup), AUTOTRADE.md (switches, routing, pipeline)
 ```
 
 ## Phases

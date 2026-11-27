@@ -24,7 +24,7 @@ class SignalsViewModel @Inject constructor(private val repo: TradingRepository) 
 
 fun statusLabel(s: String) = when (s) {
     "TAKEN" -> "Taken"; "SKIPPED_COST" -> "Skipped · costs > edge"; "SKIPPED_CONFIDENCE" -> "Skipped · low confidence"
-    "SKIPPED_REGIME" -> "Skipped · regime"; "VETOED" -> "Vetoed by risk"; else -> s
+    "SKIPPED_REGIME" -> "Skipped · regime"; "SKIPPED_LIMIT" -> "Skipped · limits"; "VETOED" -> "Vetoed by risk"; else -> s
 }
 
 @Composable

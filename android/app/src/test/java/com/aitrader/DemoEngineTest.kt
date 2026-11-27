@@ -77,4 +77,14 @@ class DemoEngineTest {
         assertTrue(e.activateBroker("delta").ok)
         assertEquals("API_KEY", e.brokers().single { it.active }.auth)
     }
+
+    @Test fun autotrade_switch_respects_kill_switch() {
+        assertFalse(e.dashboard().autoTrade)
+        assertTrue(e.autotradeOn().ok)
+        assertTrue(e.dashboard().autoTrade && e.autotrade().enabled)
+        assertTrue(e.autotradeOff().ok)
+        e.killSwitch(true, "t")
+        assertFalse(e.autotradeOn().ok)
+        assertFalse(e.promote("trend_momentum").ok)
+    }
 }

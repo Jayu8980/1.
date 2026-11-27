@@ -18,6 +18,9 @@ interface EngineApi {
     @POST("backtests") suspend fun backtest(@Body body: BacktestRequest): Tearsheet
     @GET("brokers") suspend fun brokers(): List<BrokerInfo>
     @GET("watchlist") suspend fun watchlist(): List<WatchItem>
+    @GET("autotrade") suspend fun autotrade(): AutoTradeStatus
+    @POST("autotrade/off") suspend fun autotradeOff(): ActionResult
+    @POST("strategies/{id}/demote") suspend fun demote(@Path("id") id: String): ActionResult
     @POST("watchlist") suspend fun addWatch(@Body c: ContractDto): ActionResult
     @DELETE("watchlist/{exchange}/{symbol}") suspend fun removeWatch(@Path("exchange") exchange: String,
                                                                      @Path("symbol") symbol: String): ActionResult
@@ -29,6 +32,8 @@ interface EngineApi {
     @PATCH("strategies/{id}") suspend fun updateStrategy(@Path("id") id: String, @Body body: StrategyUpdate): ActionResult
     @PUT("risk") suspend fun updateRisk(@Body body: RiskConfig): ActionResult
     @POST("mode") suspend fun setMode(@Body body: ModeRequest): ActionResult
+    @POST("autotrade/on") suspend fun autotradeOn(): ActionResult
+    @POST("strategies/{id}/promote") suspend fun promote(@Path("id") id: String): ActionResult
     @POST("brokers/{id}/connect") suspend fun connectBroker(@Path("id") id: String): ConnectResult
     @POST("brokers/{id}/activate") suspend fun activateBroker(@Path("id") id: String): ActionResult
     // Kill switch is intentionally NOT biometric-gated: stopping must be instant.

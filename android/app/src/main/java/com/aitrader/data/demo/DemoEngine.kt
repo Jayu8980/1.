@@ -94,7 +94,7 @@ class DemoEngine(seed: Long = 42, private val now: () -> Long = System::currentT
         val live = CurvePoint(now(), last.equity + dp, last.nifty * (prices.getValue("NIFTY26DECFUT") / 25980.0))
         val curve = history + live
         return Dashboard(TradingMode.PAPER, killSwitch, dp, dp / last.equity * 100, live.equity - startCapital,
-            live.equity, positions.size, curve, now())
+            live.equity, positions.size, curve, now(), autoTrade = autoTrade, autoOpenTrades = if (autoTrade) 1 else 0)
     }
 
     @Synchronized fun positions(): List<Position> = positions.map { it.copy(ltp = prices.getValue(it.symbol)) }
@@ -300,6 +300,32 @@ class DemoEngine(seed: Long = 42, private val now: () -> Long = System::currentT
 
     @Synchronized fun removeWatch(key: String): ActionResult =
         if (watch.removeAll { it.key == key }) ActionResult(true, "Removed") else ActionResult(false, "Not in watchlist")
+
+    private var autoTrade = false
+
+    @Synchronized fun autotrade() = AutoTradeStatus(autoTrade, TradingMode.PAPER, killSwitch,
+        openTrades = if (autoTrade) listOf(AutoTradeView("T1", "trend_momentum", "RELIANCE-EQ", "BUY", 40, 40, "paper",
+            "OPEN", 1408.5, 1391.6, 1442.3, false)) else emptyList())
+
+    @Synchronized fun autotradeOn(): ActionResult {
+        if (killSwitch) return ActionResult(false, "Release the kill switch first")
+        autoTrade = true; log("autotrade.on", "demo")
+        return ActionResult(true, "Auto-trade ON — PAPER only (demo)")
+    }
+
+    @Synchronized fun autotradeOff(): ActionResult {
+        autoTrade = false; log("autotrade.off", "demo")
+        return ActionResult(true, "Auto-trade OFF — no new entries; open trades still protected")
+    }
+
+    @Synchronized fun promote(id: String): ActionResult =
+        ActionResult(false, "Promotion gate: needs 28 days in PAPER, 30 paper trades, positive expectancy (demo)")
+
+    @Synchronized fun demote(id: String): ActionResult {
+        val i = strategies.indexOfFirst { it.id == id }
+        if (i >= 0) strategies[i] = strategies[i].copy(stage = "PAPER")
+        return ActionResult(true, "$id back to PAPER")
+    }
 
     @Synchronized fun audit(): List<AuditEntry> = audit.toList().reversed()
 

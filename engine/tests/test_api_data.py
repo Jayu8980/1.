@@ -153,5 +153,6 @@ def test_watchlist_crud_and_stream(env):
 
 def test_phase_placeholders_are_honest(env):
     c, _, _, _ = env
-    assert c.get("/api/v1/signals").json() == [] and c.get("/api/v1/strategies").json() == []
+    assert c.get("/api/v1/signals").json() == []
+    assert {x["stage"] for x in c.get("/api/v1/strategies").json()} == {"PAPER"}
     assert c.get("/api/v1/analyst/SBIN").status_code == 503

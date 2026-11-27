@@ -16,7 +16,7 @@ class RiskDecision:
 
 
 class RiskVeto(Protocol):
-    async def check(self, req: OrderRequest, ref_price: Decimal) -> RiskDecision: ...
+    async def check(self, req: OrderRequest, ref_price: Decimal, broker=None) -> RiskDecision: ...
 
 
 class HardLimits:
@@ -26,7 +26,7 @@ class HardLimits:
         self.max_order_value = Decimal(max_order_value)
         self.max_qty = max_qty
 
-    async def check(self, req: OrderRequest, ref_price: Decimal) -> RiskDecision:
+    async def check(self, req: OrderRequest, ref_price: Decimal, broker=None) -> RiskDecision:
         value = Decimal(req.quantity) * Decimal(ref_price)
         if req.quantity > self.max_qty:
             return RiskDecision(False, f"qty {req.quantity} > max {self.max_qty}")

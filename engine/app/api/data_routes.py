@@ -67,13 +67,89 @@ async def audit(request: Request, limit: int = Query(200, le=1000), _: str = Dep
 
 
 @router.get("/signals")
-async def signals(_: str = Depends(current_user)):
-    return []          # strategy agents land in Phase 3
+async def signals(request: Request, _: str = Depends(current_user)):
+    return list(st(request).autotrader.signals)
 
 
 @router.get("/strategies")
-async def strategies(_: str = Depends(current_user)):
-    return []
+async def strategies(request: Request, _: str = Depends(current_user)):
+    return st(request).autotrader.strategies_view()
+
+
+class StrategyPatch(BaseModel):
+    enabled: bool | None = None
+    allocationPct: float | None = None
+
+
+@router.patch("/strategies/{sid}")
+async def patch_strategy(sid: str, body: StrategyPatch, request: Request, user: str = Depends(signed_user)):
+    s = st(request)
+    if sid not in s.autotrader.store.cfg:
+        raise HTTPException(404, "unknown strategy")
+    err = s.autotrader.store.update(sid, body.enabled, body.allocationPct)
+    if err:
+        return {"ok": False, "message": err}
+    await s.audit.record("strategy.update", actor=user, strategy=sid, **body.model_dump(exclude_none=True))
+    return {"ok": True, "message": "Updated"}
+
+
+@router.post("/strategies/{sid}/promote")
+async def promote(sid: str, request: Request, user: str = Depends(signed_user)):
+    s = st(request)
+    if sid not in s.autotrader.store.cfg:
+        raise HTTPException(404, "unknown strategy")
+    try:
+        stage = s.autotrader.store.promote(sid)
+    except ValueError as e:
+        return {"ok": False, "message": f"Promotion gate: {e}"}
+    await s.audit.record("strategy.promoted", actor=user, strategy=sid, stage=stage)
+    return {"ok": True, "message": f"{sid} promoted to {stage}"}
+
+
+@router.post("/strategies/{sid}/demote")
+async def demote(sid: str, request: Request, user: str = Depends(current_user)):
+    """Back to PAPER. Not biometric-gated: it only reduces risk."""
+    s = st(request)
+    if sid not in s.autotrader.store.cfg:
+        raise HTTPException(404, "unknown strategy")
+    s.autotrader.store.demote(sid)
+    await s.audit.record("strategy.demoted", actor=user, strategy=sid)
+    return {"ok": True, "message": f"{sid} back to PAPER"}
+
+
+# ------------------------------------------------------------------ auto-trade switch
+def _auto_view(s) -> dict:
+    at = s.autotrader
+    live = [x["id"] for x in at.strategies_view() if x["stage"] != "PAPER" and x["enabled"]]
+    return {"enabled": at.enabled, "mode": s.gateway.mode.value, "killSwitch": s.gateway.kill_switch,
+            "liveStrategies": live if s.gateway.mode is Mode.LIVE else [],
+            "openTrades": [t.view() for t in at.open_trades()]}
+
+
+@router.get("/autotrade")
+async def get_autotrade(request: Request, _: str = Depends(current_user)):
+    return _auto_view(st(request))
+
+
+@router.post("/autotrade/on")
+async def autotrade_on(request: Request, user: str = Depends(signed_user)):
+    s = st(request)
+    if s.gateway.kill_switch:
+        return {"ok": False, "message": "Release the kill switch first"}
+    s.autotrader.store.set_autotrade(True)
+    await s.audit.record("autotrade.on", actor=user, mode=s.gateway.mode)
+    v = _auto_view(s)
+    where = f"LIVE for {', '.join(v['liveStrategies'])}; PAPER for the rest" if v["liveStrategies"] else "PAPER only"
+    return {"ok": True, "message": f"Auto-trade ON — {where}"}
+
+
+@router.post("/autotrade/off")
+async def autotrade_off(request: Request, user: str = Depends(current_user)):
+    """Instant, no biometric. Stops new entries; open trades keep their stops and are managed to exit."""
+    s = st(request)
+    s.autotrader.store.set_autotrade(False)
+    await s.audit.record("autotrade.off", actor=user)
+    return {"ok": True, "message": "Auto-trade OFF — no new entries; open trades still protected"}
 
 
 @router.get("/analyst/{symbol}")

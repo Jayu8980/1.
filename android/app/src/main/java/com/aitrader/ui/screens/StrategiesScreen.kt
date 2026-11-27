@@ -27,6 +27,8 @@ class StrategiesViewModel @Inject constructor(private val repo: TradingRepositor
     fun update(id: String, u: StrategyUpdate) = viewModelScope.launch {
         val r = repo.updateStrategy(id, u); say(r.message); refresh()
     }
+    fun promote(id: String) = viewModelScope.launch { say(repo.promote(id).message); refresh() }
+    fun demote(id: String) = viewModelScope.launch { say(repo.demote(id).message); refresh() }
 }
 
 @Composable
@@ -39,13 +41,16 @@ fun StrategiesScreen(snackbar: SnackbarHostState, vm: StrategiesViewModel = hilt
                 val total = l.data.filter { it.enabled }.sumOf { it.allocationPct }
                 Text("Allocated: %.0f%% of capital".format(total), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            items(l.data, key = { it.id }) { s -> StrategyCard(s, vm::update) }
+            if (l.data.isEmpty()) item { Text("No strategies on the engine.") }
+            items(l.data, key = { it.id }) { s -> StrategyCard(s, vm::update, vm::promote, vm::demote) }
         }
     }
 }
 
 @Composable
-private fun StrategyCard(s: StrategyStats, onUpdate: (String, StrategyUpdate) -> Unit) {
+private fun StrategyCard(s: StrategyStats, onUpdate: (String, StrategyUpdate) -> Unit,
+                         onPromote: (String) -> Unit, onDemote: (String) -> Unit) {
+    var confirmPromote by remember { mutableStateOf(false) }
     var alloc by remember(s.allocationPct) { mutableFloatStateOf(s.allocationPct.toFloat()) }
     SectionCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -82,5 +87,19 @@ private fun StrategyCard(s: StrategyStats, onUpdate: (String, StrategyUpdate) ->
         Slider(alloc, { alloc = it }, valueRange = 0f..50f, steps = 9)
         if (alloc.toDouble() != s.allocationPct)
             Button(onClick = { onUpdate(s.id, StrategyUpdate(allocationPct = alloc.toDouble())) }) { Text("Save allocation") }
+        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+        Text("Promotion gate (${"%.0f".format(s.daysInStage)} days in ${s.stage.replace('_', ' ')}): ${s.gate}",
+            style = MaterialTheme.typography.bodySmall,
+            color = if (s.promotable) Profit else MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (s.stage != "LIVE") Button(onClick = { confirmPromote = true }, enabled = s.promotable) {
+                Text(if (s.stage == "PAPER") "Promote to LIVE 10%" else "Promote to full LIVE")
+            }
+            if (s.stage != "PAPER") OutlinedButton(onClick = { onDemote(s.id) }) { Text("Back to PAPER") }
+        }
     }
+    if (confirmPromote) ConfirmDialog("Promote ${s.name}?",
+        if (s.stage == "PAPER") "It will trade REAL money with 10% of its allocation whenever LIVE is on. Requires biometric."
+        else "It will trade its FULL allocation with real money whenever LIVE is on. Requires biometric.",
+        "Promote", danger = true, onConfirm = { onPromote(s.id) }, onDismiss = { confirmPromote = false })
 }

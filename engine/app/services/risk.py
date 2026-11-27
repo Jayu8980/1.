@@ -34,23 +34,25 @@ class RiskEngine:
         self.path = Path(path); self.path.parent.mkdir(parents=True, exist_ok=True)
         self.limits = RiskLimits.model_validate_json(self.path.read_text()) if self.path.exists() else RiskLimits()
         self.portfolio = portfolio
-        self.peak: Decimal | None = None
+        self.peaks: dict[str, Decimal] = {}
         self.breaches: list[str] = []
 
     def update(self, limits: RiskLimits) -> None:
         self.limits = limits
         self.path.write_text(limits.model_dump_json())
 
-    async def state(self) -> tuple[Decimal, Decimal, Decimal]:
-        s = await self.portfolio.snapshot()
+    async def state(self, broker=None) -> tuple[Decimal, Decimal, Decimal]:
+        s = await self.portfolio.snapshot(broker)
         eq, day = s["equityDec"], s["dayPnlDec"]
-        self.peak = max(self.peak or eq, eq)
-        dd = (self.peak - eq) / self.peak * 100 if self.peak else D("0")
+        key = getattr(broker, "name", "current") if broker is not None else "current"
+        self.peaks[key] = max(self.peaks.get(key, eq), eq)
+        peak = self.peaks[key]
+        dd = (peak - eq) / peak * 100 if peak else D("0")
         return eq, day, dd
 
-    async def evaluate(self) -> list[str]:
-        """Current breaches (called on every check and periodically by the monitor)."""
-        eq, day, dd = await self.state()
+    async def evaluate(self, broker=None) -> list[str]:
+        """Current breaches for the account `broker` (default: the engine's current one)."""
+        eq, day, dd = await self.state(broker)
         b = []
         if -day >= D(str(self.limits.dailyLossLimit)):
             b.append(f"daily loss {-day:.0f} >= limit {self.limits.dailyLossLimit:.0f}")
@@ -59,11 +61,11 @@ class RiskEngine:
         self.breaches = b
         return b
 
-    async def check(self, req: OrderRequest, ref_price: Decimal) -> RiskDecision:
-        breaches = await self.evaluate()
+    async def check(self, req: OrderRequest, ref_price: Decimal, broker=None) -> RiskDecision:
+        breaches = await self.evaluate(broker)
         if breaches:
             return RiskDecision(False, "; ".join(breaches))
-        eq, _, _ = await self.state()
+        eq, _, _ = await self.state(broker)
         notional = D(req.quantity) * D(ref_price) * req.contract.multiplier
         cap = eq * D(str(self.limits.maxPositionPct)) / 100
         if notional > cap:

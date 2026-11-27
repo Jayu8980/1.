@@ -99,6 +99,22 @@ class TradingRepository @Inject constructor(
         if (isDemo()) demo.removeWatch(c.key) else client.api().removeWatch(c.exchange, c.symbol)
     } catch (e: Exception) { ActionResult(false, describe(e)) }
 
+    suspend fun autotrade() = load("autotrade", AutoTradeStatus.serializer(), demo::autotrade) { autotrade() }
+
+    /** ON moves money -> biometric-signed. */
+    suspend fun autotradeOn() = act("Turn auto-trading ON", demo::autotradeOn) { autotradeOn() }
+
+    /** OFF is instant (like the kill switch): stops new entries, open trades stay protected. */
+    suspend fun autotradeOff(): ActionResult = try {
+        if (isDemo()) demo.autotradeOff() else client.api().autotradeOff()
+    } catch (e: Exception) { ActionResult(false, describe(e)) }
+
+    suspend fun promote(id: String) = act("Promote $id toward LIVE", { demo.promote(id) }) { promote(id) }
+
+    suspend fun demote(id: String): ActionResult = try {
+        if (isDemo()) demo.demote(id) else client.api().demote(id)
+    } catch (e: Exception) { ActionResult(false, describe(e)) }
+
     suspend fun brokers() = load("brokers", ListSerializer(BrokerInfo.serializer()), demo::brokers) { brokers() }
 
     // ------------------------------------------------------------ actions
