@@ -25,4 +25,11 @@ class SigningTest {
         val p = String(signingPayload("POST", "/api/v1/mode", 1700, "{}".toByteArray()))
         assertEquals("POST\n/api/v1/mode\n1700\n44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a", p)
     }
+
+    @Test fun parses_multiple_pins() {
+        val a = "sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M="
+        val b = "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        assertEquals(listOf(a, b), parsePins(" $a, $b ,junit "))
+        assertTrue(parsePins("nope").isEmpty())
+    }
 }

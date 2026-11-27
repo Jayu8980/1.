@@ -1,0 +1,9 @@
+{$ENGINE_DOMAIN} {
+	encode gzip
+	# WebSocket (/api/v1/stream) is proxied transparently.
+	reverse_proxy engine:8000
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+}

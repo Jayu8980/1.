@@ -126,3 +126,16 @@ class SmartAPIBroker(Broker):
     async def ltp(self, contract: Contract) -> Decimal:
         d = await self.s.call_with_reauth(self.c.ltp, contract.exchange.value, contract.symbol, contract.token)
         return Decimal(str(d["ltp"]))
+
+    async def ltps(self, contracts: list[Contract]) -> dict[str, Decimal]:
+        by_ex: dict[str, list[str]] = {}
+        for c in contracts:
+            by_ex.setdefault(c.exchange.value, []).append(c.token)
+        keys = {(c.exchange.value, c.token): c.key for c in contracts}
+        out: dict[str, Decimal] = {}
+        rows = await self.s.call_with_reauth(self.c.quote_ltp, by_ex)
+        for r in rows:
+            k = keys.get((r.get("exchange"), str(r.get("symbolToken"))))
+            if k:
+                out[k] = Decimal(str(r["ltp"]))
+        return out

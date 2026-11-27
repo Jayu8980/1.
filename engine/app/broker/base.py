@@ -32,3 +32,13 @@ class Broker(ABC):
 
     @abstractmethod
     async def ltp(self, contract: Contract) -> Decimal: ...
+
+    async def ltps(self, contracts: list[Contract]) -> dict[str, Decimal]:
+        """Batch quotes keyed by Contract.key. Adapters with a batch endpoint override this."""
+        out = {}
+        for c in contracts:
+            try:
+                out[c.key] = await self.ltp(c)
+            except Exception:
+                pass
+        return out

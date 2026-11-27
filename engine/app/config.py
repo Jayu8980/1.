@@ -54,6 +54,17 @@ class Settings(BaseSettings):
     daily_logout_time_ist: str = "23:45"
     audit_log_path: str = "data/audit.jsonl"
 
+    # --- market data / services --------------------------------------------
+    feed_enabled: bool = True
+    poll_interval_s: float = 2.0
+    equity_record_interval_s: float = 60.0
+    risk_monitor_interval_s: float = 5.0
+    watchlist_path: str = "data/watchlist.json"
+    equity_curve_path: str = "data/equity.jsonl"
+    risk_limits_path: str = "data/risk_limits.json"
+    # LIVE exits are sent as LIMIT orders this far through the LTP instead of raw MARKET.
+    live_market_protection_pct: float = 0.5
+
     # --- paper broker --------------------------------------------------------
     paper_starting_capital: Decimal = Decimal("1000000")
     paper_slippage_bps: Decimal = Decimal("5")

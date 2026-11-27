@@ -139,3 +139,8 @@ class ZerodhaBroker(RestBroker):
         key = f"{contract.exchange.value}:{kite_symbol(contract)}"
         d = await self.request("GET", "/quote/ltp", params={"i": key})
         return Decimal(str(d[key]["last_price"]))
+
+    async def ltps(self, contracts: list[Contract]) -> dict[str, Decimal]:
+        keys = {f"{c.exchange.value}:{kite_symbol(c)}": c.key for c in contracts}
+        d = await self.request("GET", "/quote/ltp", params=[("i", k) for k in keys])
+        return {keys[k]: Decimal(str(v["last_price"])) for k, v in (d or {}).items() if k in keys}

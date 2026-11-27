@@ -54,7 +54,7 @@ class TradingRepository @Inject constructor(
         } catch (e: Exception) { ActionResult(false, describe(e)) }
 
     fun describe(e: Throwable): String = when (e) {
-        is HttpException -> when (e.code()) {
+        is HttpException -> serverDetail(e) ?: when (e.code()) {
             401 -> "Session expired — log in again in Settings"
             403 -> "Engine rejected the request (signature / permission)"
             409 -> "Blocked by the risk engine"
@@ -65,6 +65,13 @@ class TradingRepository @Inject constructor(
         is java.io.IOException -> "Engine unreachable (${e.javaClass.simpleName})"
         else -> e.message ?: e.javaClass.simpleName
     }
+
+    /** FastAPI errors carry {"detail": "..."}; show the engine's own explanation when present. */
+    private fun serverDetail(e: HttpException): String? = runCatching {
+        val body = e.response()?.errorBody()?.string() ?: return null
+        json.parseToJsonElement(body).let { it as kotlinx.serialization.json.JsonObject }["detail"]
+            ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+    }.getOrNull()?.takeIf { e.code() != 401 }
 
     // ------------------------------------------------------------ reads
     suspend fun dashboard() = load("dashboard", Dashboard.serializer(), demo::dashboard) { dashboard() }
@@ -78,6 +85,19 @@ class TradingRepository @Inject constructor(
         load("analyst:$symbol", Analysis.serializer(), { demo.analyst(symbol) }) { analyst(symbol) }
     suspend fun backtest(req: BacktestRequest) =
         load("bt:${req.strategyId}:${req.from}:${req.to}", Tearsheet.serializer(), { demo.backtest(req) }) { backtest(req) }
+
+    suspend fun watchlist() = load("watchlist", ListSerializer(WatchItem.serializer()), demo::watchlist) { watchlist() }
+
+    suspend fun search(q: String, exchange: String): List<InstrumentHit> =
+        if (isDemo()) demo.search(q, exchange) else client.api().search(q, exchange)
+
+    suspend fun addWatch(c: ContractDto): ActionResult = try {
+        if (isDemo()) demo.addWatch(c) else client.api().addWatch(c)
+    } catch (e: Exception) { ActionResult(false, describe(e)) }
+
+    suspend fun removeWatch(c: ContractDto): ActionResult = try {
+        if (isDemo()) demo.removeWatch(c.key) else client.api().removeWatch(c.exchange, c.symbol)
+    } catch (e: Exception) { ActionResult(false, describe(e)) }
 
     suspend fun brokers() = load("brokers", ListSerializer(BrokerInfo.serializer()), demo::brokers) { brokers() }
 

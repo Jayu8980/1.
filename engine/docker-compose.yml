@@ -1,10 +1,22 @@
-# Phase 1 compose. Phase 6 adds Caddy (TLS), Postgres/Timescale, and the scheduler.
+# Engine behind Caddy (automatic HTTPS from Let's Encrypt). Set ENGINE_DOMAIN in .env and
+# point its DNS A record at the VM's static IP. Ports 80/443 must be open on the VM firewall.
 services:
   engine:
     build: { context: ., target: runtime }
     env_file: .env
     volumes: [ "engine-data:/data" ]
-    ports: [ "127.0.0.1:8000:8000" ]   # bound to localhost; TLS reverse proxy in front
+    expose: [ "8000" ]
+    restart: unless-stopped
+  caddy:
+    image: caddy:2.8
+    depends_on: [ engine ]
+    ports: [ "80:80", "443:443" ]
+    environment:
+      ENGINE_DOMAIN: ${ENGINE_DOMAIN:?set ENGINE_DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
     restart: unless-stopped
 volumes:
   engine-data:
+  caddy-data:

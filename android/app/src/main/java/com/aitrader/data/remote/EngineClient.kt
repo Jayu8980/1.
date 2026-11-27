@@ -32,6 +32,10 @@ internal fun requiresSignature(method: String, path: String): Boolean = when {
     else -> false
 }
 
+/** Comma/space separated "sha256/…" pins (leaf + backup, or the CA root). */
+internal fun parsePins(raw: String): List<String> =
+    raw.split(',', ' ', '\n').map { it.trim() }.filter { it.startsWith("sha256/") && it.length > 20 }
+
 /** Canonical string the engine re-computes and verifies. */
 internal fun signingPayload(method: String, path: String, ts: Long, body: ByteArray): ByteArray {
     val h = MessageDigest.getInstance("SHA-256").digest(body).joinToString("") { "%02x".format(it) }
@@ -45,6 +49,19 @@ class EngineClient @Inject constructor(
     val json: Json,
 ) {
     @Volatile private var cached: Pair<String, EngineApi>? = null
+    @Volatile private var cachedHttp: Pair<String, OkHttpClient>? = null
+
+    /** WebSocket request for /api/v1/stream on the same pinned client (auth header added here). */
+    suspend fun streamRequest(): Pair<OkHttpClient, okhttp3.Request> {
+        api()
+        val s = settings.current()
+        val http = cachedHttp!!.second.newBuilder().readTimeout(0, TimeUnit.MILLISECONDS)
+            .pingInterval(20, TimeUnit.SECONDS).build()
+        val wsUrl = s.engineUrl.trimEnd('/').replaceFirst("https://", "wss://") + "/api/v1/stream"
+        val b = okhttp3.Request.Builder().url(wsUrl)
+        settings.token()?.let { b.header("Authorization", "Bearer $it") }
+        return http to b.build()
+    }
 
     suspend fun api(): EngineApi {
         val s = settings.current()
@@ -52,11 +69,12 @@ class EngineClient @Inject constructor(
         val url = s.engineUrl.trimEnd('/') + "/api/v1/"
         val parsed = runCatching { url.toHttpUrl() }.getOrElse { throw ConfigError("Invalid engine URL") }
         if (!parsed.isHttps) throw ConfigError("Engine URL must be https://")
-        if (!s.certPin.startsWith("sha256/")) throw ConfigError("Set the TLS certificate pin (sha256/…) in Settings")
+        val pins = parsePins(s.certPin)
+        if (pins.isEmpty()) throw ConfigError("Set the TLS certificate pin (sha256/…) in Settings")
         val cacheKey = "$url|${s.certPin}"
         cached?.takeIf { it.first == cacheKey }?.let { return it.second }
 
-        val pinner = CertificatePinner.Builder().add(parsed.host, s.certPin).build()
+        val pinner = CertificatePinner.Builder().add(parsed.host, *pins.toTypedArray()).build()
         val auth = Interceptor { chain ->
             val token = runBlocking { settings.token() }
             val b = chain.request().newBuilder()
@@ -85,6 +103,7 @@ class EngineClient @Inject constructor(
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build().create(EngineApi::class.java)
         cached = cacheKey to api
+        cachedHttp = cacheKey to http
         return api
     }
 }

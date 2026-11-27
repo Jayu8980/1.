@@ -18,6 +18,7 @@ import com.aitrader.ui.screens.*
 enum class Dest(val route: String, val title: String, val icon: ImageVector) {
     Home("home", "Home", Icons.Filled.Dashboard),
     Positions("positions", "Positions", Icons.AutoMirrored.Filled.List),
+    Markets("markets", "Markets", Icons.Filled.ShowChart),
     Signals("signals", "Signals", Icons.Filled.Bolt),
     Risk("risk", "Risk", Icons.Filled.Shield),
     More("more", "More", Icons.Filled.MoreHoriz),
@@ -29,7 +30,7 @@ enum class Dest(val route: String, val title: String, val icon: ImageVector) {
     Settings("settings", "Settings", Icons.Filled.Settings),
 }
 
-private val bottom = listOf(Dest.Home, Dest.Positions, Dest.Signals, Dest.Risk, Dest.More)
+private val bottom = listOf(Dest.Home, Dest.Markets, Dest.Positions, Dest.Risk, Dest.More)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,6 +66,7 @@ fun AppNav(startRoute: String = Dest.Home.route, pendingRoute: String? = null, o
             composable(Dest.Home.route) { HomeScreen(snackbar) }
             composable(Dest.Positions.route) { PositionsScreen(snackbar) }
             composable(Dest.Signals.route) { SignalsScreen(snackbar) }
+            composable(Dest.Markets.route) { MarketsScreen(snackbar) }
             composable(Dest.Risk.route) { RiskScreen(snackbar) }
             composable(Dest.More.route) { MoreScreen { nav.navigate(it.route) } }
             composable(Dest.Strategies.route) { StrategiesScreen(snackbar) }
@@ -80,7 +82,7 @@ fun AppNav(startRoute: String = Dest.Home.route, pendingRoute: String? = null, o
 @Composable
 private fun MoreScreen(go: (Dest) -> Unit) {
     Column(Modifier.padding(vertical = 8.dp)) {
-        listOf(Dest.Brokers, Dest.Strategies, Dest.Backtest, Dest.Analyst, Dest.Logs, Dest.Settings).forEach { d ->
+        listOf(Dest.Signals, Dest.Brokers, Dest.Strategies, Dest.Backtest, Dest.Analyst, Dest.Logs, Dest.Settings).forEach { d ->
             ListItem(headlineContent = { Text(d.title) }, leadingContent = { Icon(d.icon, null) },
                 modifier = Modifier.clickable { go(d) }.testTag("more_${d.route}"))
         }

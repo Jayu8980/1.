@@ -19,6 +19,7 @@ data class Dashboard(
     val openPositions: Int,
     val curve: List<CurvePoint>,
     val updatedAt: Long,
+    val benchmarkLive: Boolean = true,
 )
 
 @Serializable
@@ -169,3 +170,40 @@ data class BrokerInfo(
 
 @Serializable
 data class ConnectResult(val ok: Boolean, val loginUrl: String? = null, val message: String = "")
+
+/** Engine Contract (Decimals arrive as strings). */
+@Serializable
+data class ContractDto(
+    val symbol: String,
+    val token: String,
+    val exchange: String,
+    val instrument: String = "EQUITY",
+    @kotlinx.serialization.SerialName("lot_size") val lotSize: Int = 1,
+    @kotlinx.serialization.SerialName("tick_size") val tickSize: String = "0.05",
+    val multiplier: String = "1",
+    val ids: Map<String, String> = emptyMap(),
+) {
+    val key: String get() = "$exchange:$symbol"
+}
+
+@Serializable
+data class WatchItem(val contract: ContractDto, val ltp: Double? = null, val ts: Long? = null, val source: String? = null)
+
+@Serializable
+data class InstrumentHit(
+    val symbol: String,
+    val token: String,
+    val exchange: String,
+    val instrument: String = "EQUITY",
+    @kotlinx.serialization.SerialName("lot_size") val lotSize: Int = 1,
+    @kotlinx.serialization.SerialName("tick_size") val tickSize: String = "0.05",
+    val multiplier: String = "1",
+    val ids: Map<String, String> = emptyMap(),
+    val description: String = "",
+) {
+    fun toContract() = ContractDto(symbol, token, exchange, instrument, lotSize, tickSize, multiplier, ids)
+}
+
+/** Live price as seen by the app. */
+data class Quote(val key: String, val symbol: String, val exchange: String, val ltp: Double, val ts: Long,
+                 val source: String, val prev: Double? = null, val sessionOpen: Double = ltp)

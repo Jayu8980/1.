@@ -17,6 +17,11 @@ interface EngineApi {
     @GET("audit") suspend fun audit(@Query("limit") limit: Int = 200): List<AuditEntry>
     @POST("backtests") suspend fun backtest(@Body body: BacktestRequest): Tearsheet
     @GET("brokers") suspend fun brokers(): List<BrokerInfo>
+    @GET("watchlist") suspend fun watchlist(): List<WatchItem>
+    @POST("watchlist") suspend fun addWatch(@Body c: ContractDto): ActionResult
+    @DELETE("watchlist/{exchange}/{symbol}") suspend fun removeWatch(@Path("exchange") exchange: String,
+                                                                     @Path("symbol") symbol: String): ActionResult
+    @GET("instruments/search") suspend fun search(@Query("q") q: String, @Query("exchange") exchange: String): List<InstrumentHit>
     @POST("brokers/{id}/disconnect") suspend fun disconnectBroker(@Path("id") id: String): ActionResult
 
     // ---- money-touching (signed) ----

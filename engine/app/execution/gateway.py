@@ -86,21 +86,34 @@ class ExecutionGateway:
         await self.audit.record("kill_switch.released", actor=actor)
 
     # ------------------------------------------------------------ orders
-    async def place(self, req: OrderRequest, ref_price: Decimal | None = None) -> Order:
+    async def _reduces_position(self, broker, req: OrderRequest) -> bool:
+        for p in await broker.positions():
+            if p.contract.key == req.contract.key and p.product == req.product and p.net_qty:
+                signed = req.quantity if req.side.value == "BUY" else -req.quantity
+                return (p.net_qty > 0 > signed or p.net_qty < 0 < signed) and abs(signed) <= abs(p.net_qty)
+        return False
+
+    async def place(self, req: OrderRequest, ref_price: Decimal | None = None, *, exit_only: bool = False) -> Order:
+        """exit_only=True: allowed under the kill switch and exempt from size limits, but ONLY
+        if it reduces an existing position (verified against the broker)."""
         mode = self.mode
         ctx = dict(mode=mode, cid=req.client_order_id, strategy=req.strategy, symbol=req.contract.key,
-                   side=req.side, qty=req.quantity, type=req.order_type, price=req.price)
+                   side=req.side, qty=req.quantity, type=req.order_type, price=req.price, exit_only=exit_only)
         try:
-            if self.kill_switch:
-                raise OrderBlocked("kill switch engaged", "KILL_SWITCH")
             broker = self.broker
             if broker is None:
                 raise OrderBlocked("no broker for mode", "NO_BROKER")
+            if exit_only:
+                if not await self._reduces_position(broker, req):
+                    raise OrderBlocked("exit order does not reduce an open position", "NOT_AN_EXIT")
+            elif self.kill_switch:
+                raise OrderBlocked("kill switch engaged", "KILL_SWITCH")
             if ref_price is None:
                 ref_price = req.price if req.price is not None else await broker.ltp(req.contract)
-            decision = await self.risk.check(req, Decimal(ref_price))
-            if not decision.approved:
-                raise OrderBlocked(decision.reason, "RISK_VETO")
+            if not exit_only:
+                decision = await self.risk.check(req, Decimal(ref_price))
+                if not decision.approved:
+                    raise OrderBlocked(decision.reason, "RISK_VETO")
             if mode is Mode.LIVE:
                 ip = await self.ip_guard.assert_ok()
                 ctx["egress_ip"] = ip

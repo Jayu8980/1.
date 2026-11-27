@@ -21,6 +21,7 @@ class DemoEngine(seed: Long = 42, private val now: () -> Long = System::currentT
         "RELIANCE-EQ" to 1412.0, "HDFCBANK-EQ" to 1985.0, "ICICIBANK-EQ" to 1428.0, "INFY-EQ" to 1561.0,
         "TCS-EQ" to 3348.0, "SBIN-EQ" to 862.0, "LT-EQ" to 3710.0, "AXISBANK-EQ" to 1189.0,
         "ITC-EQ" to 418.0, "BHARTIARTL-EQ" to 2050.0, "NIFTY26DECFUT" to 25980.0,
+        "Nifty 50" to 25940.0, "BTCUSD" to 61350.0,
     )
 
     private val positions = mutableListOf(
@@ -261,6 +262,44 @@ class DemoEngine(seed: Long = 42, private val now: () -> Long = System::currentT
         log("broker.disconnected", id)
         return ActionResult(true, "Disconnected ${b.name}")
     }
+
+    private val watch = mutableListOf(
+        ContractDto("Nifty 50", "99926000", "NSE"), ContractDto("RELIANCE-EQ", "2885", "NSE"),
+        ContractDto("HDFCBANK-EQ", "1333", "NSE"), ContractDto("ICICIBANK-EQ", "4963", "NSE"),
+        ContractDto("INFY-EQ", "1594", "NSE"), ContractDto("SBIN-EQ", "3045", "NSE"),
+        ContractDto("BTCUSD", "27", "DELTA", "FUTURE", 1, "0.5", "0.001", mapOf("delta" to "BTCUSD")),
+    )
+
+    @Synchronized fun watchlist(): List<WatchItem> = watch.map { c ->
+        WatchItem(c, prices[c.symbol], now(), if (c.exchange == "DELTA") "demo-delta" else "demo")
+    }
+
+    /** One simulated tick per watchlist symbol. */
+    @Synchronized fun quotes(): List<Quote> {
+        tick()
+        return watch.mapNotNull { c -> prices[c.symbol]?.let {
+            Quote(c.key, c.symbol, c.exchange, it, now(), if (c.exchange == "DELTA") "demo-delta" else "demo") } }
+    }
+
+    fun search(q: String, exchange: String): List<InstrumentHit> {
+        val universe = listOf("ASIANPAINT", "BAJFINANCE", "HINDUNILVR", "KOTAKBANK", "MARUTI", "SUNPHARMA", "TITAN",
+            "ULTRACEMCO", "WIPRO", "TATAMOTORS", "TATASTEEL", "ADANIENT", "ONGC", "NTPC", "POWERGRID")
+        return if (exchange == "DELTA") listOf("BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD").filter { it.contains(q.uppercase()) }
+            .map { InstrumentHit(it, it.hashCode().toString(), "DELTA", "FUTURE", 1, "0.5",
+                if (it == "BTCUSD") "0.001" else "0.01", mapOf("delta" to it), "$it perpetual (demo)") }
+        else universe.filter { it.contains(q.uppercase()) }.map {
+            InstrumentHit("$it-EQ", (abs(it.hashCode()) % 50000).toString(), exchange, description = "$it (demo)") }
+    }
+
+    @Synchronized fun addWatch(c: ContractDto): ActionResult {
+        if (watch.any { it.key == c.key }) return ActionResult(false, "${c.symbol} already in watchlist")
+        watch += c
+        prices.putIfAbsent(c.symbol, if (c.exchange == "DELTA") 3000.0 else 500.0 + rnd.nextInt(3000))
+        return ActionResult(true, "Added ${c.symbol}")
+    }
+
+    @Synchronized fun removeWatch(key: String): ActionResult =
+        if (watch.removeAll { it.key == key }) ActionResult(true, "Removed") else ActionResult(false, "Not in watchlist")
 
     @Synchronized fun audit(): List<AuditEntry> = audit.toList().reversed()
 

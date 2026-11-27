@@ -67,9 +67,10 @@ private fun SettingsForm(s: AppSettings, vm: SettingsViewModel) {
         SectionCard("Cloud engine") {
             OutlinedTextField(url, { url = it }, label = { Text("Engine URL (https://…)") }, singleLine = true,
                 modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
-            OutlinedTextField(pin, { pin = it }, label = { Text("TLS pin (sha256/…=)") }, singleLine = true,
+            OutlinedTextField(pin, { pin = it }, label = { Text("TLS pins (sha256/…=, comma separated)") }, singleLine = false,
                 modifier = Modifier.fillMaxWidth())
-            Text("Get the pin on the VM: see infra/README → 'TLS pin'.", style = MaterialTheme.typography.labelSmall)
+            Text("Use your server key pin plus a backup, e.g. Let's Encrypt ISRG Root X1. See infra/README → 'TLS pins'.",
+                style = MaterialTheme.typography.labelSmall)
             Spacer(Modifier.height(8.dp))
             Button(onClick = { vm.save(demo, url, pin, user) }, modifier = Modifier.fillMaxWidth()) { Text("Save") }
             if (!demo && (!url.startsWith("https://") || !pin.startsWith("sha256/")))

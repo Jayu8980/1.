@@ -74,6 +74,8 @@ fun HomeScreen(snackbar: SnackbarHostState, vm: HomeViewModel = hiltViewModel())
                 }
             }
             SectionCard("Equity vs NIFTY 50 (rebased)") {
+                if (!d.benchmarkLive) Text("No NIFTY feed yet — log in a broker on the engine; NIFTY shown flat.",
+                    style = MaterialTheme.typography.labelSmall, color = Warn)
                 LineChart(listOf(
                     Series("Strategy", d.curve.map { it.equity }, MaterialTheme.colorScheme.primary),
                     Series("NIFTY 50", d.curve.map { it.nifty }, Nifty, dashed = true),

@@ -22,6 +22,8 @@ POSITIONS = "/rest/secure/angelbroking/order/v1/getPosition"
 HOLDINGS = "/rest/secure/angelbroking/portfolio/v1/getAllHolding"
 LTP = "/rest/secure/angelbroking/order/v1/getLtpData"
 CANDLES = "/rest/secure/angelbroking/historical/v1/getCandleData"
+QUOTE = "/rest/secure/angelbroking/market/v1/quote/"
+SEARCH = "/rest/secure/angelbroking/order/v1/searchScrip"
 
 # Error codes that mean the session token is dead.
 AUTH_ERRORS = {"AG8001", "AG8002", "AG8003", "AB1010", "AB8050", "AB8051"}
@@ -121,6 +123,14 @@ class SmartAPIClient:
 
     async def ltp(self, exchange: str, symbol: str, token: str) -> dict:
         return await self._call("POST", LTP, {"exchange": exchange, "tradingsymbol": symbol, "symboltoken": token})
+
+    async def quote_ltp(self, exchange_tokens: dict[str, list[str]]) -> list[dict]:
+        """Batch LTP: {"NSE": ["3045", ...]} -> [{exchange, tradingSymbol, symbolToken, ltp}, ...] (<=50 tokens)."""
+        d = await self._call("POST", QUOTE, {"mode": "LTP", "exchangeTokens": exchange_tokens}) or {}
+        return d.get("fetched", [])
+
+    async def search(self, exchange: str, query: str) -> list[dict]:
+        return await self._call("POST", SEARCH, {"exchange": exchange, "searchscrip": query}) or []
 
     async def candles(self, exchange: str, token: str, interval: str, from_: str, to: str) -> list[list]:
         return await self._call("POST", CANDLES, {"exchange": exchange, "symboltoken": token,

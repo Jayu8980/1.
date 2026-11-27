@@ -63,6 +63,6 @@ to PAPER and blocks re-arming until released.
 | 1 | Broker layer, paper broker, costs, compliance primitives | **done, 39 tests** |
 | 2 | Data pipeline (corp actions, holidays, survivorship-free universe) + event-driven backtester | next |
 | 3 | Regime, strategies, meta-labeling, sizing, full risk engine, validation suite | |
-| 4 | API (REST/WSS, JWT) + Android core screens | **app done** (demo mode); engine API pending |
+| 4 | API (REST/WSS, JWT) + Android core screens | **done**: engine API + live /stream, app Markets screen |
 | 5 | FCM alerts, widget, AI analyst | widget + local alerts done; FCM pending |
-| 6 | Deployment, TLS pinning, hardening | |
+| 6 | Deployment, TLS pinning, hardening | Caddy HTTPS + pins done; hardening pending |
