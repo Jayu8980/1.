@@ -76,7 +76,7 @@ fun <T> Bind(vm: ResourceViewModel<T>) {
 @Composable
 fun <T> StateContent(state: UiState<T>, onRetry: () -> Unit, content: @Composable (Loaded<T>) -> Unit) {
     when (state) {
-        UiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        UiState.Loading -> SkeletonScreen()
         is UiState.Failed -> Column(Modifier.fillMaxSize().padding(32.dp), verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Outlined.CloudOff, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -125,14 +125,12 @@ fun pnlColor(v: Double): Color = when { v > 0 -> Profit; v < 0 -> Loss; else -> 
 
 @Composable
 fun SectionCard(title: String? = null, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Card(modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
-        Column(Modifier.padding(16.dp)) {
-            if (title != null) {
-                Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(10.dp))
-            }
-            content()
+    GlassCard(modifier.fillMaxWidth(), padding = if (com.aitrader.ui.theme.LocalAppearance.current.compact) 12.dp else 16.dp) {
+        if (title != null) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(10.dp))
         }
+        content()
     }
 }
 

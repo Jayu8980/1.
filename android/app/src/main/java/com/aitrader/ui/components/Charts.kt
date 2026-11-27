@@ -4,7 +4,13 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
+import com.aitrader.ui.theme.Nifty
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -92,6 +98,76 @@ fun BarChart(values: List<Double>, modifier: Modifier = Modifier) {
             val h = (mid * v / m).toFloat()
             drawRect(if (v >= 0) Profit else Loss, Offset(i * w + w * 0.15f, if (h > 0) mid - h else mid),
                 Size(w * 0.7f, kotlin.math.abs(h)))
+        }
+    }
+}
+
+enum class ChartRange(val label: String, val days: Int) { D1("1D", 1), W1("1W", 7), M1("1M", 30), M3("3M", 90), ALL("All", 100000) }
+
+/** Equity-vs-benchmark chart with gradient fill, range filter and finger scrubbing. */
+@Composable
+fun InteractiveEquityChart(points: List<com.aitrader.data.model.CurvePoint>, modifier: Modifier = Modifier,
+                           height: androidx.compose.ui.unit.Dp = 200.dp, showRange: Boolean = true) {
+    var range by remember { mutableStateOf(ChartRange.ALL) }
+    var scrub by remember { mutableStateOf<Float?>(null) }
+    val accent = MaterialTheme.colorScheme.primary
+    val grid = com.aitrader.ui.theme.LocalTokens.current.glassBorder
+    val muted = com.aitrader.ui.theme.LocalTokens.current.muted
+    val pts = remember(points, range) {
+        if (points.isEmpty()) points else {
+            val cut = points.last().t - range.days * 86_400_000L
+            points.filter { it.t >= cut }.let { if (it.size < 2) points.takeLast(2) else it }
+        }
+    }
+    Column(modifier) {
+        if (pts.size >= 2) {
+            val idx = scrub?.let { ((it.coerceIn(0f, 1f)) * (pts.size - 1)).toInt() } ?: (pts.size - 1)
+            val p = pts[idx]
+            val eqChg = (p.equity / pts.first().equity - 1) * 100
+            val nfChg = (p.nifty / pts.first().nifty - 1) * 100
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(Fmt.compact(p.equity), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(8.dp))
+                Text(Fmt.pct(eqChg), color = if (eqChg >= 0) Profit else Loss, style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.weight(1f))
+                Text("NIFTY ${Fmt.pct(nfChg)} · α ${Fmt.pct(eqChg - nfChg)}", style = MaterialTheme.typography.labelMedium,
+                    color = muted)
+            }
+            Text(if (scrub != null) Fmt.dateTime(p.t) else "Strategy vs NIFTY 50 · drag to inspect",
+                style = MaterialTheme.typography.labelSmall, color = muted)
+        }
+        Spacer(Modifier.height(8.dp))
+        Canvas(Modifier.fillMaxWidth().height(height)
+            .pointerInput(pts) {
+                detectDragGestures(onDragEnd = { scrub = null }, onDragCancel = { scrub = null },
+                    onDragStart = { scrub = it.x / size.width }) { change, _ -> scrub = change.position.x / size.width }
+            }
+            .pointerInput(pts) { detectTapGestures(onPress = { scrub = it.x / size.width; tryAwaitRelease(); scrub = null }) }
+            .semantics { contentDescription = "equity chart" }) {
+            if (pts.size < 2) return@Canvas
+            val eq = pts.map { (it.equity / pts.first().equity - 1) * 100 }
+            val nf = pts.map { (it.nifty / pts.first().nifty - 1) * 100 }
+            val lo = minOf(eq.min(), nf.min()); val hi = maxOf(eq.max(), nf.max())
+            val span = (hi - lo).takeIf { it > 0 } ?: 1.0
+            fun x(i: Int) = size.width * i / (pts.size - 1)
+            fun y(v: Double) = (size.height * (1 - (v - lo) / span)).toFloat()
+            repeat(4) { i -> val yy = size.height * i / 3f; drawLine(grid, Offset(0f, yy), Offset(size.width, yy), 1f) }
+            if (lo < 0 && hi > 0) drawLine(grid, Offset(0f, y(0.0)), Offset(size.width, y(0.0)), 2f,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
+            val nPath = Path().apply { nf.forEachIndexed { i, v -> if (i == 0) moveTo(x(i), y(v)) else lineTo(x(i), y(v)) } }
+            drawPath(nPath, Nifty.copy(alpha = .8f), style = Stroke(3f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f))))
+            val ePath = Path().apply { eq.forEachIndexed { i, v -> if (i == 0) moveTo(x(i), y(v)) else lineTo(x(i), y(v)) } }
+            val area = Path().apply { addPath(ePath); lineTo(size.width, size.height); lineTo(0f, size.height); close() }
+            drawPath(area, Brush.verticalGradient(listOf(accent.copy(alpha = .35f), Color.Transparent)))
+            drawPath(ePath, accent, style = Stroke(5f, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+            val i = scrub?.let { ((it.coerceIn(0f, 1f)) * (pts.size - 1)).toInt() } ?: (pts.size - 1)
+            if (scrub != null) drawLine(grid.copy(alpha = 1f), Offset(x(i), 0f), Offset(x(i), size.height), 2f)
+            drawCircle(accent.copy(alpha = .25f), 16f, Offset(x(i), y(eq[i])))
+            drawCircle(accent, 7f, Offset(x(i), y(eq[i])))
+        }
+        if (showRange) {
+            Spacer(Modifier.height(10.dp))
+            Segmented(ChartRange.entries.map { it to it.label }, range, { range = it })
         }
     }
 }

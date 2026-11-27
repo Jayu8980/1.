@@ -22,6 +22,10 @@ data class AppSettings(
     val username: String = "",
     val hasToken: Boolean = false,
     val onboarded: Boolean = false,
+    val layout: String = "PRO",
+    val theme: String = "MIDNIGHT",
+    val accent: String = "AZURE",
+    val compact: Boolean = false,
 )
 
 @Singleton
@@ -33,6 +37,10 @@ class SettingsStore @Inject constructor(@ApplicationContext private val ctx: Con
         val user = stringPreferencesKey("user")
         val token = stringPreferencesKey("token_enc")
         val onboarded = booleanPreferencesKey("onboarded")
+        val layout = stringPreferencesKey("ui_layout")
+        val theme = stringPreferencesKey("ui_theme")
+        val accent = stringPreferencesKey("ui_accent")
+        val compact = booleanPreferencesKey("ui_compact")
     }
 
     val settings: Flow<AppSettings> = ctx.dataStore.data.map {
@@ -43,6 +51,10 @@ class SettingsStore @Inject constructor(@ApplicationContext private val ctx: Con
             username = it[K.user] ?: "",
             hasToken = it[K.token] != null,
             onboarded = it[K.onboarded] ?: false,
+            layout = it[K.layout] ?: "PRO",
+            theme = it[K.theme] ?: "MIDNIGHT",
+            accent = it[K.accent] ?: "AZURE",
+            compact = it[K.compact] ?: false,
         )
     }
 
@@ -52,6 +64,10 @@ class SettingsStore @Inject constructor(@ApplicationContext private val ctx: Con
         ctx.dataStore.edit {
             it[K.demo] = demoMode; it[K.url] = engineUrl.trim(); it[K.pin] = certPin.trim(); it[K.user] = username.trim()
         }
+    }
+
+    suspend fun setAppearance(layout: String, theme: String, accent: String, compact: Boolean) {
+        ctx.dataStore.edit { it[K.layout] = layout; it[K.theme] = theme; it[K.accent] = accent; it[K.compact] = compact }
     }
 
     suspend fun finishOnboarding(demo: Boolean) {
