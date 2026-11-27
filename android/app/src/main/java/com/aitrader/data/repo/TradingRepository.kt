@@ -31,6 +31,10 @@ class TradingRepository @Inject constructor(
     private val json: Json,
 ) {
     val demo = DemoEngine()
+
+    /** Which account the Home/Positions screens show: "current" (what the engine trades now) or
+     *  "live" (your real broker account, read-only, even while the engine is in PAPER). */
+    val venue = kotlinx.coroutines.flow.MutableStateFlow("current")
     val alerts: Flow<List<AlertEntity>> = dao.alerts()
 
     suspend fun isDemo() = settings.current().demoMode
@@ -74,9 +78,18 @@ class TradingRepository @Inject constructor(
     }.getOrNull()?.takeIf { e.code() != 401 }
 
     // ------------------------------------------------------------ reads
-    suspend fun dashboard() = load("dashboard", Dashboard.serializer(), demo::dashboard) { dashboard() }
-    suspend fun positions() = load("positions", ListSerializer(Position.serializer()), demo::positions) { positions() }
-    suspend fun orders() = load("orders", ListSerializer(Order.serializer()), demo::orders) { orders() }
+    suspend fun dashboard() = venue.value.let { v -> load("dashboard:$v", Dashboard.serializer(), demo::dashboard) { dashboard(v) } }
+    suspend fun positions() = venue.value.let { v -> load("positions:$v", ListSerializer(Position.serializer()), demo::positions) { positions(v) } }
+    suspend fun orders() = venue.value.let { v -> load("orders:$v", ListSerializer(Order.serializer()), demo::orders) { orders(v) } }
+
+    /** Manual order. Signed with biometric; goes to the REAL broker when the engine is LIVE. */
+    suspend fun placeOrder(t: OrderTicket) = act(
+        if (t.expectLive) "REAL ORDER: ${t.side} ${t.qty} ${t.symbol}" else "Paper order: ${t.side} ${t.qty} ${t.symbol}",
+        { demo.placeOrder(t) }) { placeOrder(t) }
+
+    suspend fun cancelOrder(id: String): ActionResult = try {
+        if (isDemo()) demo.cancelOrder(id) else client.api().cancelOrder(id, venue.value)
+    } catch (e: Exception) { ActionResult(false, describe(e)) }
     suspend fun signals() = load("signals", ListSerializer(Signal.serializer()), demo::signals) { signals() }
     suspend fun strategies() = load("strategies", ListSerializer(StrategyStats.serializer()), demo::strategies) { strategies() }
     suspend fun risk() = load("risk", RiskConfig.serializer(), demo::risk) { risk() }

@@ -10,7 +10,7 @@ import android.content.Intent
 import androidx.compose.runtime.mutableStateOf
 import androidx.fragment.app.FragmentActivity
 import com.aitrader.security.ActivityHolder
-import com.aitrader.ui.AppNav
+import com.aitrader.ui.Root
 import com.aitrader.ui.theme.AITraderTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -29,7 +29,7 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         if (Build.VERSION.SDK_INT >= 33) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         val start = routeOf(intent) ?: "home"
-        setContent { AITraderTheme { AppNav(start, pendingRoute.value) { pendingRoute.value = null } } }
+        setContent { AITraderTheme { Root(start, pendingRoute.value) { pendingRoute.value = null } } }
     }
 
     override fun onNewIntent(intent: Intent) {

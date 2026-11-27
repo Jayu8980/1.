@@ -22,6 +22,8 @@ data class Dashboard(
     val benchmarkLive: Boolean = true,
     val autoTrade: Boolean = false,
     val autoOpenTrades: Int = 0,
+    val account: String = "paper",     // which account these numbers are: paper | live
+    val broker: String = "",
 )
 
 @Serializable
@@ -222,3 +224,12 @@ data class AutoTradeView(val id: String, val strategy: String, val symbol: Strin
 @Serializable
 data class AutoTradeStatus(val enabled: Boolean, val mode: TradingMode, val killSwitch: Boolean,
                            val liveStrategies: List<String> = emptyList(), val openTrades: List<AutoTradeView> = emptyList())
+
+@Serializable
+data class OrderTicket(
+    val symbol: String, val exchange: String, val side: String, val qty: Int,
+    val orderType: String, val price: Double? = null, val triggerPrice: Double? = null,
+    val product: String = "INTRADAY",
+    /** What the user saw when confirming; the engine refuses if the mode changed in between. */
+    val expectLive: Boolean = false,
+)

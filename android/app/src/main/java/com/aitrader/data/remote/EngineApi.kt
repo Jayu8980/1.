@@ -7,9 +7,10 @@ import retrofit2.http.*
  *  produced by a biometric-bound Android Keystore key (see security/ActionSigner). */
 interface EngineApi {
     @POST("auth/login") suspend fun login(@Body body: LoginRequest): LoginResponse
-    @GET("dashboard") suspend fun dashboard(): Dashboard
-    @GET("positions") suspend fun positions(): List<Position>
-    @GET("orders") suspend fun orders(): List<Order>
+    @GET("dashboard") suspend fun dashboard(@Query("venue") venue: String = "current"): Dashboard
+    @GET("positions") suspend fun positions(@Query("venue") venue: String = "current"): List<Position>
+    @GET("orders") suspend fun orders(@Query("venue") venue: String = "current"): List<Order>
+    @POST("orders/{id}/cancel") suspend fun cancelOrder(@Path("id") id: String, @Query("venue") venue: String): ActionResult
     @GET("signals") suspend fun signals(): List<Signal>
     @GET("strategies") suspend fun strategies(): List<StrategyStats>
     @GET("risk") suspend fun risk(): RiskConfig
@@ -33,6 +34,7 @@ interface EngineApi {
     @PUT("risk") suspend fun updateRisk(@Body body: RiskConfig): ActionResult
     @POST("mode") suspend fun setMode(@Body body: ModeRequest): ActionResult
     @POST("autotrade/on") suspend fun autotradeOn(): ActionResult
+    @POST("orders") suspend fun placeOrder(@Body t: OrderTicket): ActionResult
     @POST("strategies/{id}/promote") suspend fun promote(@Path("id") id: String): ActionResult
     @POST("brokers/{id}/connect") suspend fun connectBroker(@Path("id") id: String): ConnectResult
     @POST("brokers/{id}/activate") suspend fun activateBroker(@Path("id") id: String): ActionResult

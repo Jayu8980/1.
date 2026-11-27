@@ -3,6 +3,7 @@ package com.aitrader.ui.screens
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -61,6 +62,7 @@ class MarketsViewModel @Inject constructor(private val repo: TradingRepository, 
         }
     }
 
+    fun notify(m: String) = say(m)
     fun add(h: InstrumentHit) = viewModelScope.launch { say(repo.addWatch(h.toContract()).message); refresh() }
     fun remove(c: ContractDto) = viewModelScope.launch {
         val r = repo.removeWatch(c); if (r.ok) feed.drop(c.key); say(r.message); refresh()
@@ -75,18 +77,24 @@ fun MarketsScreen(snackbar: SnackbarHostState, vm: MarketsViewModel = hiltViewMo
     val quotes by vm.feed.quotes.collectAsStateCompat()
     val feedState by vm.feed.state.collectAsStateCompat()
     var adding by remember { mutableStateOf(false) }
+    var ticket by remember { mutableStateOf<TicketTarget?>(null) }
 
     Box(Modifier.fillMaxSize()) {
         StateContent(state, vm::refresh) { l ->
             LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp)) {
                 item { FeedBanner(feedState) }
-                items(l.data, key = { it.contract.key }) { w -> QuoteRow(w.contract, quotes[w.contract.key], onRemove = { vm.remove(w.contract) }) }
+                items(l.data, key = { it.contract.key }) { w -> QuoteRow(w.contract, quotes[w.contract.key], onRemove = { vm.remove(w.contract) },
+                    onTrade = { ticket = TicketTarget(w.contract.symbol, w.contract.exchange, quotes[w.contract.key]?.ltp) }) }
             }
         }
         FloatingActionButton(onClick = { adding = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
             .testTag("addSymbol")) { Icon(Icons.Filled.Add, "Add symbol") }
     }
     if (adding) AddSymbolDialog(vm, onDismiss = { adding = false })
+    ticket?.let { t ->
+        if (t.symbol == "Nifty 50") { ticket = null; return@let }      // index: not tradable
+        OrderTicketDialog(t, onDismiss = { ticket = null }, onDone = { msg -> ticket = null; vm.notify(msg) })
+    }
 }
 
 @Composable
@@ -116,14 +124,15 @@ fun sourceLabel(s: String) = when {
 }
 
 @Composable
-private fun QuoteRow(c: ContractDto, q: Quote?, onRemove: () -> Unit) {
+private fun QuoteRow(c: ContractDto, q: Quote?, onRemove: () -> Unit, onTrade: () -> Unit) {
     val up = q?.prev?.let { q.ltp > it }
     val flash by animateColorAsState(
         when (up) { true -> Profit.copy(alpha = 0.18f); false -> Loss.copy(alpha = 0.18f); null -> Color.Transparent },
         tween(400), label = "flash")
     val chg = q?.let { (it.ltp / it.sessionOpen - 1) * 100 } ?: 0.0
     Column(Modifier.testTag("quote_${c.symbol}")) {
-        Row(Modifier.fillMaxWidth().background(flash, RoundedCornerShape(8.dp)).padding(vertical = 10.dp, horizontal = 4.dp),
+        Row(Modifier.fillMaxWidth().background(flash, RoundedCornerShape(8.dp)).clickable(onClick = onTrade)
+            .padding(vertical = 10.dp, horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(c.symbol, fontWeight = FontWeight.SemiBold)

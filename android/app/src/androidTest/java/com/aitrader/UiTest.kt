@@ -47,4 +47,13 @@ class UiTest {
         rule.onNodeWithTag("autoSwitch").performClick()
         assertEquals(true, live); assertEquals(true, auto)
     }
+
+    @Test fun setup_offers_engine_first_and_demo() {
+        var picked = ""
+        rule.setContent { AITraderTheme { com.aitrader.ui.screens.SetupScreen({ picked = "engine" }, { picked = "demo" }) } }
+        rule.onNodeWithTag("setupEngine").assertTextContains("real trading", substring = true).performClick()
+        assertEquals("engine", picked)
+        rule.onNodeWithTag("setupDemo").performClick()
+        assertEquals("demo", picked)
+    }
 }

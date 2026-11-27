@@ -16,11 +16,12 @@ import javax.inject.Singleton
 private val Context.dataStore by preferencesDataStore("settings")
 
 data class AppSettings(
-    val demoMode: Boolean = true,
+    val demoMode: Boolean = false,
     val engineUrl: String = "",
     val certPin: String = "",       // "sha256/AAAA...=" ; required when demoMode = false
     val username: String = "",
     val hasToken: Boolean = false,
+    val onboarded: Boolean = false,
 )
 
 @Singleton
@@ -31,15 +32,17 @@ class SettingsStore @Inject constructor(@ApplicationContext private val ctx: Con
         val pin = stringPreferencesKey("pin")
         val user = stringPreferencesKey("user")
         val token = stringPreferencesKey("token_enc")
+        val onboarded = booleanPreferencesKey("onboarded")
     }
 
     val settings: Flow<AppSettings> = ctx.dataStore.data.map {
         AppSettings(
-            demoMode = it[K.demo] ?: true,
+            demoMode = it[K.demo] ?: false,
             engineUrl = it[K.url] ?: "",
             certPin = it[K.pin] ?: "",
             username = it[K.user] ?: "",
             hasToken = it[K.token] != null,
+            onboarded = it[K.onboarded] ?: false,
         )
     }
 
@@ -49,6 +52,10 @@ class SettingsStore @Inject constructor(@ApplicationContext private val ctx: Con
         ctx.dataStore.edit {
             it[K.demo] = demoMode; it[K.url] = engineUrl.trim(); it[K.pin] = certPin.trim(); it[K.user] = username.trim()
         }
+    }
+
+    suspend fun finishOnboarding(demo: Boolean) {
+        ctx.dataStore.edit { it[K.onboarded] = true; it[K.demo] = demo }
     }
 
     suspend fun token(): String? = ctx.dataStore.data.first()[K.token]?.let(KeystoreCrypto::decrypt)

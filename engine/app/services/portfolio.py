@@ -95,9 +95,11 @@ class Portfolio:
             pts = [pts[int(i * step)] for i in range(self.max_points)] + [pts[-1]]
         return pts
 
-    async def dashboard(self) -> dict:
-        snap = await self.snapshot()
-        pts = self.curve()
+    async def dashboard(self, broker=None) -> dict:
+        broker = broker or self.gw.broker
+        snap = await self.snapshot(broker)
+        want = "PAPER" if broker is self.gw.paper else "LIVE"
+        pts = [p for p in self.curve() if p.get("mode", "PAPER") == want]
         now = {"t": int(datetime.now(timezone.utc).timestamp() * 1000), "equity": snap["equity"], "nifty": self._nifty()}
         pts = pts + [now]
         # If no benchmark price was ever seen, draw NIFTY flat rather than inventing data.
@@ -109,5 +111,7 @@ class Portfolio:
                           "nifty": last_n if last_n is not None else pts[0]["equity"]})
         snap.pop("equityDec"); snap.pop("dayPnlDec")
         at = getattr(self, "autotrader", None)
+        snap["account"] = "paper" if broker is self.gw.paper else "live"
+        snap["broker"] = getattr(broker, "name", "")
         return {**snap, "curve": curve, "updatedAt": now["t"], "benchmarkLive": first_n is not None,
                 "autoTrade": bool(at and at.enabled), "autoOpenTrades": len(at.open_trades()) if at else 0}

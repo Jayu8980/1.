@@ -141,8 +141,10 @@ class ExecutionGateway:
                                 fill_price=order.avg_fill_price, msg=order.message, **ctx)
         return order
 
-    async def cancel(self, order_id: str, actor: str = "system", force_paper: bool = False) -> Order:
-        o = await self.venue_broker(force_paper).cancel_order(order_id)  # always allowed, even under kill switch
+    async def cancel(self, order_id: str, actor: str = "system", force_paper: bool = False,
+                     force_live: bool = False) -> Order:
+        b = self.live if force_live and self.live is not None else self.venue_broker(force_paper)
+        o = await b.cancel_order(order_id)  # always allowed, even under kill switch / in PAPER
         await self.audit.record("order.cancel", order_id=order_id, actor=actor, status=o.status)
         return o
 

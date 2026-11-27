@@ -41,6 +41,9 @@ class HomeViewModel @Inject constructor(private val repo: TradingRepository, set
         val r = repo.setMode(mode, phrase); say(r.message.ifBlank { if (r.ok) "Mode: $mode" else "Denied" }); refresh()
     }
 
+    val venue = repo.venue
+    fun setVenue(v: String) { repo.venue.value = v; refresh() }
+
     fun setAuto(on: Boolean) = viewModelScope.launch {
         val r = if (on) repo.autotradeOn() else repo.autotradeOff(); say(r.message); refresh()
     }
@@ -54,6 +57,7 @@ fun HomeScreen(snackbar: SnackbarHostState, vm: HomeViewModel = hiltViewModel())
     var liveDialog by remember { mutableStateOf(false) }
     var paperDialog by remember { mutableStateOf(false) }
     var autoDialog by remember { mutableStateOf(false) }
+    val venue by vm.venue.collectAsStateCompat()
 
     StateContent(state, vm::refresh) { l ->
         val d = l.data
@@ -62,8 +66,12 @@ fun HomeScreen(snackbar: SnackbarHostState, vm: HomeViewModel = hiltViewModel())
             TradingControls(d, demo,
                 onLive = { on -> if (on) liveDialog = true else paperDialog = true },
                 onAuto = { on -> if (on) autoDialog = true else vm.setAuto(false) })
+            if (!demo) AccountToggle(venue, vm::setVenue)
             SectionCard {
-                Text("Today", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(if (d.account == "live") "Today · REAL account${if (d.broker.isNotBlank()) " (${d.broker})" else ""}"
+                     else "Today · paper account",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (d.account == "live") LiveRed else MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(Fmt.signedMoney(d.dayPnl), Modifier.testTag("dayPnl"), style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.Bold, color = pnlColor(d.dayPnl))
                 Text(Fmt.pct(d.dayPnlPct), color = pnlColor(d.dayPnl))

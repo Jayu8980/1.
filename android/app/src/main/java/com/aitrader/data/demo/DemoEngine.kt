@@ -303,6 +303,34 @@ class DemoEngine(seed: Long = 42, private val now: () -> Long = System::currentT
 
     private var autoTrade = false
 
+    @Synchronized fun placeOrder(t: OrderTicket): ActionResult {
+        if (killSwitch) return ActionResult(false, "kill switch engaged")
+        if (t.expectLive) return ActionResult(false, "Demo mode cannot place real orders — connect your engine")
+        if (t.qty <= 0) return ActionResult(false, "quantity must be > 0")
+        val px = prices[t.symbol] ?: return ActionResult(false, "Add ${t.symbol} to the watchlist first")
+        val limit = t.price
+        val fills = t.orderType == "MARKET" || (limit != null && (if (t.side == "BUY") limit >= px else limit <= px))
+        val id = "D${orders.size + 1}"
+        orders += Order(id, t.symbol, t.side, t.qty, t.orderType, limit, if (fills) "FILLED" else "OPEN",
+            if (fills) px else 0.0, "manual", now())
+        if (fills) {
+            val signed = if (t.side == "BUY") t.qty else -t.qty
+            val i = positions.indexOfFirst { it.symbol == t.symbol && it.product == t.product }
+            if (i < 0) positions += Position(t.symbol, t.exchange, t.product, signed, px, px, 0.0, "manual")
+            else positions[i] = positions[i].copy(qty = positions[i].qty + signed)
+            positions.removeAll { it.qty == 0 }
+        }
+        log("order.manual", "${t.side} ${t.qty} ${t.symbol} ${if (fills) "filled" else "open"} (demo)")
+        return ActionResult(true, "PAPER order (demo): ${t.side} ${t.qty} ${t.symbol} — ${if (fills) "FILLED" else "OPEN"}")
+    }
+
+    @Synchronized fun cancelOrder(id: String): ActionResult {
+        val i = orders.indexOfFirst { it.orderId == id && it.status == "OPEN" }
+        if (i < 0) return ActionResult(false, "No open order $id")
+        orders[i] = orders[i].copy(status = "CANCELLED")
+        return ActionResult(true, "Order $id cancelled")
+    }
+
     @Synchronized fun autotrade() = AutoTradeStatus(autoTrade, TradingMode.PAPER, killSwitch,
         openTrades = if (autoTrade) listOf(AutoTradeView("T1", "trend_momentum", "RELIANCE-EQ", "BUY", 40, 40, "paper",
             "OPEN", 1408.5, 1391.6, 1442.3, false)) else emptyList())

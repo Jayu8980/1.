@@ -29,28 +29,109 @@ def _blocked(e: Exception) -> HTTPException:
 
 
 # ------------------------------------------------------------------ reads
+def _venue_broker(s, venue: str):
+    """venue: 'current' (what the engine trades now), 'live' (real broker account, read-only view
+    even in PAPER) or 'paper'."""
+    if venue == "paper":
+        return s.gateway.paper
+    if venue == "live":
+        b = s.gateway.live
+        if b is None:
+            raise HTTPException(409, "no live broker configured")
+        return b
+    return s.gateway.broker
+
+
 @router.get("/dashboard")
-async def dashboard(request: Request, _: str = Depends(current_user)):
+async def dashboard(request: Request, venue: str = Query("current", pattern="^(current|live|paper)$"),
+                    _: str = Depends(current_user)):
+    s = st(request)
     try:
-        return await st(request).portfolio.dashboard()
+        return await s.portfolio.dashboard(_venue_broker(s, venue))
     except BrokerError as e:
         raise _blocked(e) from e
 
 
 @router.get("/positions")
-async def positions(request: Request, _: str = Depends(current_user)):
+async def positions(request: Request, venue: str = Query("current", pattern="^(current|live|paper)$"),
+                    _: str = Depends(current_user)):
+    s = st(request)
     try:
-        return [position_view(p) for p in await st(request).portfolio.positions() if p.net_qty or p.realized_pnl]
+        return [position_view(p) for p in await s.portfolio.positions(_venue_broker(s, venue)) if p.net_qty or p.realized_pnl]
     except BrokerError as e:
         raise _blocked(e) from e
 
 
 @router.get("/orders")
-async def orders(request: Request, _: str = Depends(current_user)):
+async def orders(request: Request, venue: str = Query("current", pattern="^(current|live|paper)$"),
+                 _: str = Depends(current_user)):
+    s = st(request)
     try:
-        return sorted((order_view(o) for o in await st(request).gateway.broker.orders()), key=lambda o: -o["ts"])
+        return sorted((order_view(o) for o in await _venue_broker(s, venue).orders()), key=lambda o: -o["ts"])
     except BrokerError as e:
         raise _blocked(e) from e
+
+
+class OrderTicket(BaseModel):
+    symbol: str
+    exchange: str
+    side: Side
+    qty: int
+    orderType: OrderType = OrderType.LIMIT
+    price: float | None = None
+    triggerPrice: float | None = None
+    product: str = "INTRADAY"
+    expectLive: bool = False      # the app states what the user saw; mismatch => refuse
+
+
+@router.post("/orders")
+async def place_order(body: OrderTicket, request: Request, user: str = Depends(signed_user)):
+    """Manual order from the app. Goes wherever the engine trades now: the REAL broker when LIVE.
+    Full gateway path: kill switch, risk veto, static IP, rate limit, audit."""
+    from app.core.enums import Product
+    s = st(request)
+    live_now = s.gateway.mode is Mode.LIVE
+    if body.expectLive != live_now:
+        return {"ok": False, "message": "Mode changed since you opened the ticket — review and resend"}
+    c = s.watchlist.find(body.symbol, body.exchange)
+    if c is None:
+        return {"ok": False, "message": f"Add {body.exchange}:{body.symbol} to the watchlist first (instrument ids)"}
+    try:
+        product = Product(body.product)
+        ot, price = body.orderType, (Decimal(str(body.price)) if body.price is not None else None)
+        t = s.hub.latest.get(c.key)
+        ltp = t.ltp if t else None
+        if ot is OrderType.MARKET and live_now:
+            # Never send a raw MARKET order to the exchange: marketable LIMIT with a protection band.
+            if ltp is None:
+                return {"ok": False, "message": "No live price yet — use a LIMIT order"}
+            band = Decimal(str(s.settings.live_market_protection_pct)) / 100
+            price = _round_tick(ltp * (1 + band if body.side is Side.BUY else 1 - band), c.tick_size)
+            ot = OrderType.LIMIT
+        req = OrderRequest(contract=c, side=body.side, quantity=body.qty, order_type=ot, price=price,
+                           trigger_price=Decimal(str(body.triggerPrice)) if body.triggerPrice is not None else None,
+                           product=product, strategy="manual")
+    except (ValueError, ValidationError) as e:
+        return {"ok": False, "message": str(e).splitlines()[-1] if str(e) else "invalid order"}
+    try:
+        o = await s.gateway.place(req, price or ltp)
+    except (OrderBlocked, BrokerError) as e:
+        return {"ok": False, "message": getattr(e, "reason", None) or str(e)}
+    await s.audit.record("order.manual", actor=user, venue="live" if live_now else "paper", order_id=o.order_id)
+    where = f"REAL order at {s.brokers.active.info.name}" if live_now else "PAPER order"
+    return {"ok": True, "message": f"{where}: {body.side.value} {body.qty} {c.symbol} — {o.status.value} (#{o.order_id})"}
+
+
+@router.post("/orders/{order_id}/cancel")
+async def cancel_order(order_id: str, request: Request, venue: str = Query("current", pattern="^(current|live|paper)$"),
+                       user: str = Depends(current_user)):
+    """Cancelling only reduces risk: no biometric needed."""
+    s = st(request)
+    try:
+        o = await s.gateway.cancel(order_id, user, force_paper=(venue == "paper"), force_live=(venue == "live"))
+    except BrokerError as e:
+        return {"ok": False, "message": str(e)}
+    return {"ok": True, "message": f"Order {order_id}: {o.status.value}"}
 
 
 @router.get("/risk")

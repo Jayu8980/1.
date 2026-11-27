@@ -34,6 +34,10 @@ class PositionsViewModel @Inject constructor(private val repo: TradingRepository
     fun exit(p: Position) = viewModelScope.launch {
         val r = repo.exit(p); say(r.message); refresh()
     }
+    val venue = repo.venue
+    fun setVenue(v: String) { repo.venue.value = v; refresh() }
+    fun cancel(o: Order) = viewModelScope.launch { say(repo.cancelOrder(o.orderId).message); refresh() }
+    fun notify(m: String) { say(m); refresh() }
 }
 
 @Composable
@@ -42,9 +46,12 @@ fun PositionsScreen(snackbar: SnackbarHostState, vm: PositionsViewModel = hiltVi
     val state by vm.state.collectAsStateCompat()
     var tab by remember { mutableIntStateOf(0) }
     var confirm by remember { mutableStateOf<Position?>(null) }
+    var ticket by remember { mutableStateOf<TicketTarget?>(null) }
+    val venue by vm.venue.collectAsStateCompat()
 
     StateContent(state, vm::refresh) { l ->
         Column {
+            AccountToggle(venue, vm::setVenue)
             TabRow(tab) {
                 Tab(tab == 0, { tab = 0 }, text = { Text("Positions (${l.data.positions.size})") })
                 Tab(tab == 1, { tab = 1 }, text = { Text("Orders (${l.data.orders.size})") })
@@ -59,12 +66,15 @@ fun PositionsScreen(snackbar: SnackbarHostState, vm: PositionsViewModel = hiltVi
                         }
                     }
                     if (l.data.positions.isEmpty()) item { Text("No open positions", Modifier.padding(24.dp)) }
-                    items(l.data.positions, key = { it.symbol + it.product }) { p -> PositionRow(p) { confirm = p } }
+                    items(l.data.positions, key = { it.symbol + it.product }) { p ->
+                        PositionRow(p, onExit = { confirm = p },
+                            onTrade = { ticket = TicketTarget(p.symbol, p.exchange, p.ltp, if (p.qty > 0) "BUY" else "SELL", null, p.product) })
+                    }
                 }
             } else {
                 LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (l.data.orders.isEmpty()) item { Text("No orders today", Modifier.padding(24.dp)) }
-                    items(l.data.orders, key = { it.orderId }) { OrderRow(it) }
+                    items(l.data.orders, key = { it.orderId }) { o -> OrderRow(o, onCancel = { vm.cancel(o) }) }
                 }
             }
         }
@@ -74,10 +84,11 @@ fun PositionsScreen(snackbar: SnackbarHostState, vm: PositionsViewModel = hiltVi
             "${if (p.qty > 0) "Sell" else "Buy"} ${kotlin.math.abs(p.qty)} at market (${p.product}). Requires biometric.",
             "Exit position", danger = true, onConfirm = { vm.exit(p) }, onDismiss = { confirm = null })
     }
+    ticket?.let { t -> OrderTicketDialog(t, onDismiss = { ticket = null }, onDone = { ticket = null; vm.notify(it) }) }
 }
 
 @Composable
-private fun PositionRow(p: Position, onExit: () -> Unit) {
+private fun PositionRow(p: Position, onExit: () -> Unit, onTrade: () -> Unit) {
     SectionCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -90,15 +101,18 @@ private fun PositionRow(p: Position, onExit: () -> Unit) {
             Column(horizontalAlignment = Alignment.End) {
                 Text(Fmt.signedMoney(p.unrealizedPnl), color = pnlColor(p.unrealizedPnl), fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
-                FilledTonalButton(onClick = onExit, modifier = Modifier.testTag("exit_${p.symbol}"),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp)) { Text("Exit") }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedButton(onClick = onTrade, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) { Text("Add") }
+                    FilledTonalButton(onClick = onExit, modifier = Modifier.testTag("exit_${p.symbol}"),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp)) { Text("Exit") }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun OrderRow(o: Order) {
+private fun OrderRow(o: Order, onCancel: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Chip(o.side, if (o.side == "BUY") Profit else Loss)
         Spacer(Modifier.width(10.dp))
@@ -111,6 +125,19 @@ private fun OrderRow(o: Order) {
             Text(o.status, style = MaterialTheme.typography.labelMedium, color = when (o.status) {
                 "FILLED" -> Profit; "REJECTED" -> Loss; "CANCELLED" -> Nifty; else -> Warn })
             if (o.avgFillPrice > 0) Text(Fmt.price(o.avgFillPrice), style = MaterialTheme.typography.bodySmall)
+            if (o.status == "OPEN" || o.status == "PENDING")
+                TextButton(onClick = onCancel, contentPadding = PaddingValues(0.dp)) { Text("Cancel", color = Loss) }
         }
+    }
+}
+
+/** "Engine" = whatever the engine trades now (PAPER or LIVE); "Real broker" = your actual broker
+ *  account, viewable even while the engine is in PAPER. */
+@Composable
+fun AccountToggle(venue: String, onChange: (String) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(venue == "current", { onChange("current") }, label = { Text("Engine account") })
+        FilterChip(venue == "live", { onChange("live") }, label = { Text("Real broker account") },
+            modifier = Modifier.testTag("realAccount"))
     }
 }

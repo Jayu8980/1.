@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     # --- compliance ----------------------------------------------------------
     static_ip: str = ""                     # IP registered with SmartAPI
     ip_check_url: str = "https://api.ipify.org"
-    ip_check_ttl_s: float = 30.0            # 0 = check before every single order
+    ip_check_ttl_s: float = 0.0             # 0 = verify egress IP before EVERY live order (safest)
     orders_per_sec: int = Field(default=8, ge=1, le=9)  # stays under exchange 10 OPS
     daily_login_time_ist: str = "08:30"
     daily_logout_time_ist: str = "23:45"

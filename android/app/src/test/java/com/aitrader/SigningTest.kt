@@ -12,6 +12,7 @@ class SigningTest {
         assertTrue(requiresSignature("POST", "/api/v1/brokers/zerodha/connect"))
         assertTrue(requiresSignature("POST", "/api/v1/brokers/dhan/activate"))
         assertTrue(requiresSignature("POST", "/api/v1/autotrade/on"))
+        assertTrue(requiresSignature("POST", "/api/v1/orders"))
         assertTrue(requiresSignature("POST", "/api/v1/strategies/trend_momentum/promote"))
     }
 
@@ -22,6 +23,8 @@ class SigningTest {
         assertFalse(requiresSignature("GET", "/api/v1/brokers"))
         assertFalse(requiresSignature("POST", "/api/v1/brokers/zerodha/disconnect"))
         assertFalse(requiresSignature("POST", "/api/v1/autotrade/off"))
+        assertFalse(requiresSignature("POST", "/api/v1/orders/123/cancel"))
+        assertFalse(requiresSignature("GET", "/api/v1/orders"))
         assertFalse(requiresSignature("POST", "/api/v1/strategies/trend_momentum/demote"))
     }
 

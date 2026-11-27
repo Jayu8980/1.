@@ -14,6 +14,9 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import com.aitrader.ui.screens.*
+import com.aitrader.ui.components.collectAsStateCompat
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 
 enum class Dest(val route: String, val title: String, val icon: ImageVector) {
     Home("home", "Home", Icons.Filled.Dashboard),
@@ -31,6 +34,19 @@ enum class Dest(val route: String, val title: String, val icon: ImageVector) {
 }
 
 private val bottom = listOf(Dest.Home, Dest.Markets, Dest.Positions, Dest.Risk, Dest.More)
+
+/** Shows the first-launch setup until the user picks engine (real) or demo. */
+@Composable
+fun Root(startRoute: String, pendingRoute: String?, onRouteHandled: () -> Unit) {
+    val vm: RootViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val s by vm.settings.collectAsStateCompat()
+    when {
+        s == null -> Box(Modifier.fillMaxSize())
+        !s!!.onboarded -> SetupScreen(onEngine = { vm.finish(false) }, onDemo = { vm.finish(true) })
+        else -> AppNav(if (!s!!.demoMode && s!!.engineUrl.isBlank()) Dest.Settings.route else startRoute,
+            pendingRoute, onRouteHandled)
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
